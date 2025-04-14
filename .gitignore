@@ -1,4 +1,13 @@
+# 构建相关
 build
 thirdparty
 
-.vscode
+# vscode相关
+.vscode/*
+!.vscode/launch.json.in
+
+# 资源文件
+resources
+
+# 杂项文件
+*.ini

@@ -1,0 +1,25 @@
+Language: Cpp
+BasedOnStyle: Google
+AccessModifierOffset: -4 # 相对于类的缩进偏移量
+UseTab: Never # 使用空格而不是制表符
+IndentWidth: 4 # 缩进宽度为4个空格
+TabWidth: 4 # Tab长度
+AlignAfterOpenBracket: Align # 当函数参数或数组初始化需要换行时，后续行与括号对齐
+AlignEscapedNewlines: Left #  对于被 \ 换行的字符串或宏行，将 \ 左对齐，不居中或对齐语义块
+ColumnLimit: 100 # 单行的长度不超过100字符
+BinPackParameters: false # 禁止将多个函数参数打包进一行，一个参数一行，更清晰
+AlwaysBreakTemplateDeclarations: Yes # 模板函数或类总是换行，不管长度是否超过限制
+;PackConstructorInitializers: Never # 构造函数初始化列表中的多个成员，不打包在同一行，每个成员一行
+BreakConstructorInitializersBeforeComma: false # 初始化列表中，如果有换行，逗号放在行末，而不是新行开头
+IndentPPDirectives: BeforeHash # 让 # 号也一起缩进，默认 #define、#include 会对齐其他代码
+SortIncludes: Never # 不自动排序 #include 文件顺序，保持原样
+AllowShortFunctionsOnASingleLine: Empty
+BraceWrapping: 
+    AfterCaseLabel: true
+    AfterFunction: true # 函数后换行
+    AfterClass: true # 类后换行
+    AfterStruct: true # 结构体后换行
+    AfterNamespace: true # 命名空间后换行
+
+BreakBeforeBraces: Custom # 大括号换行需要此设置生效
+Standard: c++17

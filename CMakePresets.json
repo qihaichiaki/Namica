@@ -1,0 +1,45 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "NamicaDebug",
+            "generator": "Visual Studio 17 2022",
+            "description": "Namica测试配置",
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "BUILD_CONFIG": "Debug",
+                "BUILD_ARCH": "x64"
+            }
+        },
+        {
+            "name": "NamicaRelease",
+            "generator": "Visual Studio 17 2022",
+            "description": "Namica发布配置",
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "BUILD_CONFIG": "Release",
+                "BUILD_ARCH": "x64"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "Debug",
+            "configurePreset": "NamicaDebug",
+            "configuration": "Debug"
+        },
+        {
+            "name": "Release",
+            "configurePreset": "NamicaRelease",
+            "configuration": "Release"
+        }
+    ]
+}
