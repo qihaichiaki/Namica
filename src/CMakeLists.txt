@@ -7,7 +7,7 @@ add_executable(${PROJECT_NAME} ${SRC_LISTS})
 include(${THRIDPARTY_PATH}/ThirdPartyConfig.cmake)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    SDL2_Lib
+    ThirdPartyLib
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE

@@ -7,4 +7,6 @@ set(THRIDPARTY_PATH "${CMAKE_SOURCE_DIR}/thirdparty")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
+message("当前项目构建类型: " "${BUILD_CONFIG}-${BUILD_ARCH}")
+
 add_subdirectory(src)
