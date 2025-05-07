@@ -17,6 +17,12 @@
 
 int main()
 {
+#ifdef _WIN64
+    // 设置控制台是utf-8编码
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
+
     SDL_Init(SDL_INIT_EVERYTHING);          // 初始化SDL下全部的子系统
     IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);  // 初始化SDL图像解码 - jpg和png
     Mix_Init(MIX_INIT_MP3);                 // 初始化SDL音频解码 - mp3

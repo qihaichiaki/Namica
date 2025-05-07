@@ -14,7 +14,7 @@
                     "value": "@ENV_PATH@"
                 }
             ],
-            "console": "integratedTerminal"
+            "console": "externalTerminal"
         }
     ]
 }

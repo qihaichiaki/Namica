@@ -1,6 +1,9 @@
 project(Namica)
 
-file(GLOB_RECURSE SRC_LISTS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+file(GLOB_RECURSE SRC_LISTS
+    "${CMAKE_CURRENT_SOURCE_DIR}/edit/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
+)
 
 # === 1. 引入三方依赖 ===
 include(${THRIDPARTY_PATH}/ThirdPartyConfig.cmake)
