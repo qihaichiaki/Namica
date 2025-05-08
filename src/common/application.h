@@ -28,10 +28,13 @@ public:
     virtual void render() = 0;
 
     /// @brief 当前帧后处理
-    virtual void endFrame() = 0;
+    virtual void endFrame() {};
 
 public:
     /// @brief 运行应用程序
     void run();
+
+protected:
+    bool is_running = true;
 };
 }  // namespace namica

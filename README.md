@@ -3,7 +3,7 @@ This is 2D Geme engine.
 
 ## 构建项目
 * 三方依赖位置: <a href='https://github.com/qihaichiaki/Namica/releases/tag/ThirdParty'>ThirdParty</a>
-* 将thirdparty文件解压放置在Namica文件目录下, 使用cmake即可构建本项目
+* 将thirdparty文件解压放置在Namica文件目录下, 使用cmake即可构建本项目(可以使用本地脚本FetchThirdparty进行拉取(注意由于是github, 可以使用(-UseProxy -ProxyPort xxxx)设置当前系统代理进行拉取, 详细请看脚本))
 * 后续会添加resources包, 请根据tag选择添加
 * 三方依赖清单：imgui、SDL2、SDL2_image、SDL2_gfx、SDL2_mixer、SDL2_ttf、cJson、EasyX、lua、pugixml
 
@@ -26,6 +26,11 @@ This is 2D Geme engine.
 在循环阶段的当前帧将要结束时可在此处理
 7. 释放 - drop
 应用程序结束，需要释放资源阶段
+### editor/runtime app
+编辑器应用程序,当前阶段是imgui+sdl2的组合.运行时应用程序, 是纯SDL2.目前希望的是, 在editor_app能够包含到runtime_app，另外runtime_app也能作为一个独立的个体单独运行。
+#### 整体思路
+1. 编辑器应用程序, 会初始化renderer, 然后将其传入runtime_app，让两个之后会共享一个renderer?
+2. 编辑器基本是初始化imgui相关，runtime_app是初始化sdl相关(两者之间会整合在一起, 完整的初始化整个应用框架)
 
 ## 公共依赖实例
 基本上是引擎/游戏运行时能够获取的上下文的信息, 设计成单例, 方便全局获取。
@@ -34,6 +39,8 @@ This is 2D Geme engine.
 设置过程中，方便计算帧间隔时间, 为后续的每帧运行时间做准备
 2. Delta帧间隔时间
 可以获取当前帧和前一帧的时间差，方便用于进行逻辑更新, 并且用户可以随意设置时间的相关缩放, 从而达到时间静止的效果
+3. 在应用程序框架中
+可以借此设置每帧的帧间隔时间，并且将多余出来的时间让cpu将时间片放出，节省cpu资源
 
 
 ## 资源系统
