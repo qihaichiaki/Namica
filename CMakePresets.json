@@ -9,7 +9,7 @@
         {
             "name": "namica_base",
             "hidden": true,
-            "binaryDir": "${sourceDir}/build/bin",
+            "binaryDir": "${sourceDir}/build",
             "cacheVariables": {}
         },
         {
@@ -43,6 +43,10 @@
             "name": "x64-release",
             "hidden": false,
             "inherits": "windows_base",
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }

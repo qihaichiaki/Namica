@@ -16,6 +16,9 @@ AccessModifierOffset: -4
 # 多行表达式不对其到操作符位置
 AlignOperands: DontAlign
 
+# 不自动排序 #include 文件顺序，保持原样
+SortIncludes: Never 
+
 # 使用紧凑命名空间格式, 多个嵌套命名空间写成单行
 CompactNamespaces: true
 

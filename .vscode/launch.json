@@ -13,7 +13,7 @@
             "environment": [
                 {
                     "name": "PATH",
-                    "value": "${workspaceFolder}/build/bin/"
+                    "value": "${workspaceFolder}/build/bin/Namica/${command:cmake.buildType}"
                 }
             ]
         }
