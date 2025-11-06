@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(msvc)Launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [],
+            "cwd": "${workspaceRoot}/namica_editor",
+            "stopAtEntry": false,
+            "console": "externalTerminal",
+            "environment": [
+                {
+                    "name": "PATH",
+                    "value": "${workspaceFolder}/build/bin/Namica/${command:cmake.buildType}"
+                }
+            ]
+        }
+    ]
+}

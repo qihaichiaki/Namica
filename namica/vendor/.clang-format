@@ -1,0 +1,2 @@
+# 局部禁用格式化, 当前是第三方目录
+DisableFormat: true

@@ -1,41 +1,17 @@
-# Prerequisites
-*.d
+# 构建相关
+build
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+# vscode相关
+.vscode/*
+!.vscode/launch.json
 
-# Precompiled Headers
-*.gch
-*.pch
+# 项目中隐藏文件
+scripts/__pycache__
+namica_editor/assets/cache
 
-# Linker files
-*.ilk
+# 三方库相关
+namica/vendor/VulkanSDK
 
-# Debugger Files
-*.pdb
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-
-# debug information files
-*.dwo
+# 杂项文件
+*.ini
+*.drawio
