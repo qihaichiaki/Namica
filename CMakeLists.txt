@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 project(NamicaProject)
 
-# 使用C++17
-set(CMAKE_CXX_STANDARD 17)
+# 使用C++20
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 # 编译器设置
@@ -21,7 +21,7 @@ if(WIN32 AND MSVC)
     add_compile_options("$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CONFIG:RELEASE>>:/Oi>") # 将一些常用标准库的函数优化为内联函数替换, 减少调用开销
     add_compile_options("$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CONFIG:RELEASE>>:/Ob2>") # 运行编译器在同一模块自动内联, 包含一些小函数
     add_compile_options("$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CONFIG:RELEASE>>:/GL>") # 全程序优化, 允许编译器在链接阶段统一优化, 比如跨模块内联
-    add_compile_options("$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CONFIG:RELEASE>>:/Gy>") # 未调用的函数可以被连接器剔除, 减少生成产物的体积
+    add_compile_options("$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CONFIG:RELEASE>>:/Gy>") # 未调用的函数可以被连接器剔除, 减少生成产物的大小
 
     # CXX
     add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:/Zi>") # 生成完整的调试信息, 存储在.pdb文件中 独立存储调试信息

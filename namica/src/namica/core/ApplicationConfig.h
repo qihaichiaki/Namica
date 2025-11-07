@@ -3,7 +3,7 @@
 #include "namica/core/Base.h"
 #include "namica/core/WindowConfig.h"
 
-namespace namica
+namespace Namica
 {
 
 /** application相关配置 */
@@ -13,4 +13,4 @@ struct NAMICA_API ApplicationConfig
     char const* workingDir{nullptr};
 };
 
-}  // namespace namica
+}  // namespace Namica

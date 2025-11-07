@@ -2,7 +2,7 @@
 
 #include "namica/core/Base.h"
 
-namespace namica
+namespace Namica
 {
 
 /** Window的相关配置 */
@@ -16,4 +16,4 @@ struct NAMICA_API WindowConfig
     // char const* iconPath{};
 };
 
-}  // namespace namica
+}  // namespace Namica

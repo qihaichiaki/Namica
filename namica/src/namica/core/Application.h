@@ -3,8 +3,9 @@
 #include "namica/core/ApplicationConfig.h"
 #include "namica/core/Base.h"
 #include "namica/core/TypeMacros.h"
+#include "namica/core/Memory.h"
 
-namespace namica
+namespace Namica
 {
 
 class Application
@@ -12,13 +13,13 @@ class Application
 public:
     CLASS_DISABLE_COPY_MOVE(Application)
 
-    NAMICA_API Application(ApplicationConfig const& appConfig) noexcept;
+    NAMICA_API Application(ApplicationConfig const& _appConfig) noexcept;
     NAMICA_API virtual ~Application();
 
     NAMICA_API void run();
 };
 
 // 声明创建application的函数, 必须在别处实现
-Application* createApplication();
+Scope<Application> createApplication();
 
-}  // namespace namica
+}  // namespace Namica
