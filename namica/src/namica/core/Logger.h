@@ -19,11 +19,6 @@ class Logger final
 {
 public:
     /**
-     * @brief 创建Logger引用对象
-     */
-    NAMICA_API static Ref<Logger> create();
-
-    /**
      * @brief Set the Log Fmt object
      *
      * @param _logFmt 日志输出格式, 请使用fmt格式, 其中0表示h:m:s输出位置, 1表示level级别输出位置,
@@ -44,9 +39,15 @@ public:
     {
         // 注意, format适用于编译器决定的, fmt这些并非变量, 所以需要使用vformat使其可以传入变量
         // auto msg = std::format(fmt, std::forward<Args>(args)...);
-        auto msg = std::vformat(_fmt, std::make_format_args(std::forward<Args>(_args)...));
+        auto msg = std::vformat(_fmt, std::make_format_args(std::forward<Args const&>(_args)...));
         logOutput(_logLevel, msg);
     }
+
+public:
+    /**
+     * @brief 创建Logger引用对象
+     */
+    NAMICA_API static Ref<Logger> create();
 
 private:
     void logOutput(LogLevel _logLevel, std::string_view _msg) const;
@@ -57,6 +58,8 @@ private:
 
 private:
     std::string m_logFmt{"[{0}][{1}] {2}"};  // [h:m:s][level] msg
+
+    FRIEND_REF_FUNC
 };
 
 }  // namespace Namica

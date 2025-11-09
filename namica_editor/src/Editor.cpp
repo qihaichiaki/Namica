@@ -1,8 +1,8 @@
 #pragma once
 
 #include <namica/EntryPoint.h>
+#include <namica/core/ApplicationConfig.h>
 #include <namica/core/Application.h>
-
 namespace Namica
 {
 
@@ -16,9 +16,10 @@ public:
 
 Scope<Application> createApplication()
 {
+    // ApplicationConfig
     ApplicationConfig appConfig{};
     appConfig.windowConfig.windowName = "NamicaEditor";
-    // appConfig.workingDir = "";
+
     return createScope<NamicaEditor>(appConfig);
 }
 

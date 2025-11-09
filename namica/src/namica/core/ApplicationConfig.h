@@ -10,7 +10,7 @@ namespace Namica
 struct NAMICA_API ApplicationConfig
 {
     WindowConfig windowConfig{};
-    char const* workingDir{nullptr};
+    char const* workingDir{""};
 };
 
 }  // namespace Namica

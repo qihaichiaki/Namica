@@ -1,12 +1,13 @@
 #pragma once
 
-#include "namica/core/ApplicationConfig.h"
 #include "namica/core/Base.h"
 #include "namica/core/TypeMacros.h"
 #include "namica/core/Memory.h"
 
 namespace Namica
 {
+
+struct ApplicationConfig;
 
 class Application
 {

@@ -12,6 +12,9 @@ file(GLOB_RECURSE SOURCES
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+# 将所有警告视为错误
+target_compile_options(${PROJECT_NAME} PRIVATE /WX)
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE
 )
 

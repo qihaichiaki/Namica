@@ -30,7 +30,8 @@ if(WIN32 AND MSVC)
     add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:/execution-charset:utf-8>") # 运行时字面量使用utf-8
     add_compile_options(/MP) # 开启并行编译
     add_compile_options(/W4) # 严格代码检查
-    add_compile_options(/WX) # 将所有警告视为错误
+
+    # add_compile_options(/WX) # 将所有警告视为错误 -> 不可全局设置, 否则一些三方库编译不通过
     add_compile_options(/permissive-) # 禁止msvc的宽松模式, 方便代码更好的平台兼容性
 
     set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG") # Release配置下的共享库链接器，添加/DEBUG 选项

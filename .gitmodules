@@ -1,0 +1,6 @@
+[submodule "namica/vendor/glfw"]
+	path = namica/vendor/glfw
+	url = https://github.com/qihaichiaki/glfw
+[submodule "namica/vendor/yaml-cpp"]
+	path = namica/vendor/yaml-cpp
+	url = https://github.com/qihaichiaki/yaml-cpp

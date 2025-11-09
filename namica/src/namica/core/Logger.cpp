@@ -42,7 +42,7 @@ static std::string colorize(LogLevel _level, std::string const& _msg)
 
 Ref<Logger> Logger::create()
 {
-    return Ref<Logger>{new Logger{}};
+    return createRef<Logger>();
 }
 
 Logger::Logger()
