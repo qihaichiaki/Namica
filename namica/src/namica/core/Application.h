@@ -8,6 +8,7 @@ namespace Namica
 {
 
 struct ApplicationConfig;
+class Window;
 
 class Application
 {
@@ -17,7 +18,12 @@ public:
     NAMICA_API Application(ApplicationConfig const& _appConfig) noexcept;
     NAMICA_API virtual ~Application();
 
+    NAMICA_API static Application& get();
+
     NAMICA_API void run();
+
+private:
+    Ref<Window> m_mainWindow{nullptr};
 };
 
 // 声明创建application的函数, 必须在别处实现

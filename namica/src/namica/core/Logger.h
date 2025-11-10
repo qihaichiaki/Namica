@@ -37,10 +37,20 @@ public:
     template <typename... Args>
     void log(LogLevel _logLevel, std::string_view _fmt, Args&&... _args) const
     {
-        // 注意, format适用于编译器决定的, fmt这些并非变量, 所以需要使用vformat使其可以传入变量
-        // auto msg = std::format(fmt, std::forward<Args>(args)...);
+        // 注意, format适用于编译期间决定的, fmt这些并非变量, 所以需要使用vformat使其可以传入变量
+        // auto msg = std::format(_fmt, std::forward<Args const&>(_args)...);
         auto msg = std::vformat(_fmt, std::make_format_args(std::forward<Args const&>(_args)...));
         logOutput(_logLevel, msg);
+    }
+
+    template <typename... Args>
+    void log(LogLevel _logLevel,
+             std::string_view _prefix,
+             std::format_string<Args...> _fmt,
+             Args&&... _args) const
+    {
+        auto formatted = std::format(_fmt, std::forward<Args>(_args)...);
+        log(_logLevel, "{0}: {1}", _prefix, formatted);
     }
 
 public:

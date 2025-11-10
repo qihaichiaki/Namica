@@ -6,7 +6,7 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
 - [ ] 基本框架搭建完成
   - [x] Ref结构
   - [x] 日志系统
-  - [ ] Window
+  - [x] Window
 - [ ] 渲染API搭建完成
 - [ ] 编辑器GUI框架完成
 - [ ] ECS搭建完成
@@ -62,11 +62,15 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
 #### 文件系统[Utilities]
 * 设置工作目录, 方便后续文件工作均在此目录下使用
 
-#### Window
+
+#### RendererContext[Renderer]
+* 一般是处理窗口和renderer类型函数的接口
+
+#### Window[Core]
 * 窗口创建, 当前统一使用GLFW三方库作为窗口创建依赖
 
 * 第一次创建对应窗口时需要的
 
 
-#### Application
+#### Application[Core]
 * 应用程序的使用, 每个构建成exe的项目都只能同时存在一个Application

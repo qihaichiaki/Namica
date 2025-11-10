@@ -31,6 +31,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/vendor/Vendor.cmake)
 # 链接三方库
 target_link_libraries(${PROJECT_NAME} PRIVATE
     glfw
+    glad
 )
 
 # 确定后期是否调整, 前期方便使用

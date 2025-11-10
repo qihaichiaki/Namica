@@ -64,4 +64,38 @@ private:
 #define NAMICA_APP_ERROR(...) \
     ::Namica::Log::getLogger(::Namica::Log::Type::App)->log(Namica::LogLevel::Error, __VA_ARGS__)
 
+// Asserts
+#ifdef NAMICA_PLATFORM_WINDOWS
+#define NAMICA_DEBUG_BREAK __debugbreak()
+#else
+#define NAMICA_DEBUG_BREAK
+#endif
+
+#define NAMICA_STRINGIFY_IMPL(x) #x
+#define NAMICA_STRINGIFY(x) NAMICA_STRINGIFY_IMPL(x)
+
+#ifdef NAMICA_ENABLE_ASSERTS
+#define NAMICA_CORE_ASSERT(condition, ...)                                           \
+    if (!(condition))                                                                \
+    {                                                                                \
+        ::Namica::Log::getLogger(::Namica::Log::Type::Core)                          \
+            ->log(Namica::LogLevel::Error,                                           \
+                  "Assertion Failed (" __FILE__ ":" NAMICA_STRINGIFY(__LINE__) ") ", \
+                  ##__VA_ARGS__);                                                    \
+        NAMICA_DEBUG_BREAK;                                                          \
+    }
+#define NAMICA_APP_ASSERT(condition, ...)                                            \
+    if (!(condition))                                                                \
+    {                                                                                \
+        ::Namica::Log::getLogger(::Namica::Log::Type::App)                           \
+            ->log(Namica::LogLevel::Error,                                           \
+                  "Assertion Failed (" __FILE__ ":" NAMICA_STRINGIFY(__LINE__) ") ", \
+                  ##__VA_ARGS__);                                                    \
+        NAMICA_DEBUG_BREAK;                                                          \
+    }
+#else
+#define NAMICA_CORE_ASSERT(condition, ...) (void)(condition)
+#define NAMICA_APP_ASSERT(condition, ...) (void)(condition)
+#endif
+
 }  // namespace Namica
