@@ -1,0 +1,45 @@
+#pragma once
+
+#include "namica/core/Window.h"
+#include "namica/core/WindowConfig.h"
+
+struct GLFWwindow;
+namespace Namica
+{
+
+class RendererContext;
+class GlfwWindow final : public Window
+{
+public:
+    GlfwWindow(WindowConfig const& _windowConfig);
+    ~GlfwWindow();
+
+    virtual void setEventCallBackFn(EventCallBackFn _eventCallBackFn) override;
+    virtual unsigned int getWidth() const noexcept override;
+    virtual unsigned int getHeight() const noexcept override;
+    virtual void setVSync(bool _enable) override;
+    virtual bool getVSync() const noexcept override;
+    virtual void pollEvents() override;
+    virtual void swapBuffers() override;
+
+private:
+    void init();
+    void shutdown();
+
+private:
+    struct WindowData
+    {
+        char const* title{""};
+        int width{0};
+        int height{0};
+        bool fullscreen{false};
+        bool vsync{true};
+        EventCallBackFn eventCallBackFn{nullptr};
+    };
+
+    WindowData m_windowData;
+    GLFWwindow* m_window{nullptr};  // glfw窗口句柄
+    Scope<RendererContext> m_rendererContext;
+};
+
+}  // namespace Namica
