@@ -18,7 +18,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE /WX)
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     -DNAMICA_BUILD_DLL # 生成动态库导出信息
     -DNAMICA_ENABLE_ASSERTS # 启用宏断点检查
-    -DNAMICA_DEBUG # 启动Debug模式
+    $<$<CONFIG:DEBUG>:-DNAMICA_DEBUG> # 启动Debug模式
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC

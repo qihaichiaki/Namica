@@ -46,7 +46,7 @@ private:
     int m_height{0};
 };
 
-class WindowFocusEvent : public Event
+class NAMICA_API WindowFocusEvent : public Event
 {
 public:
     EVENT_CLASS_TYPE(WindowFocus)
@@ -57,7 +57,7 @@ public:
     }
 };
 
-class WindowLostFocusEvent : public Event
+class NAMICA_API WindowLostFocusEvent : public Event
 {
 public:
     EVENT_CLASS_TYPE(WindowLostFocus)
@@ -68,15 +68,33 @@ public:
     }
 };
 
-class WindowMovedEvent : public Event
+class NAMICA_API WindowMovedEvent : public Event
 {
 public:
     EVENT_CLASS_TYPE(WindowMoved)
 
+    WindowMovedEvent(int _xpos, int _ypos) : m_xpos{_xpos}, m_ypos{_ypos}
+    {
+    }
+
+    int getXPos() const noexcept
+    {
+        return m_xpos;
+    }
+
+    int getYPos() const noexcept
+    {
+        return m_ypos;
+    }
+
     virtual std::string message() const override
     {
-        return "窗口被移动了";
+        return std::format("窗口被移动了, 新的左上角位置: {0}, {1}", m_xpos, m_ypos);
     }
+
+private:
+    int m_xpos{0};
+    int m_ypos{0};
 };
 
 }  // namespace Namica

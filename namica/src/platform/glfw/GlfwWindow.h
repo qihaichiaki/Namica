@@ -34,7 +34,7 @@ private:
         int height{0};
         bool fullscreen{false};
         bool vsync{true};
-        EventCallBackFn eventCallBackFn{};
+        EventCallBackFn eventCallBackFn{nullptr};
     };
 
     WindowData m_windowData;

@@ -1,6 +1,7 @@
 #include "platform/glfw/GlfwWindow.h"
 #include "platform/opengl/OpenGLContext.h"
 #include "namica/core/Log.h"
+#include "namica/events/WindowEvent.h"
 
 #include <GLFW/glfw3.h>
 
@@ -77,10 +78,46 @@ void GlfwWindow::init()
     // 设置是否垂直同步
     setVSync(m_windowData.vsync);
 
-    // 注册事件回调
-    NAMICA_CORE_ASSERT(m_windowData.eventCallBackFn);
     // 设置用户数据, 方便在回调中取出使用
     glfwSetWindowUserPointer(m_window, &m_windowData);
+
+    glfwSetWindowCloseCallback(m_window, [](GLFWwindow* _window) {
+        WindowData& data{*(WindowData*)(glfwGetWindowUserPointer(_window))};
+
+        WindowCloseEvent event{};
+        data.eventCallBackFn(event);
+    });
+
+    glfwSetWindowSizeCallback(m_window, [](GLFWwindow* _window, int _width, int _height) {
+        WindowData& data{*(WindowData*)(glfwGetWindowUserPointer(_window))};
+        data.width = _width;
+        data.height = _height;
+
+        WindowResizeEvent event{_width, _height};
+        data.eventCallBackFn(event);
+    });
+
+    glfwSetWindowFocusCallback(m_window, [](GLFWwindow* _window, int _focused) {
+        WindowData& data{*(WindowData*)(glfwGetWindowUserPointer(_window))};
+
+        if (_focused == GLFW_TRUE)
+        {
+            WindowFocusEvent event{};
+            data.eventCallBackFn(event);
+        }
+        else
+        {
+            WindowLostFocusEvent event{};
+            data.eventCallBackFn(event);
+        }
+    });
+
+    glfwSetWindowPosCallback(m_window, [](GLFWwindow* _window, int _xpos, int _ypos) {
+        WindowData& data{*(WindowData*)(glfwGetWindowUserPointer(_window))};
+
+        WindowMovedEvent event{_xpos, _ypos};
+        data.eventCallBackFn(event);
+    });
 }
 
 void GlfwWindow::shutdown()
