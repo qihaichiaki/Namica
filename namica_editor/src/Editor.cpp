@@ -18,7 +18,8 @@ Scope<Application> createApplication()
 {
     // ApplicationConfig
     ApplicationConfig appConfig{};
-    appConfig.windowConfig.windowName = "NamicaEditor";
+    appConfig.windowConfig.title = "NamicaEditor";
+    // appConfig.windowConfig.fullscreen = true;
 
     return createScope<NamicaEditor>(appConfig);
 }

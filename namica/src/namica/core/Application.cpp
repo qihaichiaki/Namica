@@ -11,7 +11,7 @@ static Application* s_instance{nullptr};
 
 Application::Application(ApplicationConfig const& _appConfig) noexcept
 {
-    NAMICA_CORE_ASSERT(s_instance != nullptr);
+    NAMICA_CORE_ASSERT(s_instance == nullptr);
     s_instance = this;
 
     FileSystem::setWorkingDirectory(_appConfig.workingDir);
@@ -28,6 +28,15 @@ Application& Application::get()
 }
 
 void Application::run()
+{
+    while (1)
+    {
+        m_mainWindow->pollEvents();
+        m_mainWindow->swapBuffers();
+    }
+}
+
+void onEvent(Event& _event)
 {
 }
 

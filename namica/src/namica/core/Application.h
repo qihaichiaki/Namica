@@ -9,6 +9,7 @@ namespace Namica
 
 struct ApplicationConfig;
 class Window;
+class Event;
 
 class Application
 {
@@ -21,6 +22,9 @@ public:
     NAMICA_API static Application& get();
 
     NAMICA_API void run();
+
+private:
+    void onEvent(Event& _event);
 
 private:
     Ref<Window> m_mainWindow{nullptr};

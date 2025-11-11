@@ -6,6 +6,7 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
 - [ ] 基本框架搭建完成
   - [x] Ref结构
   - [x] 日志系统
+  - [x] 事件系统
   - [x] Window
 - [ ] 渲染API搭建完成
 - [ ] 编辑器GUI框架完成
@@ -64,13 +65,17 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
 
 
 #### RendererContext[Renderer]
-* 一般是处理窗口和renderer类型函数的接口
+* 获取窗口上下文, 正确的初始化renderer相关, 方便后续的正常渲染工作
+
+#### Event[Events]
+* 事件贯穿整个Application, 存在事件交互才能让引擎的各个部件受到事件影响做出对应的改变
+* 事件涉及的逻辑是保证事件的非退化, 即在事件类的继承体系中, 处理事件时直接拿到的就是其子类, 而无需通过获取字段类型进行ifelse判断
+* 核心机制是EventDispatcher, 作为一个调度器, 其根据模板传入的Event事件类型选择当前的Event是否是对应的事件, 如果是方可执行
 
 #### Window[Core]
 * 窗口创建, 当前统一使用GLFW三方库作为窗口创建依赖
-
-* 第一次创建对应窗口时需要的
-
+* 窗口所在的sdk(比如glfw)只初始化一次, 然后window可以多创建, 一个window对应一个RendererContext,RendererContext根据窗口局部初始化渲染相关的上下文, 准备开始后续的渲染
+* 窗口创建完毕后, 需要处理当前设备的各种事件, 并且将事件分类规划好传递给Application进行后续的处理 
 
 #### Application[Core]
 * 应用程序的使用, 每个构建成exe的项目都只能同时存在一个Application

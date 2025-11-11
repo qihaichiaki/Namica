@@ -14,7 +14,7 @@ OpenGLContext::OpenGLContext(GLFWwindow* _windowHandle) : m_windowHandle{_window
 
 void OpenGLContext::init()
 {
-    // glfw创建当前的上下文
+    // 让创建的window局部成为当前活动的
     glfwMakeContextCurrent(m_windowHandle);
     // glad加载所有现代opengl函数
     int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
