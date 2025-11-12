@@ -16,6 +16,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 target_compile_options(${PROJECT_NAME} PRIVATE /WX)
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+    $<$<CONFIG:DEBUG>:-DNAMICA_DEBUG> # 启动Debug模式
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
