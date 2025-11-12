@@ -10,7 +10,7 @@ class NAMICA_API FileSystem
 {
 public:
     /**
-     * @brief Set the Working Directory object
+     * @brief 设置文件系统的工作目录
      *
      * @param _workingDirectory 当前文件系统的工作目录
      * @return 设置目录是否成功
@@ -18,7 +18,7 @@ public:
     static bool setWorkingDirectory(std::string_view _workingDirectory) noexcept;
 
     /**
-     * @brief Get the Working Directory object
+     * @brief 获取文件系统的工作目录
      */
     static std::string getWorkingDirectory();
 

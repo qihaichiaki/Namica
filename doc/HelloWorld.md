@@ -8,7 +8,9 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
   - [x] 日志系统
   - [x] 事件系统
   - [x] Window
+  - [ ] Layer
 - [ ] 渲染API搭建完成
+  - [ ] 资源管理器
 - [ ] 编辑器GUI框架完成
 - [ ] ECS搭建完成
 - [ ] box2d物理引擎引进
@@ -63,7 +65,6 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
 #### 文件系统[Utilities]
 * 设置工作目录, 方便后续文件工作均在此目录下使用
 
-
 #### RendererContext[Renderer]
 * 获取窗口上下文, 正确的初始化renderer相关, 方便后续的正常渲染工作
 
@@ -76,6 +77,11 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
 * 窗口创建, 当前统一使用GLFW三方库作为窗口创建依赖
 * 窗口所在的sdk(比如glfw)只初始化一次, 然后window可以多创建, 一个window对应一个RendererContext,RendererContext根据窗口局部初始化渲染相关的上下文, 准备开始后续的渲染
 * 窗口创建完毕后, 需要处理当前设备的各种事件, 并且将事件分类规划好传递给Application进行后续的处理 
+
+#### Layer[Core]
+* Layer作为在Application内处理逻辑的最小作业单位
+  * push -> onAttach, pop -> onDetach, onUpdate, onEvent, onImGuiRender, getLayerName
+* Layer的生命周期由Application中管理, LayerStack用作存储Layer的使用顺序, 提供遍历/插入手段
 
 #### Application[Core]
 * 应用程序的使用, 每个构建成exe的项目都只能同时存在一个Application
