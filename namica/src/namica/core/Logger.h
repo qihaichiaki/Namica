@@ -60,7 +60,7 @@ public:
     NAMICA_API static Ref<Logger> create();
 
 private:
-    void logOutput(LogLevel _logLevel, std::string_view _msg) const;
+    NAMICA_API void logOutput(LogLevel _logLevel, std::string_view _msg) const;
 
 private:
     Logger();

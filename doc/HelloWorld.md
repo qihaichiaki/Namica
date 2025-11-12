@@ -8,7 +8,7 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
   - [x] 日志系统
   - [x] 事件系统
   - [x] Window
-  - [ ] Layer
+  - [x] Layer
 - [ ] 渲染API搭建完成
   - [ ] 资源管理器
 - [ ] 编辑器GUI框架完成
@@ -18,7 +18,7 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
 
 
 ### 开发环境
-当前仅仅只是在windows下使用msvc编译器使用C++17标准进行开发
+当前仅仅只是在windows下使用msvc编译器使用C++20标准进行开发
 
 #### vscode中使用clangd
 * .vscode中settings.json包含如下:

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "namica_editor/EditorLayer.h"
+
 #include <namica/EntryPoint.h>
 #include <namica/core/ApplicationConfig.h>
 #include <namica/core/Application.h>
@@ -11,6 +13,7 @@ class NamicaEditor final : public Application
 public:
     NamicaEditor(ApplicationConfig const& _appConfig) : Application(_appConfig)
     {
+        pushLayer(new EditorLayer{});
     }
 };
 
