@@ -126,12 +126,12 @@ void GlfwWindow::shutdown()
     m_window = nullptr;
 }
 
-unsigned int GlfwWindow::getWidth() const noexcept
+uint32_t GlfwWindow::getWidth() const noexcept
 {
     return m_windowData.width;
 }
 
-unsigned int GlfwWindow::getHeight() const noexcept
+uint32_t GlfwWindow::getHeight() const noexcept
 {
     return m_windowData.height;
 }

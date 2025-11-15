@@ -13,7 +13,7 @@ bool FileSystem::setWorkingDirectory(std::string_view _workingDirectory) noexcep
         std::filesystem::current_path(_workingDirectory, ec);
         if (ec)
         {
-            // NAMICA_CORE_WARN("set working dir: {}", ec.message().c_str());
+            NAMICA_CORE_WARN("设置工作目录出现错误: {0}", ec.message());
             return false;
         }
         else
@@ -23,8 +23,7 @@ bool FileSystem::setWorkingDirectory(std::string_view _workingDirectory) noexcep
     }
     else
     {
-        NAMICA_CORE_WARN("当前设置的工作目录为空, 默认为当前进程的工作目录{0}",
-                         getWorkingDirectory());
+        NAMICA_CORE_WARN("当前设置的工作目录为空, 默认使用当前进程使用的目录");
         return false;
     }
 }

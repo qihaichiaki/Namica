@@ -15,3 +15,5 @@
 #else
 #error 当前引擎仅仅支持Windows平台!
 #endif
+
+#include <cstdint>  // IWYU pragma: keep 抑制clangd警告, 会存在一些头文件使用

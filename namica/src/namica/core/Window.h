@@ -26,12 +26,12 @@ public:
     /**
      * @brief 返回当前窗口的宽度
      */
-    virtual unsigned int getWidth() const noexcept = 0;
+    virtual uint32_t getWidth() const noexcept = 0;
 
     /**
      * @brief 返回当前窗口的长度
      */
-    virtual unsigned int getHeight() const noexcept = 0;
+    virtual uint32_t getHeight() const noexcept = 0;
 
     /**
      * @brief 设置垂直同步
