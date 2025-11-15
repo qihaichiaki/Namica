@@ -15,8 +15,8 @@ public:
     ~GlfwWindow();
 
     virtual void setEventCallBackFn(EventCallBackFn _eventCallBackFn) override;
-    virtual unsigned int getWidth() const noexcept override;
-    virtual unsigned int getHeight() const noexcept override;
+    virtual uint32_t getWidth() const noexcept override;
+    virtual uint32_t getHeight() const noexcept override;
     virtual void setVSync(bool _enable) override;
     virtual bool getVSync() const noexcept override;
     virtual void pollEvents() override;

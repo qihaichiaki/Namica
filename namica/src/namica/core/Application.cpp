@@ -4,6 +4,7 @@
 #include "namica/core/Log.h"
 #include "namica/events/WindowEvent.h"
 #include "namica/utilities/FileSystem.h"
+#include "namica/renderer/Renderer.h"
 
 namespace Namica
 {
@@ -16,8 +17,12 @@ Application::Application(ApplicationConfig const& _appConfig) noexcept
     s_instance = this;
 
     FileSystem::setWorkingDirectory(_appConfig.workingDir);
+    NAMICA_CORE_INFO("当前的工作目录: <{0}>", FileSystem::getWorkingDirectory());
+
     m_mainWindow = Window::create(_appConfig.windowConfig);
     m_mainWindow->setEventCallBackFn([this](Event& _event) { this->onEvent(_event); });
+
+    Renderer::init(_appConfig.rendererConfig);
 }
 
 Application::~Application()
@@ -76,7 +81,7 @@ void Application::popLayer(Layer* _layer)
 void Application::onEvent(Event& _event)
 {
     // debug: 调试窗口信息
-    NAMICA_CORE_DEBUG(_event.message());
+    // NAMICA_CORE_DEBUG(_event.message());
 
     EventDispatcher dispatcher{_event};
     dispatcher.dispatch<WindowCloseEvent>(

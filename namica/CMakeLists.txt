@@ -37,4 +37,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 # 确定后期是否调整, 前期方便使用
 target_link_libraries(${PROJECT_NAME} PUBLIC
     yaml-cpp
+    glm
 )

@@ -10,6 +10,7 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
   - [x] Window
   - [x] Layer
 - [ ] 渲染API搭建完成
+  - [ ] Renderer2D
   - [ ] 资源管理器
 - [ ] 编辑器GUI框架完成
 - [ ] ECS搭建完成
@@ -83,5 +84,22 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
   * push -> onAttach, pop -> onDetach, onUpdate, onEvent, onImGuiRender, getLayerName
 * Layer的生命周期由Application中管理, LayerStack用作存储Layer的使用顺序, 提供遍历/插入手段
 
+#### Renderer[Renderer]
+* 渲染体系大致由如下体系构成:
+  * Renderer(外部能直接调用的完全(3d+2d)渲染) ------------------> RendererCommand(渲染命令) ---------------> RendererAPI(OpenGL, Vulkan...)
+  *          |-> Renderer2D -|(2d特供渲染)
+* Renderer系列接口均是静态调用，根据配置, 在Renderer初始化阶段选择好底层的渲染API
+* Renderer初始化阶段, 基本是底层渲染API的初始化 + 特定场景渲染API的初始化, 比如Renderer2D的初始化(准备好复用的顶点数组，shader等)
+* Renderer2D阶段
+  * 2D开始场景渲染，传入相机的pv矩阵(glm数学库)
+  * 开始渲染后, 一般开始收集系列矩形, 圆形，线段等图形以及Texture2D进行批量渲染
+  * 结束场景渲染, 绘制当前批次的渲染(注意过程中可能存在渲染, 取决于批次渲染所设定的个数)
+
 #### Application[Core]
 * 应用程序的使用, 每个构建成exe的项目都只能同时存在一个Application
+
+* Application init:
+  * 先设置文件系统的工作目录, 后续相对路径均依赖此工作目录进行
+  * 根据传入的窗口配置创建主window
+  * window注入Application事件函数, 方便window捕获的事件传入到application
+  * Renderer2D的初始化
