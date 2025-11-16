@@ -7,8 +7,6 @@
 namespace Namica
 {
 
-enum class RendererAPIType;
-
 class RendererCommand
 {
 public:
@@ -16,6 +14,11 @@ public:
      * @brief 渲染API初始化
      */
     static void init(RendererAPIType _rendererAPIType);
+
+    /**
+     * @brief 返回当前渲染API的底层类型
+     */
+    static RendererAPIType getRendererAPIType() noexcept;
 
     /**
      * @brief 设置清屏颜色
@@ -30,7 +33,8 @@ public:
     static void clear();
 
 private:
-    static Scope<RendererAPI> s_rendererApi;
+    static Scope<RendererAPI> s_rendererAPI;
+    static RendererAPIType s_rendererAPIType;
 };
 
 }  // namespace Namica

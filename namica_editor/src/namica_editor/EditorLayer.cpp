@@ -16,6 +16,8 @@ EditorLayer::~EditorLayer()
 void EditorLayer::onAttach()
 {
     NAMICA_APP_DEBUG("编辑器层被添加");
+
+    Renderer::setClearColor(glm::vec4{0.2f, 0.2f, 0.2f, 1.0f});
 }
 
 void EditorLayer::onDetach()
@@ -33,7 +35,6 @@ void EditorLayer::onUpdate()
         s_init = true;
     }
 
-    Renderer::setClearColor({1., 1., 1., 1.});
     Renderer::clear();
 }
 
