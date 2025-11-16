@@ -36,3 +36,45 @@ add_library(glm INTERFACE)
 target_include_directories(glm INTERFACE
     "${CMAKE_CURRENT_LIST_DIR}/glm"
 )
+
+# vulkan SDK
+if(NOT DEFINED ENV{VULKAN_SDK})
+    message(FATAL_ERROR "未检测到 Vulkan SDK 环境变量 VULKAN_SDK")
+endif()
+
+set(VULKAN_SDK $ENV{VULKAN_SDK})
+message(STATUS "Vulkan SDK found at ${VULKAN_SDK}")
+set(VULKAN_INCLUDE_DIR "${VULKAN_SDK}/Include")
+set(VULKAN_LIBRARY_DIR "${VULKAN_SDK}/Lib")
+
+# 所有 Vulkan SDK 的库
+set(VULKAN_SDK_LIBS_DEBUG
+    "${VULKAN_LIBRARY_DIR}/vulkan-1.lib"
+    "${VULKAN_LIBRARY_DIR}/shaderc_sharedd.lib"
+    "${VULKAN_LIBRARY_DIR}/spirv-cross-cored.lib"
+    "${VULKAN_LIBRARY_DIR}/spirv-cross-glsld.lib"
+    "${VULKAN_LIBRARY_DIR}/SPIRV-Toolsd.lib"
+)
+
+set(VULKAN_SDK_LIBS_RELEASE
+    "${VULKAN_LIBRARY_DIR}/vulkan-1.lib"
+    "${VULKAN_LIBRARY_DIR}/shaderc_shared.lib"
+    "${VULKAN_LIBRARY_DIR}/spirv-cross-core.lib"
+    "${VULKAN_LIBRARY_DIR}/spirv-cross-glsl.lib"
+)
+
+add_library(vulkan INTERFACE)
+target_include_directories(vulkan INTERFACE
+    "${VULKAN_INCLUDE_DIR}" # vulkan sdk相关include
+)
+target_link_libraries(vulkan INTERFACE
+    $<$<CONFIG:Debug>:${VULKAN_SDK_LIBS_DEBUG}>
+    $<$<CONFIG:Release>:${VULKAN_SDK_LIBS_RELEASE}>
+)
+
+# stb_image
+add_library(stb_image STATIC "${CMAKE_CURRENT_LIST_DIR}/stb_image/stb_image.cpp")
+
+target_include_directories(stb_image INTERFACE
+    "${CMAKE_CURRENT_LIST_DIR}/stb_image"
+)
