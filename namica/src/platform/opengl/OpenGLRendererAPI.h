@@ -5,7 +5,7 @@
 namespace Namica
 {
 
-class OpenGLRendererAPI : public RendererAPI
+class OpenGLRendererAPI final : public RendererAPI
 {
 public:
     virtual void init() override;

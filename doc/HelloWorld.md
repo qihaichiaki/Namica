@@ -84,6 +84,31 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
   * push -> onAttach, pop -> onDetach, onUpdate, onEvent, onImGuiRender, getLayerName
 * Layer的生命周期由Application中管理, LayerStack用作存储Layer的使用顺序, 提供遍历/插入手段
 
+#### VertexLayout[Renderer]
+* 顶点布局, 方便将顶点缓冲区中每一个点的布局指明, 上传到渲染系统中正确读取
+
+#### VertexBuffer[Renderer]
+* 顶点缓冲区, 准备将所有顶点数据传给shader的缓冲区
+
+#### IndexBuffer[Renderer]
+* 依据每个顶点的索引进行渲染. 朝着面向进行逆时针旋转, OpenGL渲染中以三角形为准
+
+#### VertexArray[Renderer]
+* 渲染目标的综合对象, 结合顶点缓冲区, 索引缓冲区的对象
+
+#### UniformBuffer[Renderer]
+* 所有shader共享的统一变量缓冲区, 即不需要针对每种shader上传一次统一变量
+* 通常使用在开始场景渲染时，传入相机的PV矩阵
+
+#### Shader[Renderer]
+* 顶点shader和片段shader: 顶点shader每个顶点运行一次, 片段shader每个像素运行一次
+
+#### Texure2D[Renderer]
+* 2D纹理对象, 可以用来加载实际的png, jpg图片
+
+#### FrameBuffer[Renderer]
+* 帧缓冲区, 便于绘制内容不直接渲染到窗口上，而是渲染到一张纹理上
+
 #### Renderer[Renderer]
 * 渲染体系大致由如下体系构成:
   * Renderer(外部能直接调用的完全(3d+2d)渲染) ------------------> RendererCommand(渲染命令) ---------------> RendererAPI(OpenGL, Vulkan...)
@@ -102,4 +127,4 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
   * 先设置文件系统的工作目录, 后续相对路径均依赖此工作目录进行
   * 根据传入的窗口配置创建主window
   * window注入Application事件函数, 方便window捕获的事件传入到application
-  * Renderer2D的初始化
+  * Renderer的初始化
