@@ -13,7 +13,7 @@
             "environment": [
                 {
                     "name": "PATH",
-                    "value": "${workspaceFolder}/build/bin/Namica/${command:cmake.buildType}"
+                    "value": "${workspaceFolder}/build/bin/Namica/${command:cmake.buildType};${env:VULKAN_SDK}/bin"
                 }
             ]
         }

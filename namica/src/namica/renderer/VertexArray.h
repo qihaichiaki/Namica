@@ -1,6 +1,7 @@
 #pragma once
 
 #include "namica/core/Memory.h"
+#include "namica/core/TypeMacros.h"
 
 namespace Namica
 {
@@ -11,6 +12,7 @@ class IndexBuffer;
 class VertexArray
 {
 public:
+    VertexArray() = default;
     virtual ~VertexArray() = default;
 
     /**
@@ -29,6 +31,8 @@ public:
 
 public:
     Ref<VertexArray> create();
+
+    CLASS_DISABLE_COPY_MOVE(VertexArray)
 };
 
 }  // namespace Namica

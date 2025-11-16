@@ -32,6 +32,8 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/vendor/Vendor.cmake)
 target_link_libraries(${PROJECT_NAME} PRIVATE
     glfw
     glad
+    vulkan
+    stb_image
 )
 
 # 确定后期是否调整, 前期方便使用

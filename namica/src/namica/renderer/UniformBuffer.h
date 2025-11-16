@@ -1,6 +1,7 @@
 #pragma once
 
 #include "namica/core/Memory.h"
+#include "namica/core/TypeMacros.h"
 
 namespace Namica
 {
@@ -8,6 +9,7 @@ namespace Namica
 class UniformBuffer
 {
 public:
+    UniformBuffer() = default;
     virtual ~UniformBuffer() = default;
 
     /**
@@ -28,6 +30,8 @@ public:
      * @return Ref<UniformBuffer>
      */
     Ref<UniformBuffer> create(uint32_t _size, uint32_t _binding);
+
+    CLASS_DISABLE_COPY_MOVE(UniformBuffer)
 };
 
 }  // namespace Namica
