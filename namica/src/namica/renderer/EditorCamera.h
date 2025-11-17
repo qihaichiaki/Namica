@@ -15,11 +15,11 @@ public:
     NAMICA_API EditorCamera() = default;
     NAMICA_API ~EditorCamera() = default;
 
-    NAMICA_API void onUpdate(Timestep ts);
-    NAMICA_API void onEvent(Event& e);
+    NAMICA_API void onUpdate(Timestep _ts);
+    NAMICA_API void onEvent(Event& _event);
 
     NAMICA_API float getDistance() const;
-    NAMICA_API void setDistance(float distance);
+    NAMICA_API void setDistance(float _distance);
     NAMICA_API glm::vec3 getUpDirection() const;
     NAMICA_API glm::vec3 getRightDirection() const;
     NAMICA_API glm::vec3 getForwardDirection() const;
@@ -29,15 +29,15 @@ public:
     NAMICA_API float getYaw() const;
 
     NAMICA_API const glm::mat4& getViewMatrix() const;
-    NAMICA_API glm::mat4 getViewProjection() const;
+    NAMICA_API glm::mat4 getProjectionView() const;
 
 private:
-    void updateView();
-    bool onMouseScroll(MouseScrolledEvent& e);
-    void mousePan(glm::vec2 const& delta);
-    void mouseRotate(glm::vec2 const& delta);
-    void mouseZoom(float delta);
     glm::vec3 calculatePosition() const;
+    void updateView();
+    bool onMouseScroll(MouseScrolledEvent& _mouseScrolledEvent);
+    void mousePan(glm::vec2 const& _delta);
+    void mouseRotate(glm::vec2 const& _delta);
+    void mouseZoom(float _delta);
     std::pair<float, float> panSpeed() const;
     float rotationSpeed() const;
     float zoomSpeed() const;

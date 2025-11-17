@@ -51,8 +51,8 @@ public:
     /// @brief 获取正交相机裁剪空间远点值
     NAMICA_API float getOrthographicFarClip() const;
 
-    /// @brief 设置相机的可视宽度和高度
-    NAMICA_API void setViewportSize(uint32_t _width, uint32_t _height);
+    /// @brief 更新相机的可视宽度和高度
+    NAMICA_API void updateViewportSize(uint32_t _width, uint32_t _height);
 
 protected:
     // 根据当前类型和参数计算投影矩阵

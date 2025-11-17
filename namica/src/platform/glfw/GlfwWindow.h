@@ -35,8 +35,8 @@ private:
     struct WindowData
     {
         char const* title{""};
-        int width{0};
-        int height{0};
+        uint32_t width{0};
+        uint32_t height{0};
         bool fullscreen{false};
         bool vsync{true};
         EventCallBackFn eventCallBackFn{nullptr};

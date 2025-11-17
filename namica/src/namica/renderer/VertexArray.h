@@ -30,7 +30,7 @@ public:
     virtual void setIndexBuffer(Ref<IndexBuffer> const& _indexBuffer) = 0;
 
 public:
-    Ref<VertexArray> create();
+    static Ref<VertexArray> create();
 
     CLASS_DISABLE_COPY_MOVE(VertexArray)
 };

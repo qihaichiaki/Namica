@@ -29,7 +29,7 @@ public:
      * @param _binding UBO的绑定index, shader中需要指定的index
      * @return Ref<UniformBuffer>
      */
-    Ref<UniformBuffer> create(uint32_t _size, uint32_t _binding);
+    static Ref<UniformBuffer> create(uint32_t _size, uint32_t _binding);
 
     CLASS_DISABLE_COPY_MOVE(UniformBuffer)
 };

@@ -23,6 +23,7 @@ void RendererCommand::init(RendererAPIType _rendererAPIType)
     }
 
     NAMICA_CORE_ASSERT(s_rendererAPI);
+    s_rendererAPI->init();
 }
 
 RendererAPIType RendererCommand::getRendererAPIType() noexcept
@@ -38,6 +39,35 @@ void RendererCommand::setClearColor(glm::vec4 const& _clearColor)
 void RendererCommand::clear()
 {
     s_rendererAPI->clear();
+}
+
+void RendererCommand::drawIndexed(Ref<VertexArray> const& _vertexArray, Ref<Shader> const& _shader)
+{
+    s_rendererAPI->drawIndexed(_vertexArray, _shader);
+}
+
+void RendererCommand::drawIndexed(Ref<VertexArray> const& _vertexArray,
+                                  Ref<Shader> const& _shader,
+                                  uint32_t _indexCount)
+{
+    s_rendererAPI->drawIndexed(_vertexArray, _shader, _indexCount);
+}
+
+void RendererCommand::drawLines(Ref<VertexArray> const& _vertexArray,
+                                Ref<Shader> const& _shader,
+                                uint32_t _vertexCount)
+{
+    s_rendererAPI->drawLines(_vertexArray, _shader, _vertexCount);
+}
+
+void RendererCommand::setLineWidth(float _width)
+{
+    s_rendererAPI->setLineWidth(_width);
+}
+
+void RendererCommand::updateViewport(uint32_t _width, uint32_t _height)
+{
+    s_rendererAPI->updateViewport(_width, _height);
 }
 
 }  // namespace Namica

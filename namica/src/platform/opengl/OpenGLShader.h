@@ -44,6 +44,8 @@ private:
     std::unordered_map<GLenum, std::string> m_openglSourceCode;
 
     static uint32_t s_currentProgram;
+
+    friend class OpenGLRendererAPI;
 };
 
 }  // namespace Namica

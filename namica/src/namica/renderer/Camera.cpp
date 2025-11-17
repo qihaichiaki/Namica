@@ -90,7 +90,7 @@ float Camera::getOrthographicFarClip() const
     return m_orthographicFar;
 }
 
-void Camera::setViewportSize(uint32_t _width, uint32_t _height)
+void Camera::updateViewportSize(uint32_t _width, uint32_t _height)
 {
     float aspectRatio{_width * 1.0f / _height};
     if (std::fabs(m_aspectRatio - aspectRatio) > 1e-3f)

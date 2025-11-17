@@ -1,5 +1,6 @@
 #pragma once
 
+#include "namica/core/Base.h"
 #include "namica/core/Memory.h"
 #include "namica/core/TypeMacros.h"
 
@@ -8,7 +9,7 @@
 namespace Namica
 {
 
-class Texture
+class NAMICA_API Texture
 {
 public:
     virtual ~Texture() = default;
@@ -51,7 +52,7 @@ public:
     virtual uint32_t getRendererId() = 0;
 };
 
-class Texture2D : public Texture
+class NAMICA_API Texture2D : public Texture
 {
 public:
     Texture2D() = default;

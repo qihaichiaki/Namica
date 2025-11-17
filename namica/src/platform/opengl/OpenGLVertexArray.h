@@ -20,6 +20,8 @@ private:
     uint32_t m_rendererID;
     Ref<OpenGLVertexBuffer> m_vertextBuffer;
     Ref<OpenGLIndexBuffer> m_indexBuffer;
+
+    friend class OpenGLRendererAPI;
 };
 
 }  // namespace Namica

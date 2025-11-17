@@ -25,6 +25,7 @@ void OpenGLTexture2D::createTextureStorage()
 }
 
 OpenGLTexture2D::OpenGLTexture2D(uint32_t _width, uint32_t _height)
+    : m_width(_width), m_height(_height)
 {
     glCreateTextures(GL_TEXTURE_2D, 1, &m_rendererID);
     m_internalFormat = GL_RGBA8;
@@ -35,7 +36,7 @@ OpenGLTexture2D::OpenGLTexture2D(uint32_t _width, uint32_t _height)
     createTextureStorage();
 }
 
-OpenGLTexture2D::OpenGLTexture2D(std::string const& _path)
+OpenGLTexture2D::OpenGLTexture2D(std::string const& _path) : m_path(_path)
 {
     // 翻转读取图片缓冲区, 因为opengl的模式是左下角为0, 0. 默认是左上角
     stbi_set_flip_vertically_on_load(1);

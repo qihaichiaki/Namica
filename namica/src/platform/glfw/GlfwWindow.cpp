@@ -101,10 +101,10 @@ void GlfwWindow::init(RendererAPIType _rendererAPIType)
 
     glfwSetWindowSizeCallback(m_window, [](GLFWwindow* _window, int _width, int _height) {
         WindowData& data{*(WindowData*)(glfwGetWindowUserPointer(_window))};
-        data.width = _width;
-        data.height = _height;
+        data.width = static_cast<uint32_t>(_width);
+        data.height = static_cast<uint32_t>(_height);
 
-        WindowResizeEvent event{_width, _height};
+        WindowResizeEvent event{data.width, data.height};
         data.eventCallBackFn(event);
     });
 
