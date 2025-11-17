@@ -32,7 +32,6 @@ Scope<Application> createApplication()
 {
     // ApplicationConfig
     ApplicationConfig appConfig{};
-    // appConfig.workingDir = "D:/project/GameEngine/Namica/namica";
     appConfig.windowConfig.title = "NamicaEditor";
     // appConfig.windowConfig.fullscreen = true;
     appConfig.rendererConfig.rendererAPIType = RendererAPIType::OpenGL;

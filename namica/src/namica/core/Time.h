@@ -6,6 +6,22 @@
 namespace Namica
 {
 
+class NAMICA_API Timestep
+{
+public:
+    Timestep(float _time = 0.0f);
+
+    /// @brief 注意默认步长为s数进行使用
+    operator float() const noexcept;
+    /// @brief 获得当前时间步长的s数
+    float getSeconds() const noexcept;
+    /// @brief 获得当前时间步长的ms数
+    float getMilliseconds() const noexcept;
+
+private:
+    float m_time;
+};
+
 namespace TimeUtils
 {
 

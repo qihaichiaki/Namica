@@ -2,6 +2,9 @@
 #include "platform/opengl/OpenGLContext.h"
 #include "namica/core/Log.h"
 #include "namica/events/WindowEvent.h"
+#include "namica/events/KeyEvent.h"
+#include "namica/events/MouseEvent.h"
+#include "namica/renderer/RendererConfig.h"
 
 #include <GLFW/glfw3.h>
 
@@ -9,9 +12,9 @@ namespace Namica
 {
 
 // TODO: 后续曾选择窗口的空间
-Ref<Window> Window::create(WindowConfig const& _windowConfig)
+Ref<Window> Window::create(WindowConfig const& _windowConfig, RendererAPIType _rendererAPIType)
 {
-    return createRef<GlfwWindow>(_windowConfig);
+    return createRef<GlfwWindow>(_windowConfig, _rendererAPIType);
 }
 
 void GlfwWindow::setEventCallBackFn(EventCallBackFn _eventCallBackFn)
@@ -19,7 +22,7 @@ void GlfwWindow::setEventCallBackFn(EventCallBackFn _eventCallBackFn)
     m_windowData.eventCallBackFn = _eventCallBackFn;
 }
 
-GlfwWindow::GlfwWindow(WindowConfig const& _windowConfig)
+GlfwWindow::GlfwWindow(WindowConfig const& _windowConfig, RendererAPIType _rendererAPIType)
 {
     m_windowData.title = _windowConfig.title;
     m_windowData.width = _windowConfig.width;
@@ -27,7 +30,7 @@ GlfwWindow::GlfwWindow(WindowConfig const& _windowConfig)
     m_windowData.fullscreen = _windowConfig.fullscreen;
     m_windowData.vsync = _windowConfig.vsync;
 
-    init();
+    init(_rendererAPIType);
 }
 
 GlfwWindow::~GlfwWindow()
@@ -42,7 +45,7 @@ static void glfwErrorCallBack(int error, char const* description)
     NAMICA_CORE_ERROR("glfw error ({0}): {1}", error, description);
 }
 
-void GlfwWindow::init()
+void GlfwWindow::init(RendererAPIType _rendererAPIType)
 {
     // glfw初始化
     if (!s_isGlfwInit)
@@ -72,7 +75,15 @@ void GlfwWindow::init()
     NAMICA_CORE_ASSERT(m_window);
 
     // 创建了渲染上下文, 渲染上下文进行初始化
-    m_rendererContext = createScope<OpenGLContext>(m_window);
+    switch (_rendererAPIType)
+    {
+        case RendererAPIType::OpenGL:
+            m_rendererContext = createScope<OpenGLContext>(m_window);
+            break;
+        default:
+            NAMICA_CORE_ASSERT(false);
+            break;
+    }
     m_rendererContext->init();
 
     // 设置是否垂直同步
@@ -118,6 +129,78 @@ void GlfwWindow::init()
         WindowMovedEvent event{_xpos, _ypos};
         data.eventCallBackFn(event);
     });
+
+    glfwSetKeyCallback(m_window,
+                       [](GLFWwindow* _window, int _key, int _scancode, int _action, int _mods) {
+                           WindowData& data{*(WindowData*)(glfwGetWindowUserPointer(_window))};
+
+                           switch (_action)
+                           {
+                               case GLFW_PRESS:
+                               {
+                                   KeyPressedEvent event{static_cast<KeyCode>(_key), 0};
+                                   data.eventCallBackFn(event);
+                               }
+                               break;
+                               case GLFW_RELEASE:
+                               {
+                                   KeyReleasedEvent event{static_cast<KeyCode>(_key)};
+                                   data.eventCallBackFn(event);
+                               }
+                               break;
+                               case GLFW_REPEAT:
+                               {
+                                   KeyPressedEvent event{static_cast<KeyCode>(_key), 1};
+                                   data.eventCallBackFn(event);
+                               }
+                               break;
+                               default:
+                                   break;
+                           }
+                       });
+
+    glfwSetCharCallback(m_window, [](GLFWwindow* _window, unsigned int _codepoint) {
+        WindowData& data{*(WindowData*)(glfwGetWindowUserPointer(_window))};
+
+        KeyTypedEvent event{_codepoint};
+        data.eventCallBackFn(event);
+    });
+
+    glfwSetMouseButtonCallback(m_window, [](GLFWwindow* _window, int _button, int _action, int) {
+        WindowData& data{*(WindowData*)(glfwGetWindowUserPointer(_window))};
+
+        switch (_action)
+        {
+            case GLFW_PRESS:
+            {
+                MouseButtonPressedEvent event{static_cast<KeyCode>(_button)};
+                data.eventCallBackFn(event);
+            }
+            break;
+            case GLFW_RELEASE:
+            {
+                MouseButtonReleasedEvent event{static_cast<KeyCode>(_button)};
+                data.eventCallBackFn(event);
+            }
+            break;
+            default:
+                break;
+        }
+    });
+
+    glfwSetScrollCallback(m_window, [](GLFWwindow* _window, double _xOffset, double _yOffset) {
+        WindowData& data{*(WindowData*)(glfwGetWindowUserPointer(_window))};
+
+        MouseScrolledEvent event{static_cast<float>(_xOffset), static_cast<float>(_yOffset)};
+        data.eventCallBackFn(event);
+    });
+
+    glfwSetCursorPosCallback(m_window, [](GLFWwindow* _window, double _xPos, double _yPos) {
+        WindowData& data{*(WindowData*)(glfwGetWindowUserPointer(_window))};
+
+        MouseMovedEvent event{static_cast<float>(_xPos), static_cast<float>(_yPos)};
+        data.eventCallBackFn(event);
+    });
 }
 
 void GlfwWindow::shutdown()
@@ -155,6 +238,11 @@ void GlfwWindow::pollEvents()
 void GlfwWindow::swapBuffers()
 {
     glfwSwapBuffers(m_window);
+}
+
+GLFWwindow* GlfwWindow::getWindowHandle() const
+{
+    return m_window;
 }
 
 }  // namespace Namica

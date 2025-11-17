@@ -55,6 +55,11 @@ public:
      */
     NAMICA_API void popLayer(Layer* _layer);
 
+    /**
+     * @brief 返回当前应用程序的主窗口对象
+     */
+    NAMICA_API const Window& getMainWindow() const;
+
 private:
     void onEvent(Event& _event);
     bool onWindowClose(WindowCloseEvent& _event);

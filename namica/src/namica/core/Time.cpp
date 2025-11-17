@@ -5,6 +5,24 @@
 namespace Namica
 {
 
+Timestep::Timestep(float _time) : m_time(_time)
+{
+}
+
+Timestep::operator float() const noexcept
+{
+    return m_time;
+}
+float Timestep::getSeconds() const noexcept
+{
+    return m_time;
+}
+
+float Timestep::getMilliseconds() const noexcept
+{
+    return m_time * 1000.0f;
+}
+
 namespace TimeUtils
 {
 

@@ -11,7 +11,7 @@ class RendererContext;
 class GlfwWindow final : public Window
 {
 public:
-    GlfwWindow(WindowConfig const& _windowConfig);
+    GlfwWindow(WindowConfig const& _windowConfig, RendererAPIType _rendererAPIType);
     ~GlfwWindow();
 
     virtual void setEventCallBackFn(EventCallBackFn _eventCallBackFn) override;
@@ -22,8 +22,13 @@ public:
     virtual void pollEvents() override;
     virtual void swapBuffers() override;
 
+    /**
+     * @brief 返回GLFW底层窗口句柄
+     */
+    GLFWwindow* getWindowHandle() const;
+
 private:
-    void init();
+    void init(RendererAPIType _rendererAPIType);
     void shutdown();
 
 private:
