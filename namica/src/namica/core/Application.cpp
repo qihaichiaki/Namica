@@ -19,7 +19,8 @@ Application::Application(ApplicationConfig const& _appConfig) noexcept
     FileSystem::setWorkingDirectory(_appConfig.workingDir);
     NAMICA_CORE_INFO("当前的工作目录: <{0}>", FileSystem::getWorkingDirectory());
 
-    m_mainWindow = Window::create(_appConfig.windowConfig);
+    m_mainWindow =
+        Window::create(_appConfig.windowConfig, _appConfig.rendererConfig.rendererAPIType);
     m_mainWindow->setEventCallBackFn([this](Event& _event) { this->onEvent(_event); });
 
     Renderer::init(_appConfig.rendererConfig);
@@ -76,6 +77,12 @@ void Application::popLayer(Layer* _layer)
     NAMICA_CORE_ASSERT(_layer);
     m_layerStack.popLayer(_layer);
     _layer->onDetach();
+}
+
+Window const& Application::getMainWindow() const
+{
+    NAMICA_CORE_ASSERT(m_mainWindow);
+    return *m_mainWindow;
 }
 
 void Application::onEvent(Event& _event)

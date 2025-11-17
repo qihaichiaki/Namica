@@ -10,7 +10,7 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
   - [x] Window
   - [x] Layer
 - [ ] 渲染API搭建完成
-  - [ ] Renderer2D
+  - [x] Renderer2D
   - [ ] 资源管理器
 - [ ] 编辑器GUI框架完成
 - [ ] ECS搭建完成
@@ -105,6 +105,9 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
 
 #### Texure2D[Renderer]
 * 2D纹理对象, 可以用来加载实际的png, jpg图片
+
+#### Camra[Renderer]
+* 相机对象, 便于传入开始场景绘制时, 准备好相机的 `投影*视图矩阵`
 
 #### FrameBuffer[Renderer]
 * 帧缓冲区, 便于绘制内容不直接渲染到窗口上，而是渲染到一张纹理上

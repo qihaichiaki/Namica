@@ -8,6 +8,7 @@ namespace Namica
 {
 
 struct WindowConfig;
+enum class RendererAPIType;
 
 class NAMICA_API Window
 {
@@ -57,7 +58,7 @@ public:
     /**
      * @brief 创建Window对象
      */
-    static Ref<Window> create(WindowConfig const& _windowConfig);
+    static Ref<Window> create(WindowConfig const& _windowConfig, RendererAPIType _rendererAPIType);
 };
 
 }  // namespace Namica
