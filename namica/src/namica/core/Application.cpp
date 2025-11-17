@@ -28,6 +28,7 @@ Application::Application(ApplicationConfig const& _appConfig) noexcept
 
 Application::~Application()
 {
+    Renderer::shutdown();
 }
 
 Application& Application::get()

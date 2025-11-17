@@ -135,12 +135,12 @@ void OpenGLShader::reflect(GLenum stage, std::vector<uint32_t> const& _shaderDat
     spirv_cross::Compiler compiler(_shaderData);
     spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
-    NAMICA_CORE_INFO(
+    NAMICA_CORE_DEBUG(
         "OpenGLShader::reflect - {0} {1}", glShaderStageToString(stage), m_filePath.c_str());
-    NAMICA_CORE_INFO("    {0} uniform buffers", resources.uniform_buffers.size());
-    NAMICA_CORE_INFO("    {0} resources", resources.sampled_images.size());
+    NAMICA_CORE_DEBUG("    {0} uniform buffers", resources.uniform_buffers.size());
+    NAMICA_CORE_DEBUG("    {0} resources", resources.sampled_images.size());
 
-    NAMICA_CORE_INFO("Uniform buffers:");
+    NAMICA_CORE_DEBUG("Uniform buffers:");
     for (auto const& resource : resources.uniform_buffers)
     {
         auto const& bufferType = compiler.get_type(resource.base_type_id);
@@ -148,10 +148,10 @@ void OpenGLShader::reflect(GLenum stage, std::vector<uint32_t> const& _shaderDat
         auto binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
         auto memberCount = bufferType.member_types.size();
 
-        NAMICA_CORE_INFO("  {0}", resource.name);
-        NAMICA_CORE_INFO("    Size = {0}", bufferSize);
-        NAMICA_CORE_INFO("    Binding = {0}", binding);
-        NAMICA_CORE_INFO("    Members = {0}", memberCount);
+        NAMICA_CORE_DEBUG("  {0}", resource.name);
+        NAMICA_CORE_DEBUG("    Size = {0}", bufferSize);
+        NAMICA_CORE_DEBUG("    Binding = {0}", binding);
+        NAMICA_CORE_DEBUG("    Members = {0}", memberCount);
     }
 }
 

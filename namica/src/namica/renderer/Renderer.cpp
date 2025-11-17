@@ -9,7 +9,12 @@ namespace Namica
 void Renderer::init(RendererConfig const& _rendererConfig)
 {
     RendererCommand::init(_rendererConfig.rendererAPIType);
-    Renderer2D::init();
+    Renderer2D::init(_rendererConfig.renderer2DConfig);
+}
+
+void Renderer::shutdown()
+{
+    Renderer2D::shutdown();
 }
 
 void Renderer::setClearColor(glm::vec4 const& _clearColor)
@@ -20,6 +25,11 @@ void Renderer::setClearColor(glm::vec4 const& _clearColor)
 void Renderer::clear()
 {
     RendererCommand::clear();
+}
+
+void Renderer::updateViewport(uint32_t _width, uint32_t _height)
+{
+    RendererCommand::updateViewport(_width, _height);
 }
 
 }  // namespace Namica

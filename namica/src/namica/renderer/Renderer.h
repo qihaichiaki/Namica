@@ -13,6 +13,17 @@ class NAMICA_API Renderer
 {
 public:
     /**
+     * @brief 渲染器的初始化
+     */
+    static void init(RendererConfig const& _rendererConfig);
+
+    /**
+     * @brief 渲染器的清理
+     *
+     */
+    static void shutdown();
+
+    /**
      * @brief 设置清屏颜色
      *
      * @param _clearColor rgba
@@ -24,14 +35,16 @@ public:
      */
     static void clear();
 
-private:
     /**
-     * @brief 渲染器的初始化
+     * @brief 更新渲染窗口大小
+     *
+     * @param _width 渲染宽度
+     * @param _height 渲染高度
      */
-    static void init(RendererConfig const& _rendererConfig);
+    static void updateViewport(uint32_t _width, uint32_t _height);
 
+private:
     CLASS_DISABLE_COPY_MOVE(Renderer)
-    friend class Application;
 };
 
 }  // namespace Namica

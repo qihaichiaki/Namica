@@ -22,16 +22,16 @@ class NAMICA_API WindowResizeEvent : public Event
 public:
     EVENT_CLASS_TYPE(WindowResize)
 
-    WindowResizeEvent(int _width, int _height) : m_width(_width), m_height(_height)
+    WindowResizeEvent(uint32_t _width, uint32_t _height) : m_width(_width), m_height(_height)
     {
     }
 
-    int getWidth() const noexcept
+    uint32_t getWidth() const noexcept
     {
         return m_width;
     }
 
-    int getHeight() const noexcept
+    uint32_t getHeight() const noexcept
     {
         return m_height;
     }
@@ -42,8 +42,8 @@ public:
     }
 
 private:
-    int m_width{0};
-    int m_height{0};
+    uint32_t m_width{0};
+    uint32_t m_height{0};
 };
 
 class NAMICA_API WindowFocusEvent : public Event
