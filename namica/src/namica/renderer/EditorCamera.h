@@ -50,8 +50,6 @@ private:
     float m_distance{10.0f};
     float m_pitch{0.0f};
     float m_yaw{0.0f};
-    float m_viewportWidth{1280};
-    float m_viewportHeight{720};
 };
 
 }  // namespace Namica

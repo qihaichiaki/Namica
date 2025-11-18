@@ -74,6 +74,8 @@ protected:
     float m_orthographicFar{1.0f};
 
     float m_aspectRatio{0.0f};
+    float m_viewportWidth{0.0f};
+    float m_viewportHeight{0.0f};
 };
 
 }  // namespace Namica

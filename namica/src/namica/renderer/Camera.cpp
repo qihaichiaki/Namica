@@ -96,6 +96,8 @@ void Camera::updateViewportSize(uint32_t _width, uint32_t _height)
     if (std::fabs(m_aspectRatio - aspectRatio) > 1e-3f)
     {
         m_aspectRatio = aspectRatio;
+        m_viewportWidth = 1.0f * _width;
+        m_viewportHeight = 1.0f * _height;
         recalculateProjection();
     }
 }
