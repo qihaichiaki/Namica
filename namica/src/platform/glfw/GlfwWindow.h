@@ -21,6 +21,7 @@ public:
     virtual bool getVSync() const noexcept override;
     virtual void pollEvents() override;
     virtual void swapBuffers() override;
+    virtual RendererContext& getRendererContext() const override;
 
     /**
      * @brief 返回GLFW底层窗口句柄

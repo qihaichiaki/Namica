@@ -10,6 +10,8 @@ namespace Namica
 class NAMICA_API MouseButtonEvent : public Event
 {
 public:
+    EVENT_CLASS_CATEGORY(CategoryMouse | CategoryMouseButton | CategoryInput)
+
     KeyCode getMouseButton() const noexcept
     {
         return m_button;
@@ -61,6 +63,7 @@ public:
     }
 
     EVENT_CLASS_TYPE(MouseMoved)
+    EVENT_CLASS_CATEGORY(CategoryMouse | CategoryInput)
 
     float getPosX() const noexcept
     {
@@ -88,6 +91,7 @@ public:
     }
 
     EVENT_CLASS_TYPE(MouseScrolled)
+    EVENT_CLASS_CATEGORY(CategoryMouse | CategoryInput)
 
     float getOffsetX() const noexcept
     {

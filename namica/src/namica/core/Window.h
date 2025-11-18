@@ -9,7 +9,7 @@ namespace Namica
 
 struct WindowConfig;
 enum class RendererAPIType;
-
+class RendererContext;
 class NAMICA_API Window
 {
 public:
@@ -53,6 +53,13 @@ public:
      * @brief 窗口中像素缓冲区交换
      */
     virtual void swapBuffers() = 0;
+
+    /**
+     * @brief 返回当前窗口的渲染上下文
+     *
+     * @return RendererContext&
+     */
+    virtual RendererContext& getRendererContext() const = 0;
 
 public:
     /**
