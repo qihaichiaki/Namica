@@ -32,7 +32,6 @@ OpenGLTexture2D::OpenGLTexture2D(uint32_t _width, uint32_t _height)
     m_dataFormat = GL_RGBA;
 
     // 创建纹理存储
-    glTextureStorage2D(m_rendererID, 1, m_internalFormat, m_width, m_height);
     createTextureStorage();
 }
 

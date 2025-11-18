@@ -87,7 +87,7 @@ struct Renderer2DData
     float lineWidth = 2.0f;
 
     // 其他辅助数据
-    Renderer2D::Statistics Stats;
+    Renderer2D::Statistics stats;
 
     glm::vec4 const refPositions[4] = {
         glm::vec4{-0.5f, -0.5f, 0.0f, 1.0f},
@@ -271,7 +271,7 @@ static void flush()
 
         RendererCommand::drawIndexed(
             s_data.quadVertexArray, s_data.quadTextureShader, s_data.quadCount * 6);
-        s_data.Stats.drawCalls++;
+        s_data.stats.drawCalls++;
     }
 
     if (s_data.circleCount > 0)
@@ -283,7 +283,7 @@ static void flush()
         RendererCommand::drawIndexed(
             s_data.circleVertexArray, s_data.circleShader, s_data.circleCount * 6);
 
-        s_data.Stats.drawCalls++;
+        s_data.stats.drawCalls++;
     }
 
     if (s_data.lineCount > 0)
@@ -293,7 +293,7 @@ static void flush()
         s_data.lineVertexBuffer->setData(s_data.lineVertexBufferBase, size);
 
         RendererCommand::drawLines(s_data.lineVertexArray, s_data.lineShader, s_data.lineCount * 2);
-        s_data.Stats.drawCalls++;
+        s_data.stats.drawCalls++;
     }
 }
 
@@ -335,7 +335,7 @@ void Renderer2D::drawQuad(glm::mat4 const& _transform, glm::vec4 const& _color, 
     }
 
     s_data.quadCount++;
-    s_data.Stats.quadCount++;
+    s_data.stats.quadCount++;
 }
 
 void Renderer2D::drawQuad(glm::mat4 const& _transform,
@@ -381,7 +381,7 @@ void Renderer2D::drawQuad(glm::mat4 const& _transform,
         s_data.quadVertexBufferPtr++;
     }
     s_data.quadCount++;
-    s_data.Stats.quadCount++;
+    s_data.stats.quadCount++;
 }
 
 void Renderer2D::drawCircle(glm::mat4 const& _transform,
@@ -406,7 +406,7 @@ void Renderer2D::drawCircle(glm::mat4 const& _transform,
         s_data.circleVertexBufferPtr++;
     }
     s_data.circleCount++;
-    s_data.Stats.quadCount++;
+    s_data.stats.quadCount++;
 }
 
 void Renderer2D::drawLine(glm::vec3 const& _p0,
@@ -414,7 +414,7 @@ void Renderer2D::drawLine(glm::vec3 const& _p0,
                           glm::vec4 const& _color,
                           int _entityID)
 {
-    if (s_data.lineCount >= s_data.maxVertices)
+    if (s_data.lineCount >= s_data.maxQuads * 2)
     {
         flushAndReset();
     }
@@ -430,7 +430,7 @@ void Renderer2D::drawLine(glm::vec3 const& _p0,
     s_data.lineVertexBufferPtr++;
 
     s_data.lineCount++;
-    s_data.Stats.lineCount++;
+    s_data.stats.lineCount++;
 }
 
 void Renderer2D::drawRect(glm::vec3 const& _position,
@@ -460,6 +460,18 @@ void Renderer2D::drawRect(glm::mat4 const& _transform, glm::vec4 const& _color, 
     drawLine(p1, p2, _color, _entityID);
     drawLine(p2, p3, _color, _entityID);
     drawLine(p3, p0, _color, _entityID);
+}
+
+Renderer2D::Statistics Renderer2D::getStats()
+{
+    return s_data.stats;
+}
+
+void Renderer2D::resetStats()
+{
+    s_data.stats.drawCalls = 0;
+    s_data.stats.quadCount = 0;
+    s_data.stats.lineCount = 0;
 }
 
 }  // namespace Namica
