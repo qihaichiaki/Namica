@@ -76,7 +76,8 @@ static shaderc_shader_kind glShaderStageToShaderC(GLenum _stage)
 }
 
 // opengl的shader类型转换为字符串
-static char const* glShaderStageToString(GLenum _stage)
+// [[maybe_unused]] -> 保留符号，也许不会使用
+[[maybe_unused]] static char const* glShaderStageToString(GLenum _stage)
 {
     switch (_stage)
     {

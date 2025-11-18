@@ -42,8 +42,22 @@ private:
 #define NAMICA_APP_DEBUG(...) \
     ::Namica::Log::getLogger(::Namica::Log::Type::App)->log(Namica::LogLevel::Debug, __VA_ARGS__)
 #else
-#define NAMICA_CORE_DEBUG(...)
-#define NAMICA_APP_DEBUG(...)
+#define NAMICA_CORE_DEBUG(...)   \
+    do                           \
+    {                            \
+        if constexpr (false)     \
+        {                        \
+            (void)(__VA_ARGS__); \
+        }                        \
+    } while (0)
+#define NAMICA_APP_DEBUG(...)    \
+    do                           \
+    {                            \
+        if constexpr (false)     \
+        {                        \
+            (void)(__VA_ARGS__); \
+        }                        \
+    } while (0)
 #endif
 
 // Info
