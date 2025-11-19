@@ -3,7 +3,6 @@
 #include "namica_editor/EditorContext.h"
 #include "namica_editor/EditorMainUI.h"
 #include <namica/core/Layer.h>
-#include <namica/renderer/EditorCamera.h>
 #include <namica/renderer/Texture.h>
 #include <namica/events/WindowEvent.h>
 
@@ -23,10 +22,6 @@ public:
     virtual void onImGuiRender() override;
 
 private:
-    bool onWindowResize(WindowResizeEvent& _event);
-
-private:
-    EditorCamera m_editorCamera;
     EditorContext m_context;
     EditorMainUI m_mainUI;
     Ref<Texture2D> m_testTetxure;

@@ -12,11 +12,15 @@ class EditorMainUI
 {
 public:
     /// @brief 编辑器面板初始化
-    void editorPanelInit();
+    void editorPanelInit(EditorContext* _context);
+    /// @brief 编辑器面板更新
+    void onUpdate();
+    /// @brief 编辑器面板接收事件
+    void onEvent(Event& _event);
     /// @brief 绘制停靠区间
     void drawDockspace();
     /// @brief 绘制编辑器面板
-    void drawPanels(EditorContext& _context);
+    void drawPanels();
 
 private:
     void drawMenuBar();

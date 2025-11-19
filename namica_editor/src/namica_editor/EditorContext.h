@@ -1,11 +1,16 @@
 #pragma once
 
+#include <namica/core/Memory.h>
+#include <namica/renderer/Framebuffer.h>
+#include <namica/renderer/EditorCamera.h>
+
 namespace Namica
 {
 
 struct EditorContext
 {
-    // TODO: 后续编辑器各个部件需要共享的内容
+    EditorCamera editorCamera;
+    Ref<Framebuffer> framebuffer{nullptr};
 };
 
 }  // namespace Namica

@@ -25,13 +25,23 @@ void EditorLayer::onAttach()
 
     Renderer::setClearColor(glm::vec4{0.2f, 0.2f, 0.2f, 1.0f});
 
-    m_editorCamera.setProjectionType(Camera::ProjectionType::Perspection);
-    Window const& mainWindw{Application::get().getMainWindow()};
-    m_editorCamera.updateViewportSize(mainWindw.getWidth(), mainWindw.getHeight());
+    // context 初始化
+    m_context.editorCamera.setProjectionType(Camera::ProjectionType::Perspection);
 
+    FramebufferConfig framebufferConfig{};
+    // framebufferConfig.samples = 1;  // 1倍采样， 除开一倍采样其余均存在问题
+    framebufferConfig.framebufferTextureAttachment = FramebufferTextureAttachment{
+        FramebufferTextureFormat::RGBA8,            // 正常渲染的目标纹理
+        FramebufferTextureFormat::RED_INTEGER,      // 需要为渲染对象添加的纹理标记ID
+        FramebufferTextureFormat::DEPTH24_STENCIL8  // 深度缓冲区
+    };
+    m_context.framebuffer = Framebuffer::create(framebufferConfig);
+
+    // ui 初始化
+    m_mainUI.editorPanelInit(&m_context);
+
+    // 其他初始化
     m_testTetxure = Texture2D::create("assets/textures/namica.png");
-
-    m_mainUI.editorPanelInit();
 }
 
 void EditorLayer::onDetach()
@@ -49,13 +59,16 @@ void EditorLayer::onUpdate()
         s_init = true;
     }
 
-    m_editorCamera.onUpdate(0.0f);
+    // 面板更新
+    m_mainUI.onUpdate();
 
     // renderer
-    Renderer::clear();
-    Renderer2D::resetStats();
+    Renderer::beginRender(m_context.editorCamera.getProjectionView(), m_context.framebuffer);
 
-    Renderer2D::beginScene(m_editorCamera.getProjectionView());
+    Renderer::clear();
+    m_context.framebuffer->clearAttachment(1, -1);  // 纹理附加信息 清理为-1
+
+    Renderer2D::resetStats();
 
     Renderer2D::drawQuad(glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.0f, 0.0f}) *
                              glm::scale(glm::mat4{1.0f}, glm::vec3{1.0f, 1.0f, 1.0f}),
@@ -74,79 +87,18 @@ void EditorLayer::onUpdate()
                              glm::scale(glm::mat4{1.0f}, glm::vec3{1.0f, 1.0f, 1.0f}),
                          glm::vec4{0.0f, 0.0f, 1.0f, 1.0f});
 
-    Renderer2D::endScene();
+    Renderer::endRender();
 }
 
 void EditorLayer::onEvent(Event& _event)
 {
-    EventDispatcher dispatcher{_event};
-    dispatcher.dispatch<WindowResizeEvent>(
-        [this](WindowResizeEvent& _event) { return this->onWindowResize(_event); });
-
-    m_editorCamera.onEvent(_event);
-}
-
-bool EditorLayer::onWindowResize(WindowResizeEvent& _event)
-{
-    uint32_t const width{_event.getWidth()};
-    uint32_t const height{_event.getHeight()};
-
-    m_editorCamera.updateViewportSize(width, height);
-    Renderer::updateViewport(width, height);
-    return false;
+    m_mainUI.onEvent(_event);
 }
 
 void EditorLayer::onImGuiRender()
 {
     m_mainUI.drawDockspace();
-    m_mainUI.drawPanels(m_context);
-
-    Renderer2D::Statistics const& renderer2DStats{Renderer2D::getStats()};
-    ImGui::Begin("渲染信息");
-
-    ImGui::Text("绘制批次: %d", renderer2DStats.drawCalls);
-    ImGui::Text("四边形个数: %d", renderer2DStats.quadCount);
-    ImGui::Text("顶点个数: %d", renderer2DStats.getTotalVertexCount());
-    ImGui::Text("索引个数: %d", renderer2DStats.getTotalIndexCount());
-    ImGui::Text("线段个数: %d", renderer2DStats.lineCount);
-
-    ImGui::End();
-
-    ImGui::Begin("编辑器设置");
-
-    ImGui::Separator();
-    ImGui::Text("编辑器相机设置");
-    char const* projectionTypeStrings[] = {"透视", "正交"};
-    char const* currentProjectionTypeString =
-        projectionTypeStrings[static_cast<int>(m_editorCamera.getProjectionType())];
-    if (ImGui::BeginCombo("投影类型", currentProjectionTypeString))
-    {
-        for (int i = 0; i < 2; ++i)
-        {
-            bool is_selected = currentProjectionTypeString == projectionTypeStrings[i];
-            if (ImGui::Selectable(projectionTypeStrings[i], is_selected))
-            {
-                currentProjectionTypeString = projectionTypeStrings[i];
-                m_editorCamera.setProjectionType(static_cast<Camera::ProjectionType>(i));
-            }
-
-            if (is_selected)
-            {
-                ImGui::SetItemDefaultFocus();
-            }
-        }
-        ImGui::EndCombo();
-    }
-    bool isRotation = m_editorCamera.isRotationEnabled();
-    if (ImGui::Checkbox("旋转", &isRotation))
-    {
-        m_editorCamera.setRotationEnabled(isRotation);
-    }
-    ImGui::Text("移动: lalt+lmb");
-    ImGui::Text("旋转: lalt+mmb");
-    ImGui::Text("缩放: lalt+rmb | mouse scroll");
-
-    ImGui::End();
+    m_mainUI.drawPanels();
 }
 
 }  // namespace Namica

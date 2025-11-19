@@ -97,7 +97,8 @@ void EditorCamera::mouseZoom(float _delta)
         m_distance -= _delta * zoomSpeed();
         if (m_distance < 1.0f)
         {
-            m_focalPoint += getForwardDirection();
+            // TODO: 相机焦点推进, 后续3D场景进行研究
+            // m_focalPoint += getForwardDirection() * m_distance;
             m_distance = 1.0f;
         }
     }

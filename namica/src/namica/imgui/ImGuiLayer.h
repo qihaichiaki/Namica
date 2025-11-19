@@ -28,7 +28,7 @@ public:
     void end();
 
 private:
-    bool m_blockEvents{true};
+    bool m_blockEvents{false};
     Scope<ImGuiImplWindow> m_imguiImplWindow{nullptr};
     Scope<ImGuiImplRenderer> m_imGuiImplRenderer{nullptr};
 };

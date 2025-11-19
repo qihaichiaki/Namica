@@ -1,14 +1,32 @@
 #include "namica_editor/EditorMainUI.h"
 #include "namica_editor/panel/ViewportPanel.h"
+#include "namica_editor/panel/InfoPanel.h"
 
 #include <imgui.h>
 
 namespace Namica
 {
 
-void EditorMainUI::editorPanelInit()
+void EditorMainUI::editorPanelInit(EditorContext* _context)
 {
-    m_panels.emplace_back(createRef<ViewportPanel>());
+    m_panels.emplace_back(createRef<ViewportPanel>(_context));
+    m_panels.emplace_back(createRef<InfoPanel>(_context));
+}
+
+void EditorMainUI::onUpdate()
+{
+    for (auto& panel : m_panels)
+    {
+        panel->onUpdate();
+    }
+}
+
+void EditorMainUI::onEvent(Event& _event)
+{
+    for (auto& panel : m_panels)
+    {
+        panel->onEvent(_event);
+    }
 }
 
 void EditorMainUI::drawDockspace()
@@ -99,11 +117,11 @@ void EditorMainUI::drawMenuBar()
     }
 }
 
-void EditorMainUI::drawPanels(EditorContext& _context)
+void EditorMainUI::drawPanels()
 {
     for (auto& panel : m_panels)
     {
-        panel->onImGuiRenderer(_context);
+        panel->onImGuiRenderer();
     }
 }
 
