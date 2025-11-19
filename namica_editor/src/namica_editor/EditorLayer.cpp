@@ -6,6 +6,7 @@
 #include <namica/renderer/Renderer2D.h>
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <imgui.h>
 
 namespace Namica
 {
@@ -50,6 +51,7 @@ void EditorLayer::onUpdate()
 
     // renderer
     Renderer::clear();
+    Renderer2D::resetStats();
 
     Renderer2D::beginScene(m_editorCamera.getProjectionView());
 
@@ -90,6 +92,56 @@ bool EditorLayer::onWindowResize(WindowResizeEvent& _event)
     m_editorCamera.updateViewportSize(width, height);
     Renderer::updateViewport(width, height);
     return false;
+}
+
+void EditorLayer::onImGuiRender()
+{
+    Renderer2D::Statistics const& renderer2DStats{Renderer2D::getStats()};
+    ImGui::Begin("渲染信息");
+
+    ImGui::Text("绘制批次: %d", renderer2DStats.drawCalls);
+    ImGui::Text("四边形个数: %d", renderer2DStats.quadCount);
+    ImGui::Text("顶点个数: %d", renderer2DStats.getTotalVertexCount());
+    ImGui::Text("索引个数: %d", renderer2DStats.getTotalIndexCount());
+    ImGui::Text("线段个数: %d", renderer2DStats.lineCount);
+
+    ImGui::End();
+
+    ImGui::Begin("编辑器设置");
+
+    ImGui::Separator();
+    ImGui::Text("编辑器相机设置");
+    char const* projectionTypeStrings[] = {"透视", "正交"};
+    char const* currentProjectionTypeString =
+        projectionTypeStrings[static_cast<int>(m_editorCamera.getProjectionType())];
+    if (ImGui::BeginCombo("投影类型", currentProjectionTypeString))
+    {
+        for (int i = 0; i < 2; ++i)
+        {
+            bool is_selected = currentProjectionTypeString == projectionTypeStrings[i];
+            if (ImGui::Selectable(projectionTypeStrings[i], is_selected))
+            {
+                currentProjectionTypeString = projectionTypeStrings[i];
+                m_editorCamera.setProjectionType(static_cast<Camera::ProjectionType>(i));
+            }
+
+            if (is_selected)
+            {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+    bool isRotation = m_editorCamera.isRotationEnabled();
+    if (ImGui::Checkbox("旋转", &isRotation))
+    {
+        m_editorCamera.setRotationEnabled(isRotation);
+    }
+    ImGui::Text("移动: lalt+mmb");
+    ImGui::Text("旋转: lalt+lmb");
+    ImGui::Text("缩放: lalt+rmb | mouse scroll");
+
+    ImGui::End();
 }
 
 }  // namespace Namica

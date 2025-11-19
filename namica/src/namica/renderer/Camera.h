@@ -65,13 +65,13 @@ protected:
 
     // 透视相关参数
     float m_perspectiveFOV{glm::radians(45.0f)};  // 垂直视场
-    float m_perspectiveNear{0.01f};               // 近点
+    float m_perspectiveNear{0.1f};                // 近点
     float m_perspectiveFar{1000.0f};              // 远点
 
     // 正交相关参数
-    float m_orthographicSize{10.0f};
+    float m_orthographicSize{5.0f};
     float m_orthographicNear{-1.0f};
-    float m_orthographicFar{1.0f};
+    float m_orthographicFar{100.0f};
 
     float m_aspectRatio{0.0f};
     float m_viewportWidth{0.0f};

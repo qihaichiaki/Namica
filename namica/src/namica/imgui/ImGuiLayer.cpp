@@ -2,6 +2,7 @@
 #include "namica/imgui/ImGuiImpl.h"
 #include "namica/core/Application.h"
 #include "namica/core/Window.h"
+#include "namica/core/Log.h"
 #include "namica/events/Event.h"
 #include "namica/renderer/RendererContext.h"
 #include <imgui.h>
@@ -19,6 +20,8 @@ ImGuiLayer::~ImGuiLayer()
 
 void ImGuiLayer::onAttach()
 {
+    NAMICA_CORE_DEBUG("imgui层被添加");
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
@@ -60,6 +63,8 @@ void ImGuiLayer::onAttach()
 
 void ImGuiLayer::onDetach()
 {
+    NAMICA_CORE_DEBUG("imgui层被移除");
+
     m_imGuiImplRenderer->shutdown();
     m_imguiImplWindow->shutdown();
     ImGui::DestroyContext();

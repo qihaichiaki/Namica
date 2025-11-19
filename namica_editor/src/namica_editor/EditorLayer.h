@@ -18,6 +18,7 @@ public:
     virtual void onDetach() override;
     virtual void onUpdate() override;
     virtual void onEvent(Event& _event) override;
+    virtual void onImGuiRender() override;
 
 private:
     bool onWindowResize(WindowResizeEvent& _event);

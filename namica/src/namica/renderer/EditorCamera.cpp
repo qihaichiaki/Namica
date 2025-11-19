@@ -35,7 +35,10 @@ glm::vec3 EditorCamera::calculatePosition() const
 
 void EditorCamera::updateView()
 {
-    // m_yaw = m_pitch = 0.0f; // 锁住相机的旋转
+    if (!m_isRotation)
+    {
+        m_yaw = m_pitch = 0.0f;  // 锁住相机的旋转
+    }
     m_position = calculatePosition();
 
     glm::quat orientation = getOrientation();
@@ -68,6 +71,11 @@ float EditorCamera::zoomSpeed() const
     return speed;
 }
 
+float EditorCamera::orthoZoomSpeed() const
+{
+    return m_orthographicSize * 0.5f;
+}
+
 void EditorCamera::mousePan(glm::vec2 const& _delta)
 {
     auto [xSpeed, ySpeed] = panSpeed();
@@ -84,11 +92,23 @@ void EditorCamera::mouseRotate(glm::vec2 const& _delta)
 
 void EditorCamera::mouseZoom(float _delta)
 {
-    m_distance -= _delta * zoomSpeed();
-    if (m_distance < 1.0f)
+    if (m_projectionType == ProjectionType::Perspection)
     {
-        m_focalPoint += getForwardDirection();
-        m_distance = 1.0f;
+        m_distance -= _delta * zoomSpeed();
+        if (m_distance < 1.0f)
+        {
+            m_focalPoint += getForwardDirection();
+            m_distance = 1.0f;
+        }
+    }
+    else
+    {
+        m_orthographicSize -= _delta * orthoZoomSpeed();
+        if (m_orthographicSize < 0.05f)
+        {
+            m_orthographicSize = 0.05f;
+        }
+        recalculateProjection();
     }
 }
 
@@ -158,6 +178,16 @@ glm::mat4 const& EditorCamera::getViewMatrix() const
 glm::mat4 EditorCamera::getProjectionView() const
 {
     return m_projection * m_viewMatrix;
+}
+
+void EditorCamera::setRotationEnabled(bool _enabled)
+{
+    m_isRotation = _enabled;
+}
+
+bool EditorCamera::isRotationEnabled() const
+{
+    return m_isRotation;
 }
 
 }  // namespace Namica

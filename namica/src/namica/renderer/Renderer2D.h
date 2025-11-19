@@ -20,11 +20,11 @@ public:
         uint32_t quadCount = 0;
         uint32_t lineCount = 0;
 
-        uint32_t getTotalVertexCount()
+        uint32_t getTotalVertexCount() const
         {
             return quadCount * 4;
         }
-        uint32_t getTotalIndexCount()
+        uint32_t getTotalIndexCount() const
         {
             return quadCount * 6;
         }
