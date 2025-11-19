@@ -12,7 +12,8 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
 - [ ] 渲染API搭建完成
   - [x] Renderer2D
   - [ ] 资源管理器
-- [ ] 编辑器GUI框架完成
+- [x] 编辑器GUI框架完成
+  - [x] viewport
 - [ ] ECS搭建完成
 - [ ] box2d物理引擎引进
 - [ ] build runtime系统
@@ -131,3 +132,35 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
   * 根据传入的窗口配置创建主window
   * window注入Application事件函数, 方便window捕获的事件传入到application
   * Renderer的初始化
+
+#### Editor APP[Editor]
+##### Editor GUI
+* 当前设计的EditorGUI组成: Panels + Viewports
+* Editor GUI主要组成部分示意图:
+```
++----------------------------------------------------+
+|                  Menu Bar                          |
++--------------+----------------------+--------------+
+|              |      Viewport        |  Inspector   |
+|  Hierarchy   |      SceneView       |  Properties  |
++  (Scene)     +----------------------+--------------+
+|              |      Project Files/  |     ...      |
+|              |         Console      |              |
++--------------+----------------------+--------------+
+```
+
+* 核心面板:
+  * HierarchyPanel 场景树
+  * InspectorPanel 组件编辑器
+  * ProjectPanel   文件浏览器
+  * ConsolePanel   日志输出
+  * Viewport       场景视口
+  * Toolbar        工具栏
+
+* GUI框架整体设计思路:
+* 面板类设计：提供基本的onImGuiRenderer方法用于渲染。layer中存在面板中可能需要共享的内容，各个面板使用此变量时即可同步状态
+*layer运行阶段:
+  1. 初始化阶段：初始化各个面板, 加载各种GUI所需要的资源。
+  2. 运行阶段：
+     - 更新阶段遍历每个面板的onupdate进行更新。(可能需要注意顺序，因为存在信号监听机制)
+     - 渲染阶段首先启动imgui docking，随后遍历每个面板的onImGuiRenderer进行渲染更新。

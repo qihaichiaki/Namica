@@ -1,5 +1,7 @@
 #pragma once
 
+#include "namica_editor/EditorContext.h"
+#include "namica_editor/EditorMainUI.h"
 #include <namica/core/Layer.h>
 #include <namica/renderer/EditorCamera.h>
 #include <namica/renderer/Texture.h>
@@ -25,6 +27,8 @@ private:
 
 private:
     EditorCamera m_editorCamera;
+    EditorContext m_context;
+    EditorMainUI m_mainUI;
     Ref<Texture2D> m_testTetxure;
 };
 

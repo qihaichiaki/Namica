@@ -30,6 +30,8 @@ void EditorLayer::onAttach()
     m_editorCamera.updateViewportSize(mainWindw.getWidth(), mainWindw.getHeight());
 
     m_testTetxure = Texture2D::create("assets/textures/namica.png");
+
+    m_mainUI.editorPanelInit();
 }
 
 void EditorLayer::onDetach()
@@ -96,6 +98,9 @@ bool EditorLayer::onWindowResize(WindowResizeEvent& _event)
 
 void EditorLayer::onImGuiRender()
 {
+    m_mainUI.drawDockspace();
+    m_mainUI.drawPanels(m_context);
+
     Renderer2D::Statistics const& renderer2DStats{Renderer2D::getStats()};
     ImGui::Begin("渲染信息");
 
@@ -137,8 +142,8 @@ void EditorLayer::onImGuiRender()
     {
         m_editorCamera.setRotationEnabled(isRotation);
     }
-    ImGui::Text("移动: lalt+mmb");
-    ImGui::Text("旋转: lalt+lmb");
+    ImGui::Text("移动: lalt+lmb");
+    ImGui::Text("旋转: lalt+mmb");
     ImGui::Text("缩放: lalt+rmb | mouse scroll");
 
     ImGui::End();

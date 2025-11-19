@@ -121,11 +121,17 @@ void EditorCamera::onUpdate(Timestep _ts)
         m_initialMousePosition = mouse;
 
         if (Input::isMouseButtonPressed(KeyCode::MouseButtonMiddle))
-            mousePan(delta);
-        else if (Input::isMouseButtonPressed(KeyCode::MouseButtonLeft))
+        {
             mouseRotate(delta);
+        }
+        else if (Input::isMouseButtonPressed(KeyCode::MouseButtonLeft))
+        {
+            mousePan(delta);
+        }
         else if (Input::isMouseButtonPressed(KeyCode::MouseButtonRight))
+        {
             mouseZoom(delta.y);
+        }
     }
     updateView();
 }
