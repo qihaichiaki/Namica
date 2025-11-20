@@ -6,6 +6,7 @@
 #include <namica/renderer/Renderer2D.h>
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <imgui.h>
 
 namespace Namica
 {
@@ -24,10 +25,22 @@ void EditorLayer::onAttach()
 
     Renderer::setClearColor(glm::vec4{0.2f, 0.2f, 0.2f, 1.0f});
 
-    m_editorCamera.setProjectionType(Camera::ProjectionType::Perspection);
-    Window const& mainWindw{Application::get().getMainWindow()};
-    m_editorCamera.updateViewportSize(mainWindw.getWidth(), mainWindw.getHeight());
+    // context 初始化
+    m_context.editorCamera.setProjectionType(Camera::ProjectionType::Perspection);
 
+    FramebufferConfig framebufferConfig{};
+    // framebufferConfig.samples = 1;  // 1倍采样， 除开一倍采样其余均存在问题
+    framebufferConfig.framebufferTextureAttachment = FramebufferTextureAttachment{
+        FramebufferTextureFormat::RGBA8,            // 正常渲染的目标纹理
+        FramebufferTextureFormat::RED_INTEGER,      // 需要为渲染对象添加的纹理标记ID
+        FramebufferTextureFormat::DEPTH24_STENCIL8  // 深度缓冲区
+    };
+    m_context.framebuffer = Framebuffer::create(framebufferConfig);
+
+    // ui 初始化
+    m_mainUI.editorPanelInit(&m_context);
+
+    // 其他初始化
     m_testTetxure = Texture2D::create("assets/textures/namica.png");
 }
 
@@ -46,12 +59,16 @@ void EditorLayer::onUpdate()
         s_init = true;
     }
 
-    m_editorCamera.onUpdate(0.0f);
+    // 面板更新
+    m_mainUI.onUpdate();
 
     // renderer
-    Renderer::clear();
+    Renderer::beginRender(m_context.editorCamera.getProjectionView(), m_context.framebuffer);
 
-    Renderer2D::beginScene(m_editorCamera.getProjectionView());
+    Renderer::clear();
+    m_context.framebuffer->clearAttachment(1, -1);  // 纹理附加信息 清理为-1
+
+    Renderer2D::resetStats();
 
     Renderer2D::drawQuad(glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.0f, 0.0f}) *
                              glm::scale(glm::mat4{1.0f}, glm::vec3{1.0f, 1.0f, 1.0f}),
@@ -70,26 +87,18 @@ void EditorLayer::onUpdate()
                              glm::scale(glm::mat4{1.0f}, glm::vec3{1.0f, 1.0f, 1.0f}),
                          glm::vec4{0.0f, 0.0f, 1.0f, 1.0f});
 
-    Renderer2D::endScene();
+    Renderer::endRender();
 }
 
 void EditorLayer::onEvent(Event& _event)
 {
-    EventDispatcher dispatcher{_event};
-    dispatcher.dispatch<WindowResizeEvent>(
-        [this](WindowResizeEvent& _event) { return this->onWindowResize(_event); });
-
-    m_editorCamera.onEvent(_event);
+    m_mainUI.onEvent(_event);
 }
 
-bool EditorLayer::onWindowResize(WindowResizeEvent& _event)
+void EditorLayer::onImGuiRender()
 {
-    uint32_t const width{_event.getWidth()};
-    uint32_t const height{_event.getHeight()};
-
-    m_editorCamera.updateViewportSize(width, height);
-    Renderer::updateViewport(width, height);
-    return false;
+    m_mainUI.drawDockspace();
+    m_mainUI.drawPanels();
 }
 
 }  // namespace Namica

@@ -10,6 +10,8 @@ namespace Namica
 class NAMICA_API KeyEvent : public Event
 {
 public:
+    EVENT_CLASS_CATEGORY(CategoryKeyboard | CategoryInput)
+
     KeyCode getKeyCode() const noexcept
     {
         return m_keyCode;
@@ -71,6 +73,7 @@ public:
     }
 
     EVENT_CLASS_TYPE(KeyTyped)
+    EVENT_CLASS_CATEGORY(CategoryKeyboard | CategoryInput)
 
     uint32_t getCodepoint() const noexcept
     {

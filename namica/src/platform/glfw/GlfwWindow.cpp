@@ -11,7 +11,7 @@
 namespace Namica
 {
 
-// TODO: 后续曾选择窗口的空间
+// TODO: 后续需要选择窗口的空间
 Ref<Window> Window::create(WindowConfig const& _windowConfig, RendererAPIType _rendererAPIType)
 {
     return createRef<GlfwWindow>(_windowConfig, _rendererAPIType);
@@ -238,6 +238,11 @@ void GlfwWindow::pollEvents()
 void GlfwWindow::swapBuffers()
 {
     glfwSwapBuffers(m_window);
+}
+
+RendererContext& GlfwWindow::getRendererContext() const
+{
+    return *m_rendererContext;
 }
 
 GLFWwindow* GlfwWindow::getWindowHandle() const

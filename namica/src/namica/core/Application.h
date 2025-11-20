@@ -12,6 +12,7 @@ struct ApplicationConfig;
 class Window;
 class Event;
 class WindowCloseEvent;
+class ImGuiLayer;
 
 class Application
 {
@@ -66,6 +67,7 @@ private:
 
 private:
     Ref<Window> m_mainWindow{nullptr};
+    Ref<ImGuiLayer> m_imguiLayer{nullptr};
     bool m_isRunning{true};
 
     LayerStack m_layerStack;

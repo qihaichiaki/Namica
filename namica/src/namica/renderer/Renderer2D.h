@@ -20,29 +20,17 @@ public:
         uint32_t quadCount = 0;
         uint32_t lineCount = 0;
 
-        uint32_t getTotalVertexCount()
+        uint32_t getTotalVertexCount() const
         {
             return quadCount * 4;
         }
-        uint32_t getTotalIndexCount()
+        uint32_t getTotalIndexCount() const
         {
             return quadCount * 6;
         }
     };
 
 public:
-    /**
-     * @brief 开始2D渲染场景, 此处需要上传相机的pv矩阵
-     *
-     * @param _pv 投影矩阵 * 视图矩阵
-     */
-    static void beginScene(glm::mat4 const& _pv);
-
-    /**
-     * @brief 停止2D渲染场景, 将内容进行渲染
-     */
-    static void endScene();
-
     /**
      * @brief 提交根据transform渲染的带颜色的四边形
      *
@@ -129,6 +117,18 @@ private:
 
     /// @brief 2d渲染器释放资源, 一些申请的gpu的资源进行释放
     static void shutdown();
+
+    /**
+     * @brief 开始2D渲染场景, 此处需要上传相机的pv矩阵
+     *
+     * @param _pv 投影矩阵 * 视图矩阵
+     */
+    static void beginScene(glm::mat4 const& _pv);
+
+    /**
+     * @brief 停止2D渲染场景, 将内容进行渲染
+     */
+    static void endScene();
 
     /// @brief 绘制并且重新刷新渲染状态
     static void flushAndReset();

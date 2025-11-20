@@ -29,4 +29,14 @@ void OpenGLContext::init()
     NAMICA_CORE_INFO("[+=======================================================");
 }
 
+void* OpenGLContext::getCurrentNativeHandle()
+{
+    return glfwGetCurrentContext();
+}
+
+void OpenGLContext::makeCurrent(void* _handle)
+{
+    glfwMakeContextCurrent(static_cast<GLFWwindow*>(_handle));
+}
+
 }  // namespace Namica

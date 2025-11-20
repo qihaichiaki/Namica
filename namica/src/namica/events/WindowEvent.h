@@ -10,6 +10,7 @@ class NAMICA_API WindowCloseEvent : public Event
 {
 public:
     EVENT_CLASS_TYPE(WindowClose)
+    EVENT_CLASS_CATEGORY(CategoryWindow)
 
     virtual std::string message() const override
     {
@@ -21,6 +22,7 @@ class NAMICA_API WindowResizeEvent : public Event
 {
 public:
     EVENT_CLASS_TYPE(WindowResize)
+    EVENT_CLASS_CATEGORY(CategoryWindow)
 
     WindowResizeEvent(uint32_t _width, uint32_t _height) : m_width(_width), m_height(_height)
     {
@@ -50,6 +52,7 @@ class NAMICA_API WindowFocusEvent : public Event
 {
 public:
     EVENT_CLASS_TYPE(WindowFocus)
+    EVENT_CLASS_CATEGORY(CategoryWindow)
 
     virtual std::string message() const override
     {
@@ -61,6 +64,7 @@ class NAMICA_API WindowLostFocusEvent : public Event
 {
 public:
     EVENT_CLASS_TYPE(WindowLostFocus)
+    EVENT_CLASS_CATEGORY(CategoryWindow)
 
     virtual std::string message() const override
     {
@@ -72,6 +76,7 @@ class NAMICA_API WindowMovedEvent : public Event
 {
 public:
     EVENT_CLASS_TYPE(WindowMoved)
+    EVENT_CLASS_CATEGORY(CategoryWindow)
 
     WindowMovedEvent(int _xpos, int _ypos) : m_xpos{_xpos}, m_ypos{_ypos}
     {

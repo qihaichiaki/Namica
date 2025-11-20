@@ -5,6 +5,7 @@
 #include "namica/events/WindowEvent.h"
 #include "namica/utilities/FileSystem.h"
 #include "namica/renderer/Renderer.h"
+#include "namica/imgui/ImGuiLayer.h"
 
 namespace Namica
 {
@@ -24,11 +25,16 @@ Application::Application(ApplicationConfig const& _appConfig) noexcept
     m_mainWindow->setEventCallBackFn([this](Event& _event) { this->onEvent(_event); });
 
     Renderer::init(_appConfig.rendererConfig);
+
+    // imgui layer
+    m_imguiLayer = createRef<ImGuiLayer>();
+    pushOverlay(m_imguiLayer.get());
 }
 
 Application::~Application()
 {
     Renderer::shutdown();
+    popLayer(m_imguiLayer.get());
 }
 
 Application& Application::get()
@@ -48,6 +54,14 @@ void Application::run()
         {
             layer->onUpdate();
         }
+
+        // imgui 更新
+        m_imguiLayer->begin();
+        for (auto layer : m_layerStack)
+        {
+            layer->onImGuiRender();
+        }
+        m_imguiLayer->end();
 
         // 窗口交换缓冲区
         m_mainWindow->swapBuffers();
@@ -99,7 +113,7 @@ void Application::onEvent(Event& _event)
     for (auto layerIt{m_layerStack.end()}; layerIt != m_layerStack.begin();)
     {
         // 事件被处理不在往前layer层传递
-        if (_event.isHandled())
+        if (_event.isHandled)
         {
             break;
         }

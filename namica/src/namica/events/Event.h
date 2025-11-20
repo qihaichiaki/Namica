@@ -27,6 +27,19 @@ enum class EventType
     MouseScrolled
 };
 
+#define BIT(X) (1 << X)
+// 事件类别
+enum EventCategory
+{
+    None = 0,
+    CategoryWindow = BIT(0),
+    CategoryInput = BIT(1),
+    CategoryKeyboard = BIT(2),
+    CategoryMouse = BIT(3),
+    CategoryMouseButton = BIT(4)
+};
+#undef BIT
+
 class NAMICA_API Event
 {
 public:
@@ -34,9 +47,14 @@ public:
     virtual ~Event() = default;
 
     /**
-     * @brief 返回事件对象的类别
+     * @brief 返回事件对象具体类型
      */
     virtual EventType getType() const noexcept = 0;
+
+    /**
+     * @brief 返回事件对象的事件类别
+     */
+    virtual int getCategoryFlags() const noexcept = 0;
 
     /**
      * @brief 返回事件的名字
@@ -49,17 +67,16 @@ public:
     virtual std::string message() const = 0;
 
     /**
-     * @brief 当前事件是否被处理
+     * @brief 当前事件是否属于传入的事件类别
+     *
+     * @param _eventCategory 事件类别
      */
-    bool isHandled() const noexcept
+    bool isInCategory(EventCategory event_category) const noexcept
     {
-        return m_isHandled;
+        return getCategoryFlags() & event_category;
     }
 
-private:
-    bool m_isHandled{false};  // 事件是否被处理
-
-    friend class EventDispatcher;
+    bool isHandled{false};  // 事件是否被处理
 };
 
 // 事件便捷宏处理
@@ -75,6 +92,13 @@ private:
     virtual char const* getName() const noexcept override \
     {                                                     \
         return #_eventType;                               \
+    }
+
+// 事件类别重写宏
+#define EVENT_CLASS_CATEGORY(_category)            \
+    int getCategoryFlags() const noexcept override \
+    {                                              \
+        return _category;                          \
     }
 
 class NAMICA_API EventDispatcher
@@ -105,7 +129,7 @@ public:
     {
         if (m_event.getType() == EventT::getStaticType())
         {
-            m_event.m_isHandled = _eventFn(*((EventT*)(&m_event)));
+            m_event.isHandled = _eventFn(*((EventT*)(&m_event)));
             return true;
         }
 
