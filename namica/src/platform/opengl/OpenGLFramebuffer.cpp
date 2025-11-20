@@ -189,9 +189,9 @@ void OpenGLFramebuffer::invalidate()
         }
     }
 
-    if (m_colorAttachments.size() > 1)
+    if (m_colorAttachments.size() > 0)
     {
-        NAMICA_CORE_ASSERT(m_colorAttachments.size() <= 3, "当前最多支持四个color附件!");
+        NAMICA_CORE_ASSERT(m_colorAttachments.size() <= 4, "当前最多支持四个color附件!");
         GLenum buffers[4] = {
             GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3};
         glDrawBuffers(static_cast<GLsizei>(m_colorAttachments.size()), buffers);
