@@ -11,3 +11,6 @@
 	path = namica/vendor/imgui
 	url = https://github.com/qihaichiaki/imgui
 	branch = docking
+[submodule "namica/vendor/box2d"]
+	path = namica/vendor/box2d
+	url = https://github.com/qihaichiaki/box2d

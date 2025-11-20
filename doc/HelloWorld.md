@@ -14,8 +14,9 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
   - [ ] 资源管理器
 - [x] 编辑器GUI框架完成
   - [x] viewport
-- [ ] ECS搭建完成
-- [ ] box2d物理引擎引进
+- [x] ECS搭建完成
+  - [x] entity, component, Scene
+  - [ ] box2d物理引擎引进
 - [ ] build runtime系统
 
 
@@ -132,6 +133,18 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
   * 根据传入的窗口配置创建主window
   * window注入Application事件函数, 方便window捕获的事件传入到application
   * Renderer的初始化
+
+#### Entity[Scene]
+* ECS系统中的标识符, 需要做到最简, 使用entt::entity进行标识即可, 后续相关操作组件的方法直接使用此即可
+
+#### Component[Scene]
+* ECS系统的中的最重要的Component数据聚合,由各个不同的Component组成了形形色色的Entity对象, 用来表达创作者的意图
+* 创建一个空对象, 其初始拥有的Component存在Tag(UUID, 唯一标识符, 标识此Entity), Transform. 这些组件是无法从Entity中主动移除的
+
+#### Scene[Scene]
+* 组件聚合处, 通过查询不同的组件，从而实现其对应的功能.
+* 渲染模块: 查询全部的sprite组件, 获取其transform和相关texture进行渲染即可
+* 物理模块: 查询到全部的刚体组件, 对transform执行物理规则约束即可(集成box2d)
 
 #### Editor APP[Editor]
 ##### Editor GUI

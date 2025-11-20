@@ -81,3 +81,12 @@ target_include_directories(stb_image INTERFACE
 
 # imgui
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/imgui)
+
+# entt
+add_library(entt INTERFACE)
+target_include_directories(entt INTERFACE
+    "${CMAKE_CURRENT_LIST_DIR}/entt/include"
+)
+
+# box2d
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/box2d)

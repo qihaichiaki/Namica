@@ -34,6 +34,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     glad
     vulkan
     stb_image
+    box2d::box2d
 )
 
 # 确定后期是否调整, 前期方便使用
@@ -41,4 +42,5 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     yaml-cpp
     glm
     imgui
+    entt
 )
