@@ -3,6 +3,7 @@
 
 namespace Namica
 {
+
 Entity::Entity(entt::entity _entityHandle, Scene* _scene)
     : m_entityHandle{_entityHandle}, m_scene{_scene}
 {
@@ -19,4 +20,30 @@ bool Entity::isEquals(Entity const& _other) const
 {
     return m_entityHandle == _other.m_entityHandle && m_scene == _other.m_scene;
 }
+
+Entity::operator entt::entity() const
+{
+    return m_entityHandle;
+}
+
+Entity::operator uint32_t() const
+{
+    return static_cast<uint32_t>(m_entityHandle);
+}
+
+Entity::operator bool() const
+{
+    return isValid();
+}
+
+bool Entity::operator==(Entity const& _other) const
+{
+    return isEquals(_other);
+}
+
+bool Entity::operator!=(Entity const& _other) const
+{
+    return !isEquals(_other);
+}
+
 }  // namespace Namica

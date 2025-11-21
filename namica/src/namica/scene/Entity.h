@@ -13,10 +13,10 @@ public:
     NAMICA_API Entity(entt::entity _entityHandle, Scene* _scene);
 
     /// @brief 实体对象在当前场景是否有效
-    bool isValid() const;
+    NAMICA_API bool isValid() const;
 
     /// @brief 判断两个实体是否一致
-    bool isEquals(Entity const& other) const;
+    NAMICA_API bool isEquals(Entity const& _other) const;
 
     /**
      * @brief 查询当前entity是否存在对应的组件
@@ -74,6 +74,9 @@ public:
 
     NAMICA_API operator entt::entity() const;
     NAMICA_API operator uint32_t() const;
+    NAMICA_API operator bool() const;
+    NAMICA_API bool operator==(Entity const& _other) const;
+    NAMICA_API bool operator!=(Entity const& _other) const;
 
 private:
     entt::entity m_entityHandle{entt::null};
