@@ -2,6 +2,8 @@
 
 #include "namica/core/UUID.h"
 #include "namica/renderer/Texture.h"
+#include "namica/renderer/Camera.h"
+#include "namica/scene/Physics.h"
 
 #include <string>
 #include <glm/glm.hpp>
@@ -13,11 +15,19 @@ namespace Namica
 {
 
 /**
+ * @brief 唯一实体标识组件
+ *
+ */
+struct IDComponent
+{
+    UUID id{};
+};
+
+/**
  * @brief 实体标识组件, 包含ID和实体名字
  */
 struct TagComponent
 {
-    UUID id{};
     std::string name{};
 };
 
@@ -36,6 +46,16 @@ struct TransformComponent
         return glm::translate(glm::mat4{1.0f}, translation) * rotationMat4 *
             glm::scale(glm::mat4{1.0f}, scale);
     }
+};
+
+struct CameraComponent
+{
+    Camera camera{};
+
+    // 是否是主相机, 运行时第一个主相机起到运行时的渲染作用
+    bool primary{true};
+    // 是否固定渲染纵横比(true的话运行时候不会更新其camera中的渲染视图宽度和高度)
+    bool fixedAspectRatio{false};
 };
 
 /**
@@ -88,6 +108,47 @@ struct NativeScriptComponent
             _other->instance = nullptr;
         };
     }
+};
+
+/**
+ * @brief 2D刚体组件, 用于控制对象的2D刚体物理世界生命周期
+ */
+struct Rigidbody2DComponent
+{
+    enum class BodyType
+    {
+        Static,    // 完全静止
+        Dynamic,   // 运动的
+        Kinematic  // 不受力的作用
+    };
+
+    BodyType type{BodyType::Static};
+    bool fixedRotation{false};  // 是否锁定对象在z轴上的旋转
+
+    B2BodyHandle bodyId{};
+};
+
+/**
+ * @brief 2D方形碰撞箱
+ */
+struct BoxCollider2DComponent
+{
+    glm::vec2 offset{0.0f, 0.0f};
+    glm::vec2 size{0.5f, 0.5f};
+
+    // 物理材质
+    PhysicalMaterials physicalMaterials{};
+};
+
+/**
+ * @brief 2D圆形碰撞箱
+ */
+struct CircleCollider2DComponent
+{
+    glm::vec2 offset{0.0f, 0.0f};
+    float radius{0.0f};
+
+    PhysicalMaterials physicalMaterials{};
 };
 
 }  // namespace Namica

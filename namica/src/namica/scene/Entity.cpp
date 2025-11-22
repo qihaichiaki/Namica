@@ -4,6 +4,10 @@
 namespace Namica
 {
 
+Entity::Entity()
+{
+}
+
 Entity::Entity(entt::entity _entityHandle, Scene* _scene)
     : m_entityHandle{_entityHandle}, m_scene{_scene}
 {
@@ -13,12 +17,27 @@ Entity::Entity(entt::entity _entityHandle, Scene* _scene)
 
 bool Entity::isValid() const
 {
-    return m_scene->m_registry.valid(m_entityHandle);
+    return m_scene && m_scene->m_registry.valid(m_entityHandle);
 }
 
 bool Entity::isEquals(Entity const& _other) const
 {
     return m_entityHandle == _other.m_entityHandle && m_scene == _other.m_scene;
+}
+
+Scene const& Entity::getScene() const
+{
+    return *m_scene;
+}
+
+UUID Entity::getUUID()
+{
+    return getComponent<IDComponent>().id;
+}
+
+std::string const& Entity::getName()
+{
+    return getComponent<TagComponent>().name;
 }
 
 Entity::operator entt::entity() const

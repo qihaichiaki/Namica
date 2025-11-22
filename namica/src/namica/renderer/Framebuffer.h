@@ -1,6 +1,5 @@
 #pragma once
 
-#include "namica/core/Base.h"
 #include "namica/core/Memory.h"
 #include <vector>
 
@@ -15,7 +14,7 @@ enum class FramebufferTextureFormat
     DEPTH24_STENCIL8  // 深度附件格式
 };
 
-struct NAMICA_API FramebufferTextureConfig
+struct FramebufferTextureConfig
 {
     FramebufferTextureConfig() = default;
     FramebufferTextureConfig(FramebufferTextureFormat _textureFormat)
@@ -30,7 +29,7 @@ struct NAMICA_API FramebufferTextureConfig
 class FramebufferTextureAttachment
 {
 public:
-    NAMICA_API FramebufferTextureAttachment() = default;
+    FramebufferTextureAttachment() = default;
 
     /**
      * @brief 添加不同的附件类型到帧缓冲区中, 需要注意帧缓冲区只接收一种DEPTH24_STENCIL8类型,
@@ -39,17 +38,16 @@ public:
      *
      * @param _attachments 附件类型们
      */
-    NAMICA_API FramebufferTextureAttachment(
-        std::initializer_list<FramebufferTextureConfig> _attachments)
+    FramebufferTextureAttachment(std::initializer_list<FramebufferTextureConfig> _attachments)
         : m_attachments{_attachments}
     {
     }
 
-    NAMICA_API std::vector<FramebufferTextureConfig>::iterator begin();
-    NAMICA_API std::vector<FramebufferTextureConfig>::iterator end();
+    std::vector<FramebufferTextureConfig>::iterator begin();
+    std::vector<FramebufferTextureConfig>::iterator end();
 
-    NAMICA_API std::vector<FramebufferTextureConfig>::const_iterator begin() const;
-    NAMICA_API std::vector<FramebufferTextureConfig>::const_iterator end() const;
+    std::vector<FramebufferTextureConfig>::const_iterator begin() const;
+    std::vector<FramebufferTextureConfig>::const_iterator end() const;
 
 private:
     std::vector<FramebufferTextureConfig> m_attachments;
@@ -63,7 +61,7 @@ struct FramebufferConfig
     FramebufferTextureAttachment framebufferTextureAttachment{};
 };
 
-class NAMICA_API Framebuffer
+class Framebuffer
 {
 public:
     /**

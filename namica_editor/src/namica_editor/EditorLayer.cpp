@@ -4,6 +4,7 @@
 #include <namica/core/Window.h>
 #include <namica/renderer/Renderer.h>
 #include <namica/renderer/Renderer2D.h>
+#include <namica/scene/Entity.h>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <imgui.h>
@@ -28,20 +29,27 @@ void EditorLayer::onAttach()
     // context 初始化
     m_context.editorCamera.setProjectionType(Camera::ProjectionType::Perspection);
 
-    FramebufferConfig framebufferConfig{};
-    // framebufferConfig.samples = 1;  // 1倍采样， 除开一倍采样其余均存在问题
-    framebufferConfig.framebufferTextureAttachment = FramebufferTextureAttachment{
-        FramebufferTextureFormat::RGBA8,            // 正常渲染的目标纹理
-        FramebufferTextureFormat::RED_INTEGER,      // 需要为渲染对象添加的纹理标记ID
-        FramebufferTextureFormat::DEPTH24_STENCIL8  // 深度缓冲区
-    };
-    m_context.framebuffer = Framebuffer::create(framebufferConfig);
+    // 场景相关初始化
+    m_context.editorScene = Scene::create();
+    m_context.activeScene = m_context.editorScene;
 
     // ui 初始化
     m_mainUI.editorPanelInit(&m_context);
 
     // 其他初始化
     m_testTetxure = Texture2D::create("assets/textures/namica.png");
+
+    // Debug
+    Entity testEntity1{m_context.activeScene->createEntity()};
+    testEntity1.addComponent<SpriteRendererComponent>();
+
+    Entity testEntity2{m_context.activeScene->createEntity()};
+    testEntity2.addComponent<SpriteRendererComponent>().texture = m_testTetxure;
+    testEntity2.getComponent<TransformComponent>().translation = glm::vec3{2.0f, 0.0f, 0.0f};
+
+    Entity testEntity3{m_context.activeScene->createEntity()};
+    testEntity3.addComponent<CircleRendererComponent>().color = glm::vec4{1.0f, 0.0f, 0.0f, 1.0f};
+    testEntity3.getComponent<TransformComponent>().translation = glm::vec3{0.0f, -2.0f, 0.0f};
 }
 
 void EditorLayer::onDetach()
@@ -62,32 +70,9 @@ void EditorLayer::onUpdate()
     // 面板更新
     m_mainUI.onUpdate();
 
-    // renderer
-    Renderer::beginRender(m_context.editorCamera.getProjectionView(), m_context.framebuffer);
-
-    Renderer::clear();
-    m_context.framebuffer->clearAttachment(1, -1);  // 纹理附加信息 清理为-1
-
+    // 场景更新和渲染更新
     Renderer2D::resetStats();
-
-    Renderer2D::drawQuad(glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.0f, 0.0f}) *
-                             glm::scale(glm::mat4{1.0f}, glm::vec3{1.0f, 1.0f, 1.0f}),
-                         glm::vec4{1.f, 1.f, 1.f, 1.0f});
-    Renderer2D::drawQuad(glm::translate(glm::mat4{1.0f}, glm::vec3{2.0f, 0.0f, 0.0f}) *
-                             glm::scale(glm::mat4{1.0f}, glm::vec3{1.0f, 1.0f, 1.0f}),
-                         m_testTetxure,
-                         glm::vec4{1.f, 1.f, 1.f, 1.0f});
-
-    Renderer2D::drawCircle(glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, -2.0f, 0.0f}) *
-                               glm::scale(glm::mat4{1.0f}, glm::vec3{1.0f, 1.0f, 1.0f}),
-                           glm::vec4{1.0f, 0.0f, 0.0f, 1.0f},
-                           1.0f);
-
-    Renderer2D::drawRect(glm::translate(glm::mat4{1.0f}, glm::vec3{2.0f, -2.0f, 0.0f}) *
-                             glm::scale(glm::mat4{1.0f}, glm::vec3{1.0f, 1.0f, 1.0f}),
-                         glm::vec4{0.0f, 0.0f, 1.0f, 1.0f});
-
-    Renderer::endRender();
+    m_context.activeScene->onUpdateEditor(0.0f, m_context.editorCamera);
 }
 
 void EditorLayer::onEvent(Event& _event)

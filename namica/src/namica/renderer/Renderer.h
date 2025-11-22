@@ -2,7 +2,6 @@
 
 #include "namica/core/Base.h"
 #include "namica/core/TypeMacros.h"
-#include "namica/core/Memory.h"
 #include <glm/glm.hpp>
 
 namespace Namica
@@ -31,8 +30,7 @@ public:
      * @note 注意Renderer/Renderer2D内的所有渲染的接口均需要在此接口调用后进行使用
      *
      */
-    static void beginRender(glm::mat4 const& _cameraPV,
-                            Ref<Framebuffer> const& _frameBuffer = nullptr);
+    static void beginRender(glm::mat4 const& _cameraPV);
 
     /**
      * @brief 终止渲染
@@ -53,12 +51,27 @@ public:
     static void clear();
 
     /**
-     * @brief 更新渲染窗口大小
+     * @brief 更新渲染视图大小
      *
      * @param _width 渲染宽度
      * @param _height 渲染高度
      */
     static void updateViewport(uint32_t _width, uint32_t _height);
+
+    /**
+     * @brief 返回渲染视图宽度
+     */
+    static uint32_t getViewportWidth();
+
+    /**
+     * @brief 返回渲染视图高度
+     */
+    static uint32_t getViewportHeight();
+
+    /**
+     * @brief 返回渲染帧缓冲区的RendererID
+     */
+    static uint32_t getFramebufferRendererID();
 
     CLASS_DISABLE_COPY_MOVE(Renderer)
 };

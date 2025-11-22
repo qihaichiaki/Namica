@@ -37,8 +37,8 @@ void ViewportPanel::onUpdate()
         }
 
         if (m_stableFrames >= 2 && m_viewportSize.x > 0.0f && m_viewportSize.y > 0.0f &&
-            (static_cast<uint32_t>(m_viewportSize.x) != m_context->framebuffer->getWidth() ||
-             static_cast<uint32_t>(m_viewportSize.y) != m_context->framebuffer->getHeight()))
+            (static_cast<uint32_t>(m_viewportSize.x) != Renderer::getViewportWidth() ||
+             static_cast<uint32_t>(m_viewportSize.y) != Renderer::getViewportHeight()))
         {
             uint32_t const viewWidth{static_cast<uint32_t>(m_viewportSize.x)};
             uint32_t const viewHeight{static_cast<uint32_t>(m_viewportSize.y)};
@@ -68,7 +68,7 @@ void ViewportPanel::onImGuiRenderer()
     m_viewportSize = {viewportPanelSize.x, viewportPanelSize.y};
 
     // 显示视图. v方向上反转一下
-    ImGui::Image((void*)(uintptr_t)(m_context->framebuffer->getColorAttachmentRendererID(0)),
+    ImGui::Image((void*)(uintptr_t)(Renderer::getFramebufferRendererID()),
                  ImVec2{m_viewportSize.x, m_viewportSize.y},
                  ImVec2{0, 1},
                  ImVec2{1, 0});  // v方向反转一下
