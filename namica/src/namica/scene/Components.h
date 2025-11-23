@@ -88,8 +88,8 @@ struct NativeScriptComponent
 {
     ScriptableEntity* instance{nullptr};  // 脚本示例, 在引擎运行时会被创建
 
-    void (*instantiateScript)(NativeScriptComponent*) = nullptr;  // 延迟创建脚本对象函数
-    void (*destroyScript)(NativeScriptComponent*) = nullptr;      // 销毁脚本对象函数
+    ScriptableEntity* (*instantiateScript)() = nullptr;  // 延迟创建脚本对象函数
+    void (*destroyScript)(ScriptableEntity*) = nullptr;  // 销毁脚本对象函数
 
     /**
      * @brief 脚本对象绑定实际脚本类
@@ -100,12 +100,9 @@ struct NativeScriptComponent
         requires std::is_base_of_v<ScriptableEntity, T>
     void bind()
     {
-        instantiateScript = [](NativeScriptComponent* _other) -> void {
-            _other->instance = new T{};
-        };
-        destroyScript = [](NativeScriptComponent* _other) -> void {
-            delete static_cast<T*>(_other->instance);
-            _other->instance = nullptr;
+        instantiateScript = []() -> ScriptableEntity* { return new T{}; };
+        destroyScript = [](ScriptableEntity* _instance) -> void {
+            delete static_cast<T*>(_instance);
         };
     }
 };
@@ -115,17 +112,10 @@ struct NativeScriptComponent
  */
 struct Rigidbody2DComponent
 {
-    enum class BodyType
-    {
-        Static,    // 完全静止
-        Dynamic,   // 运动的
-        Kinematic  // 不受力的作用
-    };
-
-    BodyType type{BodyType::Static};
+    Physics2D::RigidbodyType type{Physics2D::RigidbodyType::Static};
     bool fixedRotation{false};  // 是否锁定对象在z轴上的旋转
 
-    B2BodyHandle bodyId{};
+    Physics2D::BodyHandle bodyId{};
 };
 
 /**
@@ -135,9 +125,10 @@ struct BoxCollider2DComponent
 {
     glm::vec2 offset{0.0f, 0.0f};
     glm::vec2 size{0.5f, 0.5f};
+    float rotation{0.0f};
 
     // 物理材质
-    PhysicalMaterials physicalMaterials{};
+    Physics2D::Materials physicalMaterials{};
 };
 
 /**
@@ -148,7 +139,7 @@ struct CircleCollider2DComponent
     glm::vec2 offset{0.0f, 0.0f};
     float radius{0.0f};
 
-    PhysicalMaterials physicalMaterials{};
+    Physics2D::Materials physicalMaterials{};
 };
 
 }  // namespace Namica

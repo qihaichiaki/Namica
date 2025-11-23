@@ -16,7 +16,7 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
   - [x] viewport
 - [x] ECS搭建完成
   - [x] entity, component, Scene
-  - [ ] box2d物理引擎引进
+  - [x] box2d物理引擎引进
 - [ ] build runtime系统
 
 

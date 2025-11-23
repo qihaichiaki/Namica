@@ -5,6 +5,7 @@
 #include "namica/core/Memory.h"
 #include "namica/core/UUID.h"
 #include "namica/core/Time.h"
+#include "namica/scene/Physics.h"
 #include <string>
 #include <entt.hpp>
 
@@ -94,6 +95,11 @@ public:
      */
     NAMICA_API void onStopRuntime();
 
+    /**
+     * @brief 设置是否绘制碰撞箱线框
+     */
+    NAMICA_API void setDrawColliders2D(bool _enable);
+
 public:
     /**
      * @brief 创建一个场景对象
@@ -109,11 +115,20 @@ public:
     NAMICA_API static Ref<Scene> copy(Ref<Scene> const& _other);
 
 private:
-    void onCameraComponentAdded(entt::registry& _registry, entt::entity _entity);
+    void onCameraComponentAdded(entt::registry& _registry, entt::entity _enid);
+    void onRigidbody2DComponentAdded(entt::registry& _registry, entt::entity _enid);
+    void onBoxCollider2DComponentAdded(entt::registry& _registry, entt::entity _enid);
+    void onCircleCollider2DComponentAdded(entt::registry& _registry, entt::entity _enid);
+
+    void onRenderer(glm::mat4 const& _projectionView);
+
     Scene();
 
 private:
-    entt::registry m_registry;  // entt注册管理器, 管理组件和实体
+    entt::registry m_registry;               // entt注册管理器, 管理组件和实体
+    Physics2D::PhysicsWorld m_physicsWorld;  // 2D物理世界
+
+    bool m_isDrawColliders2D{false};  // 是否绘制2d碰撞器线框
     uint32_t m_viewportWidth{0};
     uint32_t m_viewportHeight{0};
 

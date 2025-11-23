@@ -5,6 +5,9 @@
 #include "namica/renderer/Renderer.h"
 #include "namica/renderer/EditorCamera.h"
 #include "namica/renderer/Renderer2D.h"
+#include "namica/scene/ScriptableEntity.h"
+
+#include <glm/glm.hpp>
 
 namespace Namica
 {
@@ -99,10 +102,60 @@ private:
     std::vector<ComponentInfo> m_components;
 };
 
-void Scene::onCameraComponentAdded(entt::registry& _registry, entt::entity _entity)
+void Scene::onCameraComponentAdded(entt::registry& _registry, entt::entity _enid)
 {
-    CameraComponent& cameraComponent{_registry.get<CameraComponent>(_entity)};
-    cameraComponent.camera.updateViewportSize(m_viewportWidth, m_viewportHeight);
+    CameraComponent& camera{_registry.get<CameraComponent>(_enid)};
+    camera.camera.updateViewportSize(m_viewportWidth, m_viewportHeight);
+}
+
+void Scene::onRigidbody2DComponentAdded(entt::registry& _registry, entt::entity _enid)
+{
+    if (m_physicsWorld.isRunning())
+    {
+        Rigidbody2DComponent& rigidbody2D{_registry.get<Rigidbody2DComponent>(_enid)};
+        TransformComponent& transform{_registry.get<TransformComponent>(_enid)};
+        rigidbody2D.bodyId =
+            m_physicsWorld.createBody(rigidbody2D.type,
+                                      {transform.translation.x, transform.translation.y},
+                                      transform.rotation.z,
+                                      rigidbody2D.fixedRotation);
+    }
+}
+
+void Scene::onBoxCollider2DComponentAdded(entt::registry& _registry, entt::entity _enid)
+{
+    if (m_physicsWorld.isRunning())
+    {
+        BoxCollider2DComponent& boxCollider2D{_registry.get<BoxCollider2DComponent>(_enid)};
+        NAMICA_CORE_ASSERT(m_registry.all_of<Rigidbody2DComponent>(_enid),
+                           "添加box2d碰撞器必须存在刚体组件!");
+        Rigidbody2DComponent& rigidbody2D{_registry.get<Rigidbody2DComponent>(_enid)};
+        TransformComponent& transform{_registry.get<TransformComponent>(_enid)};
+
+        m_physicsWorld.attachBodyBoxShape(
+            rigidbody2D.bodyId,
+            boxCollider2D.offset,
+            {boxCollider2D.size.x * transform.scale.x, boxCollider2D.size.y * transform.scale.y},
+            boxCollider2D.rotation,
+            boxCollider2D.physicalMaterials);
+    }
+}
+
+void Scene::onCircleCollider2DComponentAdded(entt::registry& _registry, entt::entity _enid)
+{
+    if (m_physicsWorld.isRunning())
+    {
+        CircleCollider2DComponent& circleCollider2D{
+            _registry.get<CircleCollider2DComponent>(_enid)};
+        NAMICA_CORE_ASSERT(m_registry.all_of<Rigidbody2DComponent>(_enid),
+                           "添加Circle碰撞器必须存在刚体组件!");
+        Rigidbody2DComponent& rigidbody2D{_registry.get<Rigidbody2DComponent>(_enid)};
+
+        m_physicsWorld.attacheBodyCircleShape(rigidbody2D.bodyId,
+                                              circleCollider2D.offset,
+                                              circleCollider2D.radius,
+                                              circleCollider2D.physicalMaterials);
+    }
 }
 
 Scene::Scene()
@@ -127,6 +180,10 @@ Scene::Scene()
 
     // 相机组件添加时初始化行为
     m_registry.on_construct<CameraComponent>().connect<&Scene::onCameraComponentAdded>(this);
+    m_registry.on_construct<CameraComponent>().connect<&Scene::onRigidbody2DComponentAdded>(this);
+    m_registry.on_construct<CameraComponent>().connect<&Scene::onBoxCollider2DComponentAdded>(this);
+    m_registry.on_construct<CameraComponent>().connect<&Scene::onCircleCollider2DComponentAdded>(
+        this);
 }
 
 Scene::~Scene()
@@ -142,6 +199,8 @@ Ref<Scene> Scene::copy(Ref<Scene> const& _other)
 {
     Ref<Scene> newScene{createRef<Scene>()};
     // 常规的其他属性
+    newScene->m_viewportWidth = _other->m_viewportWidth;
+    newScene->m_viewportHeight = _other->m_viewportHeight;
 
     std::unordered_map<UUID, entt::entity> enttMap;
     auto otherEntitiesView = _other->m_registry.view<IDComponent>();
@@ -189,7 +248,20 @@ bool Scene::destoryEntity(Entity _entity)
 {
     if (containsEntity(_entity))
     {
+        if (_entity.hasComponent<NativeScriptComponent>())
+        {
+            NativeScriptComponent& nativeScript{_entity.getComponent<NativeScriptComponent>()};
+            if (nativeScript.instance)
+            {
+                nativeScript.instance->onDestroy();
+                nativeScript.destroyScript(nativeScript.instance);
+                nativeScript.instance = nullptr;
+            }
+        }
+        // TODO: 还需要检查运行时的刚体组件, 一并从物理世界中进行移除
+
         m_registry.destroy(_entity);
+
         return true;
     }
     else
@@ -232,10 +304,10 @@ void Scene::onViewportResize(uint32_t _width, uint32_t _height)
     }
 }
 
-void Scene::onUpdateEditor(Timestep _ts, EditorCamera const& _editorCamera)
+void Scene::onRenderer(glm::mat4 const& _projectionView)
 {
     // 渲染更新
-    Renderer::beginRender(_editorCamera.getProjectionView());
+    Renderer::beginRender(_projectionView);
 
     Renderer::clear();
 
@@ -271,19 +343,150 @@ void Scene::onUpdateEditor(Timestep _ts, EditorCamera const& _editorCamera)
                                    static_cast<int>(_enid));
         });
 
+    if (m_isDrawColliders2D)
+    {
+        m_registry.view<TransformComponent, BoxCollider2DComponent>().each(
+            [](entt::entity _enid,
+               TransformComponent& _transform,
+               BoxCollider2DComponent& _boxCollider2D) {
+                Renderer2D::drawRect(
+                    _transform.translation +
+                        glm::vec3{_boxCollider2D.offset.x, _boxCollider2D.offset.y, 0.0f},
+                    {_transform.scale.x * _boxCollider2D.size.x,
+                     _transform.scale.y * _boxCollider2D.size.y},
+                    {0.0f, 1.0f, 0.0f, 1.f},
+                    static_cast<int>(_enid));
+            });
+
+        m_registry.view<TransformComponent, CircleCollider2DComponent>().each(
+            [](entt::entity _enid,
+               TransformComponent& _transform,
+               CircleCollider2DComponent& _circleCollider2D) {
+                TransformComponent circleCollider2DTransform{_transform};
+                circleCollider2DTransform.translation +=
+                    glm::vec3{_circleCollider2D.offset.x, _circleCollider2D.offset.y, 0.0f};
+                circleCollider2DTransform.scale = glm::vec3{
+                    _circleCollider2D.radius * 2.0f, _circleCollider2D.radius * 2.0f, 1.0f};
+                Renderer2D::drawCircle(circleCollider2DTransform.getTransform(),
+                                       {0.0f, 1.0f, 0.0f, 1.f},
+                                       0.01f,
+                                       0.005f,
+                                       static_cast<int>(_enid));
+            });
+    }
+
     Renderer::endRender();
+}
+
+void Scene::onUpdateEditor(Timestep _ts, EditorCamera const& _editorCamera)
+{
+    onRenderer(_editorCamera.getProjectionView());
 }
 
 void Scene::onStartRuntime()
 {
+    // 创建物理世界, 为所有存在刚体组件的对象准备物理世界对象
+    m_physicsWorld.init();
+
+    // 创建物理对象, 和附加形状
+    m_registry.group<Rigidbody2DComponent>().each([this](entt::entity _enid,
+                                                         Rigidbody2DComponent& _rigidbody2D) {
+        Entity entity{_enid, this};
+
+        TransformComponent& transform{entity.getComponent<TransformComponent>()};
+        _rigidbody2D.bodyId =
+            m_physicsWorld.createBody(_rigidbody2D.type,
+                                      {transform.translation.x, transform.translation.y},
+                                      transform.rotation.z,
+                                      _rigidbody2D.fixedRotation);
+
+        if (entity.hasComponent<BoxCollider2DComponent>())
+        {
+            BoxCollider2DComponent& boxCollider2D{entity.getComponent<BoxCollider2DComponent>()};
+            m_physicsWorld.attachBodyBoxShape(_rigidbody2D.bodyId,
+                                              boxCollider2D.offset,
+                                              {boxCollider2D.size.x * transform.scale.x,
+                                               boxCollider2D.size.y * transform.scale.y},
+                                              boxCollider2D.rotation,
+                                              boxCollider2D.physicalMaterials);
+        }
+
+        if (entity.hasComponent<CircleCollider2DComponent>())
+        {
+            CircleCollider2DComponent& circleCollider2D{
+                entity.getComponent<CircleCollider2DComponent>()};
+            m_physicsWorld.attacheBodyCircleShape(_rigidbody2D.bodyId,
+                                                  circleCollider2D.offset,
+                                                  circleCollider2D.radius,
+                                                  circleCollider2D.physicalMaterials);
+        }
+    });
 }
 
 void Scene::onUpdateRuntime(Timestep _ts)
 {
+    // 游戏脚本更新
+    m_registry.group<NativeScriptComponent>().each(
+        [this, _ts](entt::entity _enid, NativeScriptComponent& _nativeScript) {
+            if (!_nativeScript.instance)
+            {
+                if (_nativeScript.instantiateScript)
+                {
+                    _nativeScript.instance = _nativeScript.instantiateScript();
+                    _nativeScript.instance->m_entity = {_enid, this};
+                    _nativeScript.instance->onCreate();
+                }
+            }
+
+            if (_nativeScript.instance)
+            {
+                _nativeScript.instance->onUpdate(_ts);
+            }
+        });
+
+    // 物理世界更新
+    m_physicsWorld.onUpdate(_ts);
+
+    // 更新刚体组件的对象transform
+    m_registry.group<Rigidbody2DComponent>().each(
+        [this](entt::entity _enid, Rigidbody2DComponent& _rigidbody2D) {
+            Entity entity{_enid, this};
+            TransformComponent& transform{entity.getComponent<TransformComponent>()};
+            m_physicsWorld.getBodyTransform(
+                _rigidbody2D.bodyId, transform.translation, transform.rotation.z);
+        });
+
+    // 寻找运行时的主相机
+    Camera const* camera{nullptr};
+    glm::mat4 cameraTransform{1.0f};
+
+    auto view = m_registry.view<TransformComponent, CameraComponent>();
+    for (auto enid : view)
+    {
+        TransformComponent& _transform{view.get<TransformComponent>(enid)};
+        CameraComponent& _camera{view.get<CameraComponent>(enid)};
+        if (_camera.primary)
+        {
+            camera = &_camera.camera;
+            cameraTransform = _transform.getTransform();
+            break;
+        }
+    }
+
+    if (camera)
+    {
+        onRenderer(camera->getProjection() * glm::inverse(cameraTransform));
+    }
 }
 
 void Scene::onStopRuntime()
 {
+    m_physicsWorld.shutdown();
+}
+
+void Scene::setDrawColliders2D(bool _enable)
+{
+    m_isDrawColliders2D = _enable;
 }
 
 }  // namespace Namica
