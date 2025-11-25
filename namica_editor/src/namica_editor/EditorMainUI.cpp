@@ -1,6 +1,7 @@
 #include "namica_editor/EditorMainUI.h"
 #include "namica_editor/panel/ViewportPanel.h"
 #include "namica_editor/panel/InfoPanel.h"
+#include "namica_editor/panel/SceneHierarchyPanel.h"
 
 #include <imgui.h>
 
@@ -11,6 +12,7 @@ void EditorMainUI::editorPanelInit(EditorContext* _context)
 {
     m_panels.emplace_back(createRef<ViewportPanel>(_context));
     m_panels.emplace_back(createRef<InfoPanel>(_context));
+    m_panels.emplace_back(createRef<SceneHierarchyPanel>(_context));
 }
 
 void EditorMainUI::onUpdate()
@@ -81,7 +83,7 @@ void EditorMainUI::drawDockspace()
     ImGuiIO& io = ImGui::GetIO();
     ImGuiStyle& style = ImGui::GetStyle();
     float min_win_size_x = style.WindowMinSize.x;
-    style.WindowMinSize.x = 380.0f;  // 窗口被停靠, 宽度至少为370
+    style.WindowMinSize.x = 300.0f;  // 窗口被停靠, 宽度至少为370
     if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
     {
         ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");

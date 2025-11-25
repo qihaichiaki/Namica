@@ -40,14 +40,14 @@ void EditorLayer::onAttach()
     m_testTetxure = Texture2D::create("assets/textures/namica.png");
 
     // Debug
-    Entity testEntity1{m_context.activeScene->createEntity()};
+    Entity testEntity1{m_context.activeScene->createEntity("测试矩形")};
     testEntity1.addComponent<SpriteRendererComponent>();
 
-    Entity testEntity2{m_context.activeScene->createEntity()};
+    Entity testEntity2{m_context.activeScene->createEntity("测试纹理")};
     testEntity2.addComponent<SpriteRendererComponent>().texture = m_testTetxure;
     testEntity2.getComponent<TransformComponent>().translation = glm::vec3{2.0f, 0.0f, 0.0f};
 
-    Entity testEntity3{m_context.activeScene->createEntity()};
+    Entity testEntity3{m_context.activeScene->createEntity("测试圆形")};
     testEntity3.addComponent<CircleRendererComponent>().color = glm::vec4{1.0f, 0.0f, 0.0f, 1.0f};
     testEntity3.getComponent<TransformComponent>().translation = glm::vec3{0.0f, -2.0f, 0.0f};
 }

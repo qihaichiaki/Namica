@@ -3,6 +3,7 @@
 #include <namica/core/Memory.h>
 #include <namica/renderer/EditorCamera.h>
 #include <namica/scene/Scene.h>
+#include <namica/scene/Entity.h>
 
 namespace Namica
 {
@@ -13,6 +14,8 @@ struct EditorContext
 
     Ref<Scene> activeScene{nullptr};
     Ref<Scene> editorScene{nullptr};
+
+    Entity selectionContext{};
 };
 
 }  // namespace Namica

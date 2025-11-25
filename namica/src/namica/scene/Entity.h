@@ -10,6 +10,8 @@
 namespace Namica
 {
 
+class EntityIterator;
+
 class Entity
 {
 public:
@@ -108,10 +110,18 @@ public:
 
     /**
      * @brief 获取当前实体的子实体们
+     *
+     * @note 每次获取都要创建新的entity arr, 慎用
      */
     NAMICA_API std::vector<Entity> getChildren();
 
-    NAMICA_API operator entt::entity() const;
+    /**
+     * @brief 获取当前实体子实体们的迭代器
+     */
+    NAMICA_API EntityIterator getChildrenIterator();
+
+    NAMICA_API
+    operator entt::entity() const;
     NAMICA_API operator uint32_t() const;
     NAMICA_API operator bool() const;
     NAMICA_API bool operator==(Entity const& _other) const;

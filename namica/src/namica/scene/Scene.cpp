@@ -201,7 +201,7 @@ Ref<Scene> Scene::create(std::string const& _sceneName)
 
 Ref<Scene> Scene::copy(Ref<Scene> const& _other)
 {
-    Ref<Scene> newScene{createRef<Scene>()};
+    Ref<Scene> newScene{createRef<Scene>(_other->m_name)};
     // 常规的其他属性
     newScene->m_viewportWidth = _other->m_viewportWidth;
     newScene->m_viewportHeight = _other->m_viewportHeight;
@@ -215,9 +215,9 @@ Ref<Scene> Scene::copy(Ref<Scene> const& _other)
         enttMap.emplace(enid, newScene->createEntity(idComponent.id, tagComponent.name));
     }
 
-    for (entt::entity otherEnid : _other->m_rootEnids)
+    for (Entity& otherEntity : _other->m_rootEntities)
     {
-        newScene->m_rootEnids.emplace_back(enttMap.at(otherEnid));
+        newScene->m_rootEntities.emplace_back(Entity{enttMap.at(otherEntity), newScene.get()});
     }
 
     // 待删除实体列表不复制
@@ -246,7 +246,7 @@ Entity Scene::createEntity(std::string const& _name)
     entity.addComponent<TagComponent>(_name.empty() ? "新实体" : _name);
     entity.addComponent<TransformComponent>();
 
-    m_rootEnids.emplace_back(entity);
+    m_rootEntities.emplace_back(entity);
 
     return entity;
 }
@@ -259,7 +259,7 @@ Entity Scene::createEntity(const UUID& _uuid, std::string const& _name)
     entity.addComponent<TagComponent>(_name.empty() ? "新实体" : _name);
     entity.addComponent<TransformComponent>();
 
-    m_rootEnids.emplace_back(entity);
+    m_rootEntities.emplace_back(entity);
 
     return entity;
 }
@@ -300,8 +300,12 @@ bool Scene::addChildEntity(Entity _parent, Entity _child)
         return false;
     }
 
-    RelationshipComponent& childRelationship{_child.getComponent<RelationshipComponent>()};
-    RelationshipComponent& parentRelationship{_parent.getComponent<RelationshipComponent>()};
+    RelationshipComponent& childRelationship{_child.hasComponent<RelationshipComponent>()
+                                                 ? _child.getComponent<RelationshipComponent>()
+                                                 : _child.addComponent<RelationshipComponent>()};
+    RelationshipComponent& parentRelationship{_parent.hasComponent<RelationshipComponent>()
+                                                  ? _parent.getComponent<RelationshipComponent>()
+                                                  : _parent.addComponent<RelationshipComponent>()};
 
     if (childRelationship.parent != entt::null)
     {
@@ -320,7 +324,7 @@ bool Scene::addChildEntity(Entity _parent, Entity _child)
     else
     {
         // 子节点不存在父节点, 则将其从root列表中移除
-        std::erase(m_rootEnids, _child);
+        std::erase(m_rootEntities, _child);
     }
 
     // 更新父子关系
@@ -352,7 +356,7 @@ bool Scene::removeChildEntity(Entity _parent, Entity _child)
     childRelationship.parent = entt::null;
     std::erase(parentRelationship.children, _child);
     // TODO: 此处可设置插位
-    m_rootEnids.emplace_back(_child);
+    m_rootEntities.emplace_back(_child);
 
     return true;
 }
@@ -390,24 +394,32 @@ void Scene::destroyEntityRecursive(entt::entity _enid)
         m_physicsWorld.destroyBody(m_registry.get<Rigidbody2DComponent>(_enid).bodyId);
     }
 
-    /// 删除子节点 TODO
-    //     if (_entity.hasComponent<RelationshipComponent>())
-    // {
-    //     RelationshipComponent& relationship{_entity.getComponent<RelationshipComponent>()};
-    //     if (relationship.parent != entt::null &&
-    //         m_enidsToDestroy.find(relationship.parent) == m_enidsToDestroy.end())
-    //     {
-    //         // 如果其父节点不处于待删除列表, 则选择其并且将其删除
-    //         std::erase(m_registry.get<RelationshipComponent>(relationship.parent).children,
-    //                    _entity);
-    //     }
+    // 删除子节点
+    if (m_registry.any_of<RelationshipComponent>(_enid))
+    {
+        RelationshipComponent& relationship{m_registry.get<RelationshipComponent>(_enid)};
+        if (relationship.parent != entt::null &&
+            m_enidsToDestroy.find(relationship.parent) == m_enidsToDestroy.end())
+        {
+            // 如果其父节点不处于待删除列表, 则父节点
+            std::erase(m_registry.get<RelationshipComponent>(relationship.parent).children, _enid);
+        }
 
-    //     for (auto enid : relationship.children)
-    //     {
-    //         // 递归删除所有子节点
-    //         destoryEntity(Entity{enid, this});
-    //     }
-    // }
+        if (relationship.parent == entt::null)
+        {
+            // 从rootEnids中进行删除
+            std::erase(m_rootEntities, _enid);
+        }
+
+        for (auto childEnid : relationship.children)
+        {
+            destroyEntityRecursive(childEnid);
+        }
+    }
+    else
+    {
+        std::erase(m_rootEntities, _enid);
+    }
 
     m_registry.destroy(_enid);
 }
@@ -415,11 +427,15 @@ void Scene::destroyEntityRecursive(entt::entity _enid)
 // 延迟删除, 真正删除entity的地方
 void Scene::flushDestroyQueue()
 {
-    for (entt::entity enid : m_enidsToDestroy)
+    if (m_enidsToDestroy.size() > 0)
     {
-        destroyEntityRecursive(enid);
+        for (entt::entity enid : m_enidsToDestroy)
+        {
+            destroyEntityRecursive(enid);
+        }
+
+        m_enidsToDestroy.clear();
     }
-    m_enidsToDestroy.clear();
 }
 
 Entity Scene::copyEntity(Entity _entity)
@@ -436,7 +452,7 @@ Entity Scene::copyEntity(Entity _entity)
             RelationshipComponent& relationship{newEntity.getComponent<RelationshipComponent>()};
             if (relationship.parent == entt::null)
             {
-                m_rootEnids.emplace_back(newEntity);
+                m_rootEntities.emplace_back(newEntity);
             }
 
             std::vector<entt::entity> tempChildren{};
@@ -452,7 +468,7 @@ Entity Scene::copyEntity(Entity _entity)
         }
         else
         {
-            m_rootEnids.emplace_back(newEntity);
+            m_rootEntities.emplace_back(newEntity);
         }
     }
     else
@@ -655,6 +671,7 @@ void Scene::onUpdateRuntime(Timestep _ts)
     {
         onRenderer(camera->getProjection() * glm::inverse(cameraTransform));
     }
+
     // 延迟删除对象
     flushDestroyQueue();
 }
@@ -667,6 +684,11 @@ void Scene::onStopRuntime()
 void Scene::setDrawColliders2D(bool _enable)
 {
     m_isDrawColliders2D = _enable;
+}
+
+std::vector<Entity>& Scene::getRootEntities()
+{
+    return m_rootEntities;
 }
 
 }  // namespace Namica

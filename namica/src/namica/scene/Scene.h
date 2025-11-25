@@ -123,6 +123,11 @@ public:
      */
     NAMICA_API void setDrawColliders2D(bool _enable);
 
+    /**
+     * @brief 返回当前场景中所有没有父节点的实体们
+     */
+    NAMICA_API std::vector<Entity>& getRootEntities();
+
 public:
     /**
      * @brief 创建一个场景对象
@@ -147,6 +152,7 @@ private:
     void destroyEntityRecursive(entt::entity);
     void flushDestroyQueue();
 
+    // Scene() = default;
     Scene(std::string const&);
 
 private:
@@ -158,7 +164,7 @@ private:
     uint32_t m_viewportWidth{0};
     uint32_t m_viewportHeight{0};
 
-    std::vector<entt::entity> m_rootEnids;  // 当前场景下所有root enid的缓存
+    std::vector<Entity> m_rootEntities;  // 当前场景下所有root 的缓存
     std::unordered_set<entt::entity>
         m_enidsToDestroy;  // 即将在 flushDestroyQueue中要销毁的当前场景下的scene
 

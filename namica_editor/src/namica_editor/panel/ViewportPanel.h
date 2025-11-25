@@ -24,7 +24,7 @@ private:
     int m_stableFrames{0};
 
     bool m_isFocused{false};  // 鼠标聚焦到此面板上
-    bool m_isHovered{false};  // 鼠标悬浮在此面板上
+    bool m_isHovered{true};   // 鼠标悬浮在此面板上
 };
 
 }  // namespace Namica

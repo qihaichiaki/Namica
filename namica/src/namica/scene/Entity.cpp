@@ -1,5 +1,6 @@
 #include "namica/scene/Entity.h"
 #include "namica/core/Log.h"
+#include "namica/scene/EntityIterator.h"
 
 namespace Namica
 {
@@ -65,6 +66,17 @@ std::vector<Entity> Entity::getChildren()
         }
     }
     return children;
+}
+
+EntityIterator Entity::getChildrenIterator()
+{
+    if (hasComponent<RelationshipComponent>())
+    {
+        RelationshipComponent& relationship{getComponent<RelationshipComponent>()};
+        return EntityIterator{&(relationship.children), m_scene};
+    }
+
+    return EntityIterator{};
 }
 
 Entity::operator entt::entity() const
