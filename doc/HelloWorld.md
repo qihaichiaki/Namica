@@ -17,6 +17,7 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
 - [x] ECS搭建完成
   - [x] entity, component, Scene
   - [x] box2d物理引擎引进
+  - [x] 父子关系搭建
 - [ ] build runtime系统
 
 
@@ -145,6 +146,14 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
 * 组件聚合处, 通过查询不同的组件，从而实现其对应的功能.
 * 渲染模块: 查询全部的sprite组件, 获取其transform和相关texture进行渲染即可
 * 物理模块: 查询到全部的刚体组件, 对transform执行物理规则约束即可(集成box2d)
+
+* Entity的父子关系:
+  * 运行时使用RelationshipComponent组件中的entt::entity组织关系
+  * 场景中存在root entity的缓存的顺序列表, 方便外层GUI访问顺序
+  * 运行时, 父子之间会绑定transform的更新, 对于子entity, 其tranform为局部相当于父entity的transform而言的
+  * entity中会存在代理scene的相关父子关系接口便于调用
+
+* Scene中的entity设置为延迟删除
 
 #### Editor APP[Editor]
 ##### Editor GUI

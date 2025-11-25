@@ -82,6 +82,19 @@ BodyHandle PhysicsWorld::createBody(RigidbodyType _type,
     return toBodyHandle(b2CreateBody(tob2WorldId(m_worldHandle), &bodyDef));
 }
 
+bool PhysicsWorld::destroyBody(BodyHandle const& _body)
+{
+    b2BodyId deleteBody{tob2BodyId(_body)};
+    if (!b2Body_IsValid(deleteBody))
+    {
+        NAMICA_CORE_WARN("尝试删除一个不存在的物理实体");
+        return false;
+    }
+
+    b2DestroyBody(deleteBody);
+    return true;
+}
+
 void PhysicsWorld::attachBodyBoxShape(BodyHandle const& _body,
                                       glm::vec2 const& _offset,
                                       glm::vec2 const& _halfSize,

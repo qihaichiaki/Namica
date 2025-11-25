@@ -21,6 +21,11 @@ public:
     NAMICA_API ~Scene();
 
     /**
+     * @brief 获取当前场景的名字
+     */
+    NAMICA_API const std::string& getName() const;
+
+    /**
      * @brief 判断传入的entity是在当前场景存在
      *
      * @param _entity 实体对象
@@ -45,6 +50,24 @@ public:
      * @note 注意创建出的对象默认存在tag, transform组件
      */
     NAMICA_API Entity createEntity(const UUID& _uuid, std::string const& _name = "新实体");
+
+    /**
+     * @brief 为实体对象添加子实体
+     *
+     * @param _parent 要添加子对象的父对象
+     * @param _child 要添加的子对象
+     * @return 是否添加成功
+     */
+    NAMICA_API bool addChildEntity(Entity _parent, Entity _child);
+
+    /**
+     * @brief 实体对象删除子实体
+     *
+     * @param _parent 要删除子对象的父对象
+     * @param _child 要删除的子对象
+     * @return 是否删除成功
+     */
+    NAMICA_API bool removeChildEntity(Entity _parent, Entity _child);
 
     /**
      * @brief 从当前场景删除对应的实体对象
@@ -104,7 +127,7 @@ public:
     /**
      * @brief 创建一个场景对象
      */
-    NAMICA_API static Ref<Scene> create();
+    NAMICA_API static Ref<Scene> create(std::string const& _sceneName = "新场景");
 
     /**
      * @brief 通过一个场景, 拷贝出一个新的场景
@@ -121,16 +144,23 @@ private:
     void onCircleCollider2DComponentAdded(entt::registry& _registry, entt::entity _enid);
 
     void onRenderer(glm::mat4 const& _projectionView);
+    void destroyEntityRecursive(entt::entity);
+    void flushDestroyQueue();
 
-    Scene();
+    Scene(std::string const&);
 
 private:
+    std::string m_name{};                    // 场景名字
     entt::registry m_registry;               // entt注册管理器, 管理组件和实体
     Physics2D::PhysicsWorld m_physicsWorld;  // 2D物理世界
 
     bool m_isDrawColliders2D{false};  // 是否绘制2d碰撞器线框
     uint32_t m_viewportWidth{0};
     uint32_t m_viewportHeight{0};
+
+    std::vector<entt::entity> m_rootEnids;  // 当前场景下所有root enid的缓存
+    std::unordered_set<entt::entity>
+        m_enidsToDestroy;  // 即将在 flushDestroyQueue中要销毁的当前场景下的scene
 
     friend class Entity;
     // 禁止移动和拷贝对象

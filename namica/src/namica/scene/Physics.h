@@ -73,6 +73,14 @@ public:
                                      bool _fixedRotation);
 
     /**
+     * @brief 将对象从物理世界中进行移除
+     *
+     * @param _body 待移除的对象
+     * @return 删除是否成功
+     */
+    NAMICA_API bool destroyBody(BodyHandle const& _body);
+
+    /**
      * @brief 为物理世界中的对象添加box形状
      *
      * @param _body 物理世界中对象句柄

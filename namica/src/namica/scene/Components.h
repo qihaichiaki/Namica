@@ -6,6 +6,8 @@
 #include "namica/scene/Physics.h"
 
 #include <string>
+#include <vector>
+#include <entt.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -46,6 +48,15 @@ struct TransformComponent
         return glm::translate(glm::mat4{1.0f}, translation) * rotationMat4 *
             glm::scale(glm::mat4{1.0f}, scale);
     }
+};
+
+/**
+ * @brief 实体中的关系组件, 用来管理entity之间层级关系
+ */
+struct RelationshipComponent
+{
+    entt::entity parent{entt::null};       // 父entity的标识
+    std::vector<entt::entity> children{};  // 子entity们
 };
 
 struct CameraComponent

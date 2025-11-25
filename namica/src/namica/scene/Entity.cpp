@@ -40,6 +40,33 @@ std::string const& Entity::getName()
     return getComponent<TagComponent>().name;
 }
 
+Entity Entity::getParent()
+{
+    Entity parent{};
+    if (hasComponent<RelationshipComponent>())
+    {
+        parent = Entity{getComponent<RelationshipComponent>().parent, m_scene};
+    }
+
+    return parent;
+}
+
+std::vector<Entity> Entity::getChildren()
+{
+    std::vector<Entity> children{};
+    if (hasComponent<RelationshipComponent>())
+    {
+        RelationshipComponent& relationship{getComponent<RelationshipComponent>()};
+        size_t const childrenSize{relationship.children.size()};
+        children.resize(childrenSize);
+        for (size_t i{0}; i < childrenSize; ++i)
+        {
+            children[i] = Entity{relationship.children[i], m_scene};
+        }
+    }
+    return children;
+}
+
 Entity::operator entt::entity() const
 {
     return m_entityHandle;

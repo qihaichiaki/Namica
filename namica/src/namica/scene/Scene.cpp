@@ -18,15 +18,14 @@ namespace Namica
 template <typename Component>
 static void copyComponent(entt::registry& _dstRegistry,
                           entt::registry& _srcRegistry,
-                          std::unordered_map<UUID, entt::entity> const& _enttMap)
+                          std::unordered_map<entt::entity, entt::entity> const& _enttMap)
 {
     auto view = _srcRegistry.view<Component>();
     for (auto enid : view)
     {
-        UUID id = _srcRegistry.get<IDComponent>(enid).id;
-        NAMICA_CORE_ASSERT(_enttMap.find(id) != _enttMap.end(), "未知的UUID对象");
+        NAMICA_CORE_ASSERT(_enttMap.find(enid) != _enttMap.end(), "未知的UUID对象");
 
-        entt::entity newEnid = _enttMap.at(id);
+        entt::entity newEnid = _enttMap.at(enid);
         _dstRegistry.emplace_or_replace<Component>(
             newEnid, view.template get<Component>(enid));  // 调用各个组件的拷贝构造函数
     }
@@ -47,7 +46,7 @@ struct ComponentInfo
     using SceneCopyFunc =
         std::function<void(entt::registry& _dstRegistry,
                            entt::registry& _srcRegistry,
-                           std::unordered_map<UUID, entt::entity> const& _enttMap)>;
+                           std::unordered_map<entt::entity, entt::entity> const& _enttMap)>;
 
     EntityCopyFunc entityCopyFunc;
     SceneCopyFunc sceneCopyFunc;
@@ -66,7 +65,7 @@ public:
         };
         info.sceneCopyFunc = [](entt::registry& _dstRegistry,
                                 entt::registry& _srcRegistry,
-                                std::unordered_map<UUID, entt::entity> const& _enttMap) {
+                                std::unordered_map<entt::entity, entt::entity> const& _enttMap) {
             copyComponent<Component>(_dstRegistry, _srcRegistry, _enttMap);
         };
 
@@ -83,7 +82,7 @@ public:
 
     static void sceneCopy(entt::registry& _dstRegistry,
                           entt::registry& _srcRegistry,
-                          std::unordered_map<UUID, entt::entity> const& _enttMap)
+                          std::unordered_map<entt::entity, entt::entity> const& _enttMap)
     {
         for (auto& info : get().m_components)
         {
@@ -158,7 +157,7 @@ void Scene::onCircleCollider2DComponentAdded(entt::registry& _registry, entt::en
     }
 }
 
-Scene::Scene()
+Scene::Scene(std::string const& _sceneName) : m_name{_sceneName}
 {
     // 组件注册表, 控制组件在场景中的相关行为
     // TODO: 添加SceneManger后统一管理
@@ -166,6 +165,7 @@ Scene::Scene()
     if (!isInit)
     {
         ComponentRegistry::componentRegister<TransformComponent>();
+        ComponentRegistry::componentRegister<RelationshipComponent>();
         ComponentRegistry::componentRegister<CameraComponent>();
         ComponentRegistry::componentRegister<SpriteRendererComponent>();
         ComponentRegistry::componentRegister<CircleRendererComponent>();
@@ -180,19 +180,23 @@ Scene::Scene()
 
     // 相机组件添加时初始化行为
     m_registry.on_construct<CameraComponent>().connect<&Scene::onCameraComponentAdded>(this);
-    m_registry.on_construct<CameraComponent>().connect<&Scene::onRigidbody2DComponentAdded>(this);
-    m_registry.on_construct<CameraComponent>().connect<&Scene::onBoxCollider2DComponentAdded>(this);
-    m_registry.on_construct<CameraComponent>().connect<&Scene::onCircleCollider2DComponentAdded>(
+    // 刚体组件添加行为
+    m_registry.on_construct<Rigidbody2DComponent>().connect<&Scene::onRigidbody2DComponentAdded>(
         this);
+    // 碰撞体组件添加行为
+    m_registry.on_construct<BoxCollider2DComponent>()
+        .connect<&Scene::onBoxCollider2DComponentAdded>(this);
+    m_registry.on_construct<CircleCollider2DComponent>()
+        .connect<&Scene::onCircleCollider2DComponentAdded>(this);
 }
 
 Scene::~Scene()
 {
 }
 
-Ref<Scene> Scene::create()
+Ref<Scene> Scene::create(std::string const& _sceneName)
 {
-    return createRef<Scene>();
+    return createRef<Scene>(_sceneName);
 }
 
 Ref<Scene> Scene::copy(Ref<Scene> const& _other)
@@ -202,14 +206,21 @@ Ref<Scene> Scene::copy(Ref<Scene> const& _other)
     newScene->m_viewportWidth = _other->m_viewportWidth;
     newScene->m_viewportHeight = _other->m_viewportHeight;
 
-    std::unordered_map<UUID, entt::entity> enttMap;
+    std::unordered_map<entt::entity, entt::entity> enttMap;
     auto otherEntitiesView = _other->m_registry.view<IDComponent>();
     for (auto enid : otherEntitiesView)
     {
         IDComponent& idComponent{_other->m_registry.get<IDComponent>(enid)};
         TagComponent& tagComponent{_other->m_registry.get<TagComponent>(enid)};
-        enttMap.emplace(idComponent.id, newScene->createEntity(idComponent.id, tagComponent.name));
+        enttMap.emplace(enid, newScene->createEntity(idComponent.id, tagComponent.name));
     }
+
+    for (entt::entity otherEnid : _other->m_rootEnids)
+    {
+        newScene->m_rootEnids.emplace_back(enttMap.at(otherEnid));
+    }
+
+    // 待删除实体列表不复制
 
     // 复制组件
     ComponentRegistry::sceneCopy(newScene->m_registry, _other->m_registry, enttMap);
@@ -217,9 +228,14 @@ Ref<Scene> Scene::copy(Ref<Scene> const& _other)
     return newScene;
 }
 
+std::string const& Scene::getName() const
+{
+    return m_name;
+}
+
 bool Scene::containsEntity(Entity _entity) const
 {
-    return &(_entity.getScene()) == this;
+    return _entity.isValid() && &(_entity.getScene()) == this;
 }
 
 Entity Scene::createEntity(std::string const& _name)
@@ -229,6 +245,8 @@ Entity Scene::createEntity(std::string const& _name)
     entity.addComponent<IDComponent>();
     entity.addComponent<TagComponent>(_name.empty() ? "新实体" : _name);
     entity.addComponent<TransformComponent>();
+
+    m_rootEnids.emplace_back(entity);
 
     return entity;
 }
@@ -241,48 +259,205 @@ Entity Scene::createEntity(const UUID& _uuid, std::string const& _name)
     entity.addComponent<TagComponent>(_name.empty() ? "新实体" : _name);
     entity.addComponent<TransformComponent>();
 
+    m_rootEnids.emplace_back(entity);
+
     return entity;
+}
+
+// 判断_ancestor 是否是 _enid的祖先节点
+static bool isAncestor(entt::registry& _registry, entt::entity _ancestor, entt::entity _enid)
+{
+    while (_enid != entt::null)
+    {
+        if (_enid == _ancestor)
+        {
+            return true;
+        }
+
+        if (!_registry.any_of<RelationshipComponent>(_enid))
+        {
+            break;
+        }
+
+        _enid = _registry.get<RelationshipComponent>(_enid).parent;
+    }
+    return false;
+}
+
+bool Scene::addChildEntity(Entity _parent, Entity _child)
+{
+    if (!containsEntity(_parent) || !containsEntity(_child))
+    {
+        NAMICA_CORE_WARN(
+            "实体-{}或者实体-{}并不属于当前场景-{}", _parent.getName(), _child.getName(), m_name);
+        return false;
+    }
+
+    if (isAncestor(m_registry, _child, _parent))
+    {
+        NAMICA_CORE_WARN(
+            "实体-{}是实体-{}的祖先节点, 不允许形成环!", _child.getName(), _parent.getName());
+        return false;
+    }
+
+    RelationshipComponent& childRelationship{_child.getComponent<RelationshipComponent>()};
+    RelationshipComponent& parentRelationship{_parent.getComponent<RelationshipComponent>()};
+
+    if (childRelationship.parent != entt::null)
+    {
+        if (childRelationship.parent == _parent)
+        {
+            NAMICA_CORE_WARN(
+                "实体-{}已经是实体-{}的孩子节点了!", _child.getName(), _parent.getName(), m_name);
+            return false;
+        }
+
+        // 子节点存在其他父节点, 其他父节点进行移除
+        RelationshipComponent& oldParentRelationship{
+            m_registry.get<RelationshipComponent>(childRelationship.parent)};
+        std::erase(oldParentRelationship.children, _child);
+    }
+    else
+    {
+        // 子节点不存在父节点, 则将其从root列表中移除
+        std::erase(m_rootEnids, _child);
+    }
+
+    // 更新父子关系
+    childRelationship.parent = _parent;
+    parentRelationship.children.emplace_back(_child);
+
+    return true;
+}
+
+bool Scene::removeChildEntity(Entity _parent, Entity _child)
+{
+    if (!containsEntity(_parent) || !containsEntity(_child))
+    {
+        NAMICA_CORE_WARN(
+            "实体-{}或者实体-{}并不属于当前场景-{}", _parent.getName(), _child.getName(), m_name);
+        return false;
+    }
+
+    RelationshipComponent& childRelationship{_child.getComponent<RelationshipComponent>()};
+    RelationshipComponent& parentRelationship{_parent.getComponent<RelationshipComponent>()};
+
+    if (childRelationship.parent != _parent)
+    {
+        NAMICA_CORE_ASSERT(
+            "实体-{}并不是实体-{}的直接子节点!", _child.getName(), _parent.getName());
+        return false;
+    }
+
+    childRelationship.parent = entt::null;
+    std::erase(parentRelationship.children, _child);
+    // TODO: 此处可设置插位
+    m_rootEnids.emplace_back(_child);
+
+    return true;
 }
 
 bool Scene::destoryEntity(Entity _entity)
 {
     if (containsEntity(_entity))
     {
-        if (_entity.hasComponent<NativeScriptComponent>())
-        {
-            NativeScriptComponent& nativeScript{_entity.getComponent<NativeScriptComponent>()};
-            if (nativeScript.instance)
-            {
-                nativeScript.instance->onDestroy();
-                nativeScript.destroyScript(nativeScript.instance);
-                nativeScript.instance = nullptr;
-            }
-        }
-        // TODO: 还需要检查运行时的刚体组件, 一并从物理世界中进行移除
-
-        m_registry.destroy(_entity);
-
+        m_enidsToDestroy.insert(_entity);
         return true;
     }
     else
     {
         NAMICA_CORE_WARN("删除了非当前场景的实体对象: {}", _entity.getName());
+        return false;
+    }
+}
+
+void Scene::destroyEntityRecursive(entt::entity _enid)
+{
+    if (m_registry.any_of<NativeScriptComponent>(_enid))
+    {
+        NativeScriptComponent& nativeScript{m_registry.get<NativeScriptComponent>(_enid)};
+        if (nativeScript.instance)
+        {
+            nativeScript.instance->onDestroy();
+            nativeScript.destroyScript(nativeScript.instance);
+            nativeScript.instance = nullptr;
+        }
     }
 
-    return false;
+    if (m_registry.any_of<Rigidbody2DComponent>(_enid) && m_physicsWorld.isRunning())
+    {
+        // 如果存在刚体组件, 需要从物理世界中进行移除
+        m_physicsWorld.destroyBody(m_registry.get<Rigidbody2DComponent>(_enid).bodyId);
+    }
+
+    /// 删除子节点 TODO
+    //     if (_entity.hasComponent<RelationshipComponent>())
+    // {
+    //     RelationshipComponent& relationship{_entity.getComponent<RelationshipComponent>()};
+    //     if (relationship.parent != entt::null &&
+    //         m_enidsToDestroy.find(relationship.parent) == m_enidsToDestroy.end())
+    //     {
+    //         // 如果其父节点不处于待删除列表, 则选择其并且将其删除
+    //         std::erase(m_registry.get<RelationshipComponent>(relationship.parent).children,
+    //                    _entity);
+    //     }
+
+    //     for (auto enid : relationship.children)
+    //     {
+    //         // 递归删除所有子节点
+    //         destoryEntity(Entity{enid, this});
+    //     }
+    // }
+
+    m_registry.destroy(_enid);
+}
+
+// 延迟删除, 真正删除entity的地方
+void Scene::flushDestroyQueue()
+{
+    for (entt::entity enid : m_enidsToDestroy)
+    {
+        destroyEntityRecursive(enid);
+    }
+    m_enidsToDestroy.clear();
 }
 
 Entity Scene::copyEntity(Entity _entity)
 {
     Entity newEntity{};
-    if (_entity.isValid())
+    if (containsEntity(_entity))
     {
         newEntity = createEntity(_entity.getName());
         ComponentRegistry::entityCopy(newEntity, _entity);
+
+        // TODO：可以增加index指定插入位置
+        if (newEntity.hasComponent<RelationshipComponent>())
+        {
+            RelationshipComponent& relationship{newEntity.getComponent<RelationshipComponent>()};
+            if (relationship.parent == entt::null)
+            {
+                m_rootEnids.emplace_back(newEntity);
+            }
+
+            std::vector<entt::entity> tempChildren{};
+            tempChildren.resize(relationship.children.size());
+            for (entt::entity childEnid : relationship.children)
+            {
+                Entity childEntity{childEnid, this};
+                Entity copyChildEntity{copyEntity(childEntity)};
+                copyChildEntity.getComponent<RelationshipComponent>().parent = _entity;
+                tempChildren.emplace_back(copyChildEntity);
+            }
+            relationship.children = tempChildren;
+        }
+        else
+        {
+            m_rootEnids.emplace_back(newEntity);
+        }
     }
     else
     {
-        NAMICA_CORE_WARN("拷贝了不存在的实体");
+        NAMICA_CORE_WARN("场景-{}拷贝了不存在的实体-{}", m_name, _entity.getName());
     }
 
     return newEntity;
@@ -381,6 +556,9 @@ void Scene::onRenderer(glm::mat4 const& _projectionView)
 void Scene::onUpdateEditor(Timestep _ts, EditorCamera const& _editorCamera)
 {
     onRenderer(_editorCamera.getProjectionView());
+
+    // 延迟删除对象
+    flushDestroyQueue();
 }
 
 void Scene::onStartRuntime()
@@ -477,6 +655,8 @@ void Scene::onUpdateRuntime(Timestep _ts)
     {
         onRenderer(camera->getProjection() * glm::inverse(cameraTransform));
     }
+    // 延迟删除对象
+    flushDestroyQueue();
 }
 
 void Scene::onStopRuntime()

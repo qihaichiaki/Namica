@@ -33,10 +33,10 @@ public:
      * @tparam T 组件类型
      * @return 是否存在
      */
-    template <typename T>
+    template <typename... T>
     bool hasComponent()
     {
-        return m_scene->m_registry.all_of<T>(m_entityHandle);
+        return m_scene->m_registry.all_of<T...>(m_entityHandle);
     }
 
     /**
@@ -100,6 +100,16 @@ public:
      * @brief 获取当前实体的名字
      */
     NAMICA_API const std::string& getName();
+
+    /**
+     * @brief 获取当前的实体的父实体
+     */
+    NAMICA_API Entity getParent();
+
+    /**
+     * @brief 获取当前实体的子实体们
+     */
+    NAMICA_API std::vector<Entity> getChildren();
 
     NAMICA_API operator entt::entity() const;
     NAMICA_API operator uint32_t() const;
