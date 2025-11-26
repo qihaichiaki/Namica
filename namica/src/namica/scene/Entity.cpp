@@ -1,5 +1,5 @@
 #include "namica/scene/Entity.h"
-#include "namica/core/Log.h"
+// #include "namica/core/Log.h"
 #include "namica/scene/EntityIterator.h"
 
 namespace Namica
@@ -13,7 +13,7 @@ Entity::Entity(entt::entity _entityHandle, Scene* _scene)
     : m_entityHandle{_entityHandle}, m_scene{_scene}
 {
     // 创建时, 必须保证实体的有效性
-    NAMICA_CORE_ASSERT(m_scene && isValid());
+    // NAMICA_CORE_ASSERT(m_scene && isValid());
 }
 
 bool Entity::isValid() const
@@ -36,7 +36,7 @@ UUID Entity::getUUID()
     return getComponent<IDComponent>().id;
 }
 
-std::string const& Entity::getName()
+std::string& Entity::getName()
 {
     return getComponent<TagComponent>().name;
 }

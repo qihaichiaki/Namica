@@ -4,7 +4,7 @@
 #include "namica_editor/EditorMainUI.h"
 #include <namica/core/Layer.h>
 #include <namica/renderer/Texture.h>
-#include <namica/events/WindowEvent.h>
+#include <namica/events/KeyEvent.h>
 
 namespace Namica
 {
@@ -20,6 +20,11 @@ public:
     virtual void onUpdate() override;
     virtual void onEvent(Event& _event) override;
     virtual void onImGuiRender() override;
+
+private:
+    bool onKeyPressed(KeyPressedEvent& _event);
+
+    void duplicateEntity();
 
 private:
     EditorContext m_context;

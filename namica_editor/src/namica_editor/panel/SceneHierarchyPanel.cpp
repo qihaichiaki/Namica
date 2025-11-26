@@ -56,8 +56,8 @@ void SceneHierarchyPanel::onImGuiRenderer()
 
 void SceneHierarchyPanel::drawEntityNode(Entity _entity)
 {
-    std::string const entityName{_entity.getComponent<TagComponent>().name};
-    const UUID& entityID{_entity.getComponent<IDComponent>().id};
+    std::string const entityName{_entity.getName()};
+    const UUID& entityID{_entity.getUUID()};
 
     if (m_expandNextFrame == entityID)
     {

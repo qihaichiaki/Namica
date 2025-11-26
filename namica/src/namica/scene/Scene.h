@@ -151,6 +151,7 @@ private:
     void onRenderer(glm::mat4 const& _projectionView);
     void destroyEntityRecursive(entt::entity);
     void flushDestroyQueue();
+    Entity copyEntity_Impl(Entity _entity, Entity _parent);
 
     // Scene() = default;
     Scene(std::string const&);

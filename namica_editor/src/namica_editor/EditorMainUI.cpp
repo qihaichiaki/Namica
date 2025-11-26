@@ -2,6 +2,7 @@
 #include "namica_editor/panel/ViewportPanel.h"
 #include "namica_editor/panel/InfoPanel.h"
 #include "namica_editor/panel/SceneHierarchyPanel.h"
+#include "namica_editor/panel/InspectorPanel.h"
 
 #include <imgui.h>
 
@@ -13,6 +14,7 @@ void EditorMainUI::editorPanelInit(EditorContext* _context)
     m_panels.emplace_back(createRef<ViewportPanel>(_context));
     m_panels.emplace_back(createRef<InfoPanel>(_context));
     m_panels.emplace_back(createRef<SceneHierarchyPanel>(_context));
+    m_panels.emplace_back(createRef<InspectorPanel>(_context));
 }
 
 void EditorMainUI::onUpdate()

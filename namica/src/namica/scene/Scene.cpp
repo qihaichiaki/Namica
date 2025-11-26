@@ -28,6 +28,19 @@ static void copyComponent(entt::registry& _dstRegistry,
         entt::entity newEnid = _enttMap.at(enid);
         _dstRegistry.emplace_or_replace<Component>(
             newEnid, view.template get<Component>(enid));  // 调用各个组件的拷贝构造函数
+        // RelationshipComponent 拷贝的必须是当前的全部新的
+        if constexpr (std::is_same_v<Component, RelationshipComponent>)
+        {
+            RelationshipComponent newEnidRelationship{
+                _dstRegistry.get<RelationshipComponent>(newEnid)};
+            newEnidRelationship.parent = newEnidRelationship.parent == entt::null
+                ? entt::null
+                : _enttMap.at(newEnidRelationship.parent);
+            for (entt::entity& newChildEnid : newEnidRelationship.children)
+            {
+                newChildEnid = _enttMap.at(newChildEnid);
+            }
+        }
     }
 }
 
@@ -438,33 +451,41 @@ void Scene::flushDestroyQueue()
     }
 }
 
-Entity Scene::copyEntity(Entity _entity)
+Entity Scene::copyEntity_Impl(Entity _entity, Entity _parent)
 {
     Entity newEntity{};
     if (containsEntity(_entity))
     {
-        newEntity = createEntity(_entity.getName());
+        // WARRING: 直接使用create entity会导致缓存重复插入
+        newEntity = Entity{m_registry.create(), this};
+        newEntity.addComponent<IDComponent>();
+        newEntity.addComponent<TagComponent>(_entity.getName());
+        newEntity.addComponent<TransformComponent>();
         ComponentRegistry::entityCopy(newEntity, _entity);
 
         // TODO：可以增加index指定插入位置
         if (newEntity.hasComponent<RelationshipComponent>())
         {
-            RelationshipComponent& relationship{newEntity.getComponent<RelationshipComponent>()};
-            if (relationship.parent == entt::null)
+            RelationshipComponent& newEntityRelationship{
+                newEntity.getComponent<RelationshipComponent>()};
+            RelationshipComponent& entityRelationship{
+                _entity.getComponent<RelationshipComponent>()};
+
+            if (_parent)
+            {
+                m_registry.get<RelationshipComponent>(_parent).children.emplace_back(newEntity);
+            }
+            else
             {
                 m_rootEntities.emplace_back(newEntity);
             }
 
-            std::vector<entt::entity> tempChildren{};
-            tempChildren.resize(relationship.children.size());
-            for (entt::entity childEnid : relationship.children)
+            newEntityRelationship.children.clear();
+            for (entt::entity childEnid : entityRelationship.children)
             {
                 Entity childEntity{childEnid, this};
-                Entity copyChildEntity{copyEntity(childEntity)};
-                copyChildEntity.getComponent<RelationshipComponent>().parent = _entity;
-                tempChildren.emplace_back(copyChildEntity);
+                copyEntity_Impl(childEntity, newEntity);
             }
-            relationship.children = tempChildren;
         }
         else
         {
@@ -477,6 +498,11 @@ Entity Scene::copyEntity(Entity _entity)
     }
 
     return newEntity;
+}
+
+Entity Scene::copyEntity(Entity _entity)
+{
+    return copyEntity_Impl(_entity, _entity.getParent());
 }
 
 void Scene::onViewportResize(uint32_t _width, uint32_t _height)

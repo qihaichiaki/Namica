@@ -101,7 +101,7 @@ public:
     /**
      * @brief 获取当前实体的名字
      */
-    NAMICA_API const std::string& getName();
+    NAMICA_API std::string& getName();
 
     /**
      * @brief 获取当前的实体的父实体

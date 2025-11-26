@@ -2,6 +2,7 @@
 #include <namica/core/Log.h>
 #include <namica/core/Application.h>
 #include <namica/core/Window.h>
+#include <namica/core/Input.h>
 #include <namica/renderer/Renderer.h>
 #include <namica/renderer/Renderer2D.h>
 #include <namica/scene/Entity.h>
@@ -77,7 +78,92 @@ void EditorLayer::onUpdate()
 
 void EditorLayer::onEvent(Event& _event)
 {
+    // 全局事件处理
+    EventDispatcher dispatcher{_event};
+    dispatcher.dispatch<KeyPressedEvent>(
+        [this](KeyPressedEvent& _keyPressedEvent) { return onKeyPressed(_keyPressedEvent); });
+
+    // 面板事件处理
     m_mainUI.onEvent(_event);
+}
+
+bool EditorLayer::onKeyPressed(KeyPressedEvent& _event)
+{
+    // 短按, 长按排除
+    if (_event.getRepeatCount() > 0)
+    {
+        return false;
+    }
+
+    bool isCtrl{Input::isKeyPressed(KeyCode::LeftControl) ||
+                Input::isKeyPressed(KeyCode::RightControl)};
+    bool isShift{Input::isKeyPressed(KeyCode::LeftShift) ||
+                 Input::isKeyPressed(KeyCode::RightShift)};
+
+    switch (_event.getKeyCode())
+    {
+        case KeyCode::N:
+            if (isCtrl)
+            {
+                // newScene();
+            }
+            break;
+        case KeyCode::O:
+            if (isCtrl)
+            {
+                // openScene();
+            }
+            break;
+        case KeyCode::S:
+            if (isCtrl)
+            {
+                if (isShift)
+                {
+                    // saveSceneAs();
+                }
+                else
+                {
+                    // saveScene();
+                }
+            }
+            break;
+        case KeyCode::D:
+            if (isCtrl)
+            {
+                duplicateEntity();
+            }
+            break;
+        case KeyCode::Q:
+            // m_gizom_type = -1;
+            break;
+        case KeyCode::W:
+            // m_gizom_type = ImGuizmo::OPERATION::TRANSLATE;
+            break;
+        case KeyCode::E:
+            // m_gizom_type = ImGuizmo::OPERATION::ROTATE;
+            break;
+        case KeyCode::R:
+            // m_gizom_type = ImGuizmo::OPERATION::SCALE;
+            break;
+        default:
+            break;
+    }
+
+    return false;
+}
+
+// 当前选中的实体进行复制
+void EditorLayer::duplicateEntity()
+{
+    if (m_context.selectionContext)
+    {
+        auto copyEntity = m_context.activeScene->copyEntity(m_context.selectionContext);
+        if (copyEntity == m_context.selectionContext ||
+            copyEntity.getUUID() == m_context.selectionContext.getUUID())
+        {
+            NAMICA_CORE_ASSERT(false);
+        }
+    }
 }
 
 void EditorLayer::onImGuiRender()
