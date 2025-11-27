@@ -57,9 +57,15 @@ void InfoPanel::onImGuiRenderer()
     {
         m_context->editorCamera.setRotationEnabled(isRotation);
     }
+    ImGui::Separator();
+
+    ImGui::Text("");
+    ImGui::Text("编辑器热键");
+    ImGui::Separator();
     ImGui::Text("移动: lalt+lmb");
     ImGui::Text("旋转: lalt+mmb");
     ImGui::Text("缩放: lalt+rmb | mouse scroll");
+    ImGui::Text("复制选中实体: ctrl+d");
     ImGui::Separator();
 
     ImGui::End();

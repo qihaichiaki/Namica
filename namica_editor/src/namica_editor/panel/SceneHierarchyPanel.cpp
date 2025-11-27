@@ -1,5 +1,6 @@
 #include "namica_editor/panel/SceneHierarchyPanel.h"
 #include "namica_editor/EditorContext.h"
+#include "namica_editor/EditorActions.h"
 
 #include <namica/scene/Entity.h>
 #include <namica/scene/EntityIterator.h>
@@ -83,6 +84,10 @@ void SceneHierarchyPanel::drawEntityNode(Entity _entity)
         {
             m_context->activeScene->addChildEntity(_entity, m_context->activeScene->createEntity());
             m_expandNextFrame = entityID;
+        }
+        if (ImGui::MenuItem("复制实体"))
+        {
+            EditorActions::duplicateEntity();
         }
         if (ImGui::MenuItem("删除实体"))
         {

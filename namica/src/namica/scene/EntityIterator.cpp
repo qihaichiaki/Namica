@@ -3,7 +3,7 @@
 
 namespace Namica
 {
-EntityIterator::EntityIterator(std::vector<entt::entity>* _enids, Scene* _scene)
+EntityIterator::EntityIterator(std::vector<entt::entity> const* _enids, Scene* _scene)
     : m_enids{_enids}, m_scene{_scene}
 {
 }

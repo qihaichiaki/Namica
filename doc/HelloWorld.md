@@ -15,12 +15,13 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
 - [x] 编辑器GUI框架完成
   - [x] viewport
   - [x] hierarchy 
-  - [ ] inspector
+  - [x] inspector
   - [ ] project
 - [x] ECS搭建完成
   - [x] entity, component, Scene
   - [x] box2d物理引擎引进
-  - [x] 父子关系搭建
+  - [x] 父子关系搭建 
+  - [ ] 增加系统控制Scene, 拆解Scene
 - [ ] build runtime系统
 
 
@@ -158,6 +159,11 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
 
 * Scene中的entity设置为延迟删除
 
+#### System[Scene]
+* 将Scene当作为entity聚合的地方, 将其中所有的行为拆分到各个系统上(比如渲染行为, 物理更新行为, 脚本更新行为, Transform更新行为, 以及各个操作组件的行为方式)
+* 当前以TransformSystem为例, 完成父到子的更新和脏标记的设计
+
+
 #### Editor APP[Editor]
 ##### Editor GUI
 * 当前设计的EditorGUI组成: Panels + Viewports
@@ -187,5 +193,5 @@ Namica当前规划为一个2d游戏引擎, 能够提供2d游戏的基本需求
 *layer运行阶段:
   1. 初始化阶段：初始化各个面板, 加载各种GUI所需要的资源。
   2. 运行阶段：
-     - 更新阶段遍历每个面板的onupdate进行更新。(可能需要注意顺序，因为存在信号监听机制)
+     - 更新阶段遍历每个面板的onupdate进行更新。
      - 渲染阶段首先启动imgui docking，随后遍历每个面板的onImGuiRenderer进行渲染更新。

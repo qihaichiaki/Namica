@@ -481,6 +481,7 @@ Entity Scene::copyEntity_Impl(Entity _entity, Entity _parent)
             }
 
             newEntityRelationship.children.clear();
+            newEntityRelationship.parent = _parent;
             for (entt::entity childEnid : entityRelationship.children)
             {
                 Entity childEntity{childEnid, this};

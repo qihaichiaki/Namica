@@ -24,8 +24,6 @@ public:
 private:
     bool onKeyPressed(KeyPressedEvent& _event);
 
-    void duplicateEntity();
-
 private:
     EditorContext m_context;
     EditorMainUI m_mainUI;

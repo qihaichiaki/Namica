@@ -1,4 +1,6 @@
-#include <namica_editor/EditorLayer.h>
+#include "namica_editor/EditorLayer.h"
+#include "namica_editor/EditorActions.h"
+
 #include <namica/core/Log.h>
 #include <namica/core/Application.h>
 #include <namica/core/Window.h>
@@ -34,23 +36,27 @@ void EditorLayer::onAttach()
     m_context.editorScene = Scene::create();
     m_context.activeScene = m_context.editorScene;
 
+    // 场景行为初始化
+    EditorActions::init(&m_context);
+
     // ui 初始化
     m_mainUI.editorPanelInit(&m_context);
 
     // 其他初始化
     m_testTetxure = Texture2D::create("assets/textures/namica.png");
 
-    // Debug
-    Entity testEntity1{m_context.activeScene->createEntity("测试矩形")};
-    testEntity1.addComponent<SpriteRendererComponent>();
+    // // Debug
+    // Entity testEntity1{m_context.activeScene->createEntity("测试矩形")};
+    // testEntity1.addComponent<SpriteRendererComponent>();
 
-    Entity testEntity2{m_context.activeScene->createEntity("测试纹理")};
-    testEntity2.addComponent<SpriteRendererComponent>().texture = m_testTetxure;
-    testEntity2.getComponent<TransformComponent>().translation = glm::vec3{2.0f, 0.0f, 0.0f};
+    // Entity testEntity2{m_context.activeScene->createEntity("测试纹理")};
+    // testEntity2.addComponent<SpriteRendererComponent>().texture = m_testTetxure;
+    // testEntity2.getComponent<TransformComponent>().translation = glm::vec3{2.0f, 0.0f, 0.0f};
 
-    Entity testEntity3{m_context.activeScene->createEntity("测试圆形")};
-    testEntity3.addComponent<CircleRendererComponent>().color = glm::vec4{1.0f, 0.0f, 0.0f, 1.0f};
-    testEntity3.getComponent<TransformComponent>().translation = glm::vec3{0.0f, -2.0f, 0.0f};
+    // Entity testEntity3{m_context.activeScene->createEntity("测试圆形")};
+    // testEntity3.addComponent<CircleRendererComponent>().color = glm::vec4{1.0f, 0.0f,
+    // 0.0f, 1.0f}; testEntity3.getComponent<TransformComponent>().translation = glm::vec3{0.0f,
+    // -2.0f, 0.0f};
 }
 
 void EditorLayer::onDetach()
@@ -130,7 +136,7 @@ bool EditorLayer::onKeyPressed(KeyPressedEvent& _event)
         case KeyCode::D:
             if (isCtrl)
             {
-                duplicateEntity();
+                EditorActions::duplicateEntity();
             }
             break;
         case KeyCode::Q:
@@ -150,20 +156,6 @@ bool EditorLayer::onKeyPressed(KeyPressedEvent& _event)
     }
 
     return false;
-}
-
-// 当前选中的实体进行复制
-void EditorLayer::duplicateEntity()
-{
-    if (m_context.selectionContext)
-    {
-        auto copyEntity = m_context.activeScene->copyEntity(m_context.selectionContext);
-        if (copyEntity == m_context.selectionContext ||
-            copyEntity.getUUID() == m_context.selectionContext.getUUID())
-        {
-            NAMICA_CORE_ASSERT(false);
-        }
-    }
 }
 
 void EditorLayer::onImGuiRender()

@@ -15,14 +15,14 @@ class EntityIterator
 {
 public:
     EntityIterator() = default;
-    EntityIterator(std::vector<entt::entity>*, Scene*);
+    EntityIterator(std::vector<entt::entity> const*, Scene*);
 
     NAMICA_API Entity current();
     NAMICA_API void next();
     NAMICA_API bool hasNext();
 
 private:
-    std::vector<entt::entity>* m_enids{nullptr};
+    std::vector<entt::entity> const* m_enids{nullptr};
     Scene* m_scene{nullptr};
     uint32_t index{0};
 };
