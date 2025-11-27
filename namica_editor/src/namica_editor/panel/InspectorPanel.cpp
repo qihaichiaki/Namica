@@ -395,8 +395,8 @@ void InspectorPanel::drawComponents(Entity entity)
     // BoxCollider2D
     drawComponent<BoxCollider2DComponent>(
         "BoxCollider2D", entity, [](BoxCollider2DComponent& boxCollider2D) {
-            ImGui::DragFloat2("偏移", glm::value_ptr(boxCollider2D.offset));
-            ImGui::DragFloat2("大小", glm::value_ptr(boxCollider2D.size));
+            ImGui::DragFloat2("偏移", glm::value_ptr(boxCollider2D.offset), 0.1f);
+            ImGui::DragFloat2("大小", glm::value_ptr(boxCollider2D.size), 0.1f);
             ImGui::DragFloat("密度", &boxCollider2D.physicalMaterials.density, 0.01f);
             ImGui::DragFloat(
                 "摩擦力", &boxCollider2D.physicalMaterials.friction, 0.01f, 0.0f, 1.0f);
@@ -414,8 +414,8 @@ void InspectorPanel::drawComponents(Entity entity)
     // CircleCollider2D
     drawComponent<CircleCollider2DComponent>(
         "CircleCollider2D", entity, [](CircleCollider2DComponent& circleCollider2D) {
-            ImGui::DragFloat2("偏移", glm::value_ptr(circleCollider2D.offset));
-            ImGui::DragFloat("半径", &circleCollider2D.radius);
+            ImGui::DragFloat2("偏移", glm::value_ptr(circleCollider2D.offset), 0.1f);
+            ImGui::DragFloat("半径", &circleCollider2D.radius, 0.1f);
             ImGui::DragFloat("密度", &circleCollider2D.physicalMaterials.density, 0.01f);
             ImGui::DragFloat(
                 "摩擦力", &circleCollider2D.physicalMaterials.friction, 0.01f, 0.0f, 1.0f);

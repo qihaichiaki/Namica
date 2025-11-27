@@ -79,6 +79,16 @@ EntityIterator Entity::getChildrenIterator()
     return EntityIterator{};
 }
 
+glm::mat4 Entity::getLocalTransform()
+{
+    return m_scene->getLocalTransform(m_entityHandle);
+}
+
+glm::mat4 Entity::getWorldTransform()
+{
+    return m_scene->getWorldTransform(m_entityHandle);
+}
+
 Entity::operator entt::entity() const
 {
     return m_entityHandle;

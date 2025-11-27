@@ -12,6 +12,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 
 namespace Namica
 {
@@ -47,6 +48,15 @@ struct TransformComponent
         auto rotationMat4 = glm::toMat4(glm::quat(rotation));  // 使用欧拉角
         return glm::translate(glm::mat4{1.0f}, translation) * rotationMat4 *
             glm::scale(glm::mat4{1.0f}, scale);
+    }
+
+    void setTransform(glm::mat4 const& transform)
+    {
+        glm::quat orientation;
+        glm::vec3 skew;
+        glm::vec4 perspective;
+        glm::decompose(transform, scale, orientation, translation, skew, perspective);
+        rotation = glm::eulerAngles(orientation);
     }
 };
 
@@ -134,8 +144,8 @@ struct Rigidbody2DComponent
  */
 struct BoxCollider2DComponent
 {
-    glm::vec2 offset{0.0f, 0.0f};
-    glm::vec2 size{0.5f, 0.5f};
+    glm::vec2 offset{0.0f};
+    glm::vec2 size{0.0f};
     float rotation{0.0f};
 
     // 物理材质

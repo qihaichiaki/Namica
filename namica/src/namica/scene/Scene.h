@@ -8,6 +8,7 @@
 #include "namica/scene/Physics.h"
 #include <string>
 #include <entt.hpp>
+#include <glm/glm.hpp>
 
 namespace Namica
 {
@@ -119,6 +120,10 @@ public:
     NAMICA_API void onStopRuntime();
 
     /**
+     * @brief 当前是否绘制碰撞箱线框
+     */
+    NAMICA_API bool getDrawColliders2D() const;
+    /**
      * @brief 设置是否绘制碰撞箱线框
      */
     NAMICA_API void setDrawColliders2D(bool _enable);
@@ -148,6 +153,8 @@ private:
     void onBoxCollider2DComponentAdded(entt::registry& _registry, entt::entity _enid);
     void onCircleCollider2DComponentAdded(entt::registry& _registry, entt::entity _enid);
 
+    glm::mat4 getLocalTransform(entt::entity);
+    glm::mat4 getWorldTransform(entt::entity);
     void onRenderer(glm::mat4 const& _projectionView);
     void destroyEntityRecursive(entt::entity);
     void flushDestroyQueue();

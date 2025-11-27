@@ -30,7 +30,9 @@ void EditorLayer::onAttach()
     Renderer::setClearColor(glm::vec4{0.2f, 0.2f, 0.2f, 1.0f});
 
     // context 初始化
-    m_context.editorCamera.setProjectionType(Camera::ProjectionType::Perspection);
+    // 默认2D引擎
+    m_context.editorCamera.setProjectionType(Camera::ProjectionType::Orthographic);
+    m_context.editorCamera.setRotationEnabled(false);
 
     // 场景相关初始化
     m_context.editorScene = Scene::create();
@@ -79,7 +81,14 @@ void EditorLayer::onUpdate()
 
     // 场景更新和渲染更新
     Renderer2D::resetStats();
-    m_context.activeScene->onUpdateEditor(0.0f, m_context.editorCamera);
+    if (m_context.sceneState == SceneState::Editor)
+    {
+        m_context.activeScene->onUpdateEditor(0.0f, m_context.editorCamera);
+    }
+    else
+    {
+        m_context.activeScene->onUpdateRuntime(1.0f / 60.0f);
+    }
 }
 
 void EditorLayer::onEvent(Event& _event)

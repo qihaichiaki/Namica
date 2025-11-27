@@ -6,6 +6,7 @@
 #include "namica/scene/Scene.h"
 #include "namica/scene/Components.h"
 #include <entt.hpp>
+#include <glm/glm.hpp>
 
 namespace Namica
 {
@@ -119,6 +120,16 @@ public:
      * @brief 获取当前实体子实体们的迭代器
      */
     NAMICA_API EntityIterator getChildrenIterator();
+
+    /**
+     * @brief 获取当前实体的局部变换
+     */
+    NAMICA_API glm::mat4 getLocalTransform();
+
+    /**
+     * @brief 获取当前实体的世界变换
+     */
+    NAMICA_API glm::mat4 getWorldTransform();
 
     NAMICA_API
     operator entt::entity() const;

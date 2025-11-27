@@ -136,18 +136,21 @@ void Scene::onRigidbody2DComponentAdded(entt::registry& _registry, entt::entity 
 
 void Scene::onBoxCollider2DComponentAdded(entt::registry& _registry, entt::entity _enid)
 {
+    BoxCollider2DComponent& boxCollider2D{_registry.get<BoxCollider2DComponent>(_enid)};
+    TransformComponent& transform{_registry.get<TransformComponent>(_enid)};
+    boxCollider2D.size.x = transform.scale.x;
+    boxCollider2D.size.y = transform.scale.y;
+
     if (m_physicsWorld.isRunning())
     {
-        BoxCollider2DComponent& boxCollider2D{_registry.get<BoxCollider2DComponent>(_enid)};
         NAMICA_CORE_ASSERT(m_registry.all_of<Rigidbody2DComponent>(_enid),
                            "添加box2d碰撞器必须存在刚体组件!");
         Rigidbody2DComponent& rigidbody2D{_registry.get<Rigidbody2DComponent>(_enid)};
-        TransformComponent& transform{_registry.get<TransformComponent>(_enid)};
 
         m_physicsWorld.attachBodyBoxShape(
             rigidbody2D.bodyId,
             boxCollider2D.offset,
-            {boxCollider2D.size.x * transform.scale.x, boxCollider2D.size.y * transform.scale.y},
+            {boxCollider2D.size.x * 0.5f, boxCollider2D.size.y * 0.5f},
             boxCollider2D.rotation,
             boxCollider2D.physicalMaterials);
     }
@@ -155,10 +158,13 @@ void Scene::onBoxCollider2DComponentAdded(entt::registry& _registry, entt::entit
 
 void Scene::onCircleCollider2DComponentAdded(entt::registry& _registry, entt::entity _enid)
 {
+    CircleCollider2DComponent& circleCollider2D{_registry.get<CircleCollider2DComponent>(_enid)};
+    TransformComponent& transform{_registry.get<TransformComponent>(_enid)};
+    // 旋转默认取x的scale的一半
+    circleCollider2D.radius = transform.scale.x * 0.5f;
+
     if (m_physicsWorld.isRunning())
     {
-        CircleCollider2DComponent& circleCollider2D{
-            _registry.get<CircleCollider2DComponent>(_enid)};
         NAMICA_CORE_ASSERT(m_registry.all_of<Rigidbody2DComponent>(_enid),
                            "添加Circle碰撞器必须存在刚体组件!");
         Rigidbody2DComponent& rigidbody2D{_registry.get<Rigidbody2DComponent>(_enid)};
@@ -225,7 +231,11 @@ Ref<Scene> Scene::copy(Ref<Scene> const& _other)
     {
         IDComponent& idComponent{_other->m_registry.get<IDComponent>(enid)};
         TagComponent& tagComponent{_other->m_registry.get<TagComponent>(enid)};
-        enttMap.emplace(enid, newScene->createEntity(idComponent.id, tagComponent.name));
+        entt::entity newEnid{newScene->m_registry.create()};
+        newScene->m_registry.emplace_or_replace<IDComponent>(newEnid, idComponent.id);
+        newScene->m_registry.emplace_or_replace<TagComponent>(newEnid, tagComponent.name);
+        newScene->m_registry.emplace_or_replace<TransformComponent>(newEnid);
+        enttMap.emplace(enid, newEnid);
     }
 
     for (Entity& otherEntity : _other->m_rootEntities)
@@ -522,6 +532,25 @@ void Scene::onViewportResize(uint32_t _width, uint32_t _height)
     }
 }
 
+glm::mat4 Scene::getLocalTransform(entt::entity _enid)
+{
+    return m_registry.get<TransformComponent>(_enid).getTransform();
+}
+
+glm::mat4 Scene::getWorldTransform(entt::entity _enid)
+{
+    if (m_registry.any_of<RelationshipComponent>(_enid))
+    {
+        RelationshipComponent& relationship{m_registry.get<RelationshipComponent>(_enid)};
+        if (relationship.parent != entt::null)
+        {
+            return getWorldTransform(relationship.parent) * getLocalTransform(_enid);
+        }
+    }
+
+    return getLocalTransform(_enid);
+}
+
 void Scene::onRenderer(glm::mat4 const& _projectionView)
 {
     // 渲染更新
@@ -531,12 +560,12 @@ void Scene::onRenderer(glm::mat4 const& _projectionView)
 
     // SpriteRendererComponent
     m_registry.group<TransformComponent, SpriteRendererComponent>().each(
-        [](entt::entity _enid,
-           TransformComponent& _transform,
-           SpriteRendererComponent& _spriteRenderer) {
+        [this](entt::entity _enid,
+               TransformComponent& _transform,
+               SpriteRendererComponent& _spriteRenderer) {
             if (_spriteRenderer.texture)
             {
-                Renderer2D::drawQuad(_transform.getTransform(),
+                Renderer2D::drawQuad(getWorldTransform(_enid),
                                      _spriteRenderer.texture,
                                      _spriteRenderer.color,
                                      _spriteRenderer.tilingFactor,
@@ -545,16 +574,16 @@ void Scene::onRenderer(glm::mat4 const& _projectionView)
             else
             {
                 Renderer2D::drawQuad(
-                    _transform.getTransform(), _spriteRenderer.color, static_cast<int>(_enid));
+                    getWorldTransform(_enid), _spriteRenderer.color, static_cast<int>(_enid));
             }
         });
 
     // CircleRendererComponent
     m_registry.view<TransformComponent, CircleRendererComponent>().each(
-        [](entt::entity _enid,
-           TransformComponent& _transform,
-           CircleRendererComponent& _circleRenderer) {
-            Renderer2D::drawCircle(_transform.getTransform(),
+        [this](entt::entity _enid,
+               TransformComponent& _transform,
+               CircleRendererComponent& _circleRenderer) {
+            Renderer2D::drawCircle(getWorldTransform(_enid),
                                    _circleRenderer.color,
                                    _circleRenderer.thickness,
                                    _circleRenderer.fade,
@@ -564,27 +593,34 @@ void Scene::onRenderer(glm::mat4 const& _projectionView)
     if (m_isDrawColliders2D)
     {
         m_registry.view<TransformComponent, BoxCollider2DComponent>().each(
-            [](entt::entity _enid,
-               TransformComponent& _transform,
-               BoxCollider2DComponent& _boxCollider2D) {
-                Renderer2D::drawRect(
-                    _transform.translation +
-                        glm::vec3{_boxCollider2D.offset.x, _boxCollider2D.offset.y, 0.0f},
-                    {_transform.scale.x * _boxCollider2D.size.x,
-                     _transform.scale.y * _boxCollider2D.size.y},
-                    {0.0f, 1.0f, 0.0f, 1.f},
-                    static_cast<int>(_enid));
+            [this](entt::entity _enid,
+                   TransformComponent& _transform,
+                   BoxCollider2DComponent& _boxCollider2D) {
+                TransformComponent colliders2DTransform;
+                colliders2DTransform.setTransform(getWorldTransform(_enid));
+                colliders2DTransform.translation +=
+                    glm::vec3{_boxCollider2D.offset.x, _boxCollider2D.offset.y, 0.0f};
+                colliders2DTransform.scale =
+                    glm::vec3{_boxCollider2D.size.x, _boxCollider2D.size.y, 1.0f};
+                colliders2DTransform.rotation.z += _boxCollider2D.rotation;
+
+                Renderer2D::drawRect(colliders2DTransform.getTransform(),
+                                     {0.0f, 1.0f, 0.0f, 1.f},
+                                     static_cast<int>(_enid));
             });
 
         m_registry.view<TransformComponent, CircleCollider2DComponent>().each(
-            [](entt::entity _enid,
-               TransformComponent& _transform,
-               CircleCollider2DComponent& _circleCollider2D) {
-                TransformComponent circleCollider2DTransform{_transform};
+            [this](entt::entity _enid,
+                   TransformComponent& _transform,
+                   CircleCollider2DComponent& _circleCollider2D) {
+                // TODO: 变换
+                TransformComponent circleCollider2DTransform;
+                circleCollider2DTransform.setTransform(getWorldTransform(_enid));
                 circleCollider2DTransform.translation +=
                     glm::vec3{_circleCollider2D.offset.x, _circleCollider2D.offset.y, 0.0f};
-                circleCollider2DTransform.scale = glm::vec3{
-                    _circleCollider2D.radius * 2.0f, _circleCollider2D.radius * 2.0f, 1.0f};
+                circleCollider2DTransform.scale = glm::vec3{_circleCollider2D.radius * 2.0f + 0.01f,
+                                                            _circleCollider2D.radius * 2.0f + 0.01f,
+                                                            1.0f};
                 Renderer2D::drawCircle(circleCollider2DTransform.getTransform(),
                                        {0.0f, 1.0f, 0.0f, 1.f},
                                        0.01f,
@@ -684,12 +720,11 @@ void Scene::onUpdateRuntime(Timestep _ts)
     auto view = m_registry.view<TransformComponent, CameraComponent>();
     for (auto enid : view)
     {
-        TransformComponent& _transform{view.get<TransformComponent>(enid)};
         CameraComponent& _camera{view.get<CameraComponent>(enid)};
         if (_camera.primary)
         {
             camera = &_camera.camera;
-            cameraTransform = _transform.getTransform();
+            cameraTransform = getWorldTransform(enid);
             break;
         }
     }
@@ -706,6 +741,11 @@ void Scene::onUpdateRuntime(Timestep _ts)
 void Scene::onStopRuntime()
 {
     m_physicsWorld.shutdown();
+}
+
+bool Scene::getDrawColliders2D() const
+{
+    return m_isDrawColliders2D;
 }
 
 void Scene::setDrawColliders2D(bool _enable)

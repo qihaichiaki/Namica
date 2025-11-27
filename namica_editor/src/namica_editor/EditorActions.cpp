@@ -28,4 +28,26 @@ void EditorActions::duplicateEntity()
     }
 }
 
+void EditorActions::enterPalyMode()
+{
+    if (s_context->sceneState == SceneState::Editor)
+    {
+        s_context->selectionContext = {};
+        s_context->activeScene = Scene::copy(s_context->editorScene);
+        s_context->activeScene->onStartRuntime();
+        s_context->sceneState = SceneState::Runtime;
+    }
+}
+
+void EditorActions::exitPalyMode()
+{
+    if (s_context->sceneState == SceneState::Runtime)
+    {
+        s_context->selectionContext = {};
+        s_context->activeScene->onStopRuntime();
+        s_context->activeScene = s_context->editorScene;
+        s_context->sceneState = SceneState::Editor;
+    }
+}
+
 }  // namespace Namica

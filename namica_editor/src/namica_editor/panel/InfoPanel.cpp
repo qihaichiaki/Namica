@@ -1,5 +1,6 @@
 #include "namica_editor/panel/InfoPanel.h"
 #include "namica_editor/EditorContext.h"
+#include "namica_editor/EditorActions.h"
 #include <namica/renderer/Renderer2D.h>
 #include <imgui.h>
 
@@ -58,8 +59,28 @@ void InfoPanel::onImGuiRenderer()
         m_context->editorCamera.setRotationEnabled(isRotation);
     }
     ImGui::Separator();
-
-    ImGui::Text("");
+    ImGui::Text("其他设置和信息");
+    ImGui::Separator();
+    bool isDrawColliders2D{m_context->activeScene->getDrawColliders2D()};
+    if (ImGui::Checkbox("渲染碰撞盒", &isDrawColliders2D))
+    {
+        m_context->activeScene->setDrawColliders2D(isDrawColliders2D);
+    }
+    if (m_context->sceneState == SceneState::Editor)
+    {
+        if (ImGui::Button("播放"))
+        {
+            EditorActions::enterPalyMode();
+        }
+    }
+    else
+    {
+        if (ImGui::Button("停止"))
+        {
+            EditorActions::exitPalyMode();
+        }
+    }
+    ImGui::Separator();
     ImGui::Text("编辑器热键");
     ImGui::Separator();
     ImGui::Text("移动: lalt+lmb");

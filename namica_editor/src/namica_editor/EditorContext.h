@@ -8,6 +8,12 @@
 namespace Namica
 {
 
+enum class SceneState
+{
+    Editor,
+    Runtime
+};
+
 struct EditorContext
 {
     EditorCamera editorCamera;
@@ -16,6 +22,8 @@ struct EditorContext
     Ref<Scene> editorScene{nullptr};
 
     Entity selectionContext{};
+
+    SceneState sceneState{SceneState::Editor};
 };
 
 }  // namespace Namica
