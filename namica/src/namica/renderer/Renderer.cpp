@@ -49,8 +49,10 @@ void Renderer::setClearColor(glm::vec4 const& _clearColor)
 
 void Renderer::clear()
 {
+    s_framebuffer->bind();
     RendererCommand::clear();
     s_framebuffer->clearAttachment(1, -1);  // 纹理附加信息 清理为-1
+    s_framebuffer->unBind();
 }
 
 void Renderer::updateViewport(uint32_t _width, uint32_t _height)
@@ -58,6 +60,7 @@ void Renderer::updateViewport(uint32_t _width, uint32_t _height)
     s_framebuffer->resize(_width, _height);
     s_framebuffer->bind();
     RendererCommand::updateViewport(_width, _height);
+    s_framebuffer->unBind();
 }
 
 uint32_t Renderer::getViewportWidth()

@@ -44,6 +44,7 @@ void ViewportPanel::onUpdate()
             uint32_t const viewHeight{static_cast<uint32_t>(m_viewportSize.y)};
             m_context->editorCamera.updateViewportSize(viewWidth, viewHeight);
             Renderer::updateViewport(viewWidth, viewHeight);
+            m_context->activeScene->onViewportResize(viewWidth, viewHeight);
         }
     }
 }

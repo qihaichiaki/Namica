@@ -31,7 +31,7 @@ static void copyComponent(entt::registry& _dstRegistry,
         // RelationshipComponent 拷贝的必须是当前的全部新的
         if constexpr (std::is_same_v<Component, RelationshipComponent>)
         {
-            RelationshipComponent newEnidRelationship{
+            RelationshipComponent& newEnidRelationship{
                 _dstRegistry.get<RelationshipComponent>(newEnid)};
             newEnidRelationship.parent = newEnidRelationship.parent == entt::null
                 ? entt::null
@@ -224,6 +224,7 @@ Ref<Scene> Scene::copy(Ref<Scene> const& _other)
     // 常规的其他属性
     newScene->m_viewportWidth = _other->m_viewportWidth;
     newScene->m_viewportHeight = _other->m_viewportHeight;
+    newScene->m_isDrawColliders2D = _other->m_isDrawColliders2D;
 
     std::unordered_map<entt::entity, entt::entity> enttMap;
     auto otherEntitiesView = _other->m_registry.view<IDComponent>();
@@ -231,11 +232,15 @@ Ref<Scene> Scene::copy(Ref<Scene> const& _other)
     {
         IDComponent& idComponent{_other->m_registry.get<IDComponent>(enid)};
         TagComponent& tagComponent{_other->m_registry.get<TagComponent>(enid)};
-        entt::entity newEnid{newScene->m_registry.create()};
-        newScene->m_registry.emplace_or_replace<IDComponent>(newEnid, idComponent.id);
-        newScene->m_registry.emplace_or_replace<TagComponent>(newEnid, tagComponent.name);
-        newScene->m_registry.emplace_or_replace<TransformComponent>(newEnid);
-        enttMap.emplace(enid, newEnid);
+        Entity newEntity{newScene->createEntity_Impl(idComponent.id, tagComponent.name)};
+        enttMap.emplace(enid, static_cast<entt::entity>(newEntity));
+        // NAMICA_CORE_DEBUG("复制实体: {} {} {} -> {} {} {}",
+        //                   (uint64_t)idComponent.id,
+        //                   (uint32_t)enid,
+        //                   tagComponent.name,
+        //                   (uint64_t)newEntity.getUUID(),
+        //                   (uint32_t)newEntity,
+        //                   newEntity.getName());
     }
 
     for (Entity& otherEntity : _other->m_rootEntities)
@@ -248,6 +253,30 @@ Ref<Scene> Scene::copy(Ref<Scene> const& _other)
     // 复制组件
     ComponentRegistry::sceneCopy(newScene->m_registry, _other->m_registry, enttMap);
 
+    // Debug 遍历场景树结构代码
+    // newScene->m_registry.view<TagComponent>().each([newScene](entt::entity _enid,
+    //                                                           TagComponent& _tag) {
+    //     NAMICA_APP_DEBUG("{} - {}", (uint32_t)_enid, _tag.name);
+    //     Entity newSceneEntity{_enid, newScene.get()};
+    //     if (newSceneEntity.hasComponent<RelationshipComponent>())
+    //     {
+    //         RelationshipComponent& relationship{
+    //             newSceneEntity.getComponent<RelationshipComponent>()};
+    //         if (relationship.parent != entt::null)
+    //         {
+    //             NAMICA_APP_DEBUG("parent: {} - {}",
+    //                              (uint32_t)relationship.parent,
+    //                              newScene->m_registry.get<TagComponent>(relationship.parent).name);
+    //         }
+    //         for (auto childEnid : relationship.children)
+    //         {
+    //             NAMICA_APP_DEBUG("child: {} - {}",
+    //                              (uint32_t)childEnid,
+    //                              newScene->m_registry.get<TagComponent>(childEnid).name);
+    //         }
+    //     }
+    // });
+
     return newScene;
 }
 
@@ -256,12 +285,17 @@ std::string const& Scene::getName() const
     return m_name;
 }
 
+void Scene::setName(std::string const& _name)
+{
+    m_name = _name;
+}
+
 bool Scene::containsEntity(Entity _entity) const
 {
     return _entity.isValid() && &(_entity.getScene()) == this;
 }
 
-Entity Scene::createEntity(std::string const& _name)
+Entity Scene::createEntity_Impl(std::string const& _name)
 {
     Entity entity{m_registry.create(), this};
 
@@ -269,12 +303,17 @@ Entity Scene::createEntity(std::string const& _name)
     entity.addComponent<TagComponent>(_name.empty() ? "新实体" : _name);
     entity.addComponent<TransformComponent>();
 
-    m_rootEntities.emplace_back(entity);
-
     return entity;
 }
 
-Entity Scene::createEntity(const UUID& _uuid, std::string const& _name)
+Entity Scene::createEntity(std::string const& _name)
+{
+    Entity newEntity{createEntity_Impl(_name)};
+    m_rootEntities.emplace_back(newEntity);
+    return newEntity;
+}
+
+Entity Scene::createEntity_Impl(const UUID& _uuid, std::string const& _name)
 {
     Entity entity{m_registry.create(), this};
 
@@ -282,9 +321,14 @@ Entity Scene::createEntity(const UUID& _uuid, std::string const& _name)
     entity.addComponent<TagComponent>(_name.empty() ? "新实体" : _name);
     entity.addComponent<TransformComponent>();
 
-    m_rootEntities.emplace_back(entity);
-
     return entity;
+}
+
+Entity Scene::createEntity(const UUID& _uuid, std::string const& _name)
+{
+    Entity newEntity{createEntity_Impl(_uuid, _name)};
+    m_rootEntities.emplace_back(newEntity);
+    return newEntity;
 }
 
 // 判断_ancestor 是否是 _enid的祖先节点
@@ -466,11 +510,7 @@ Entity Scene::copyEntity_Impl(Entity _entity, Entity _parent)
     Entity newEntity{};
     if (containsEntity(_entity))
     {
-        // WARRING: 直接使用create entity会导致缓存重复插入
-        newEntity = Entity{m_registry.create(), this};
-        newEntity.addComponent<IDComponent>();
-        newEntity.addComponent<TagComponent>(_entity.getName());
-        newEntity.addComponent<TransformComponent>();
+        newEntity = createEntity_Impl(_entity.getName());
         ComponentRegistry::entityCopy(newEntity, _entity);
 
         // TODO：可以增加index指定插入位置
@@ -556,8 +596,6 @@ void Scene::onRenderer(glm::mat4 const& _projectionView)
     // 渲染更新
     Renderer::beginRender(_projectionView);
 
-    Renderer::clear();
-
     // SpriteRendererComponent
     m_registry.group<TransformComponent, SpriteRendererComponent>().each(
         [this](entt::entity _enid,
@@ -634,6 +672,7 @@ void Scene::onRenderer(glm::mat4 const& _projectionView)
 
 void Scene::onUpdateEditor(Timestep _ts, EditorCamera const& _editorCamera)
 {
+    Renderer::clear();
     onRenderer(_editorCamera.getProjectionView());
 
     // 延迟删除对象
@@ -650,7 +689,9 @@ void Scene::onStartRuntime()
                                                          Rigidbody2DComponent& _rigidbody2D) {
         Entity entity{_enid, this};
 
-        TransformComponent& transform{entity.getComponent<TransformComponent>()};
+        TransformComponent transform;
+        // TODO: 后续需要转换为数学方法执行计算
+        transform.setTransform(getWorldTransform(_enid));
         _rigidbody2D.bodyId =
             m_physicsWorld.createBody(_rigidbody2D.type,
                                       {transform.translation.x, transform.translation.y},
@@ -662,8 +703,7 @@ void Scene::onStartRuntime()
             BoxCollider2DComponent& boxCollider2D{entity.getComponent<BoxCollider2DComponent>()};
             m_physicsWorld.attachBodyBoxShape(_rigidbody2D.bodyId,
                                               boxCollider2D.offset,
-                                              {boxCollider2D.size.x * transform.scale.x,
-                                               boxCollider2D.size.y * transform.scale.y},
+                                              {boxCollider2D.size.x, boxCollider2D.size.y},
                                               boxCollider2D.rotation,
                                               boxCollider2D.physicalMaterials);
         }
@@ -729,6 +769,7 @@ void Scene::onUpdateRuntime(Timestep _ts)
         }
     }
 
+    Renderer::clear();
     if (camera)
     {
         onRenderer(camera->getProjection() * glm::inverse(cameraTransform));

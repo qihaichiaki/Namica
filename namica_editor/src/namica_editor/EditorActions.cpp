@@ -34,6 +34,7 @@ void EditorActions::enterPalyMode()
     {
         s_context->selectionContext = {};
         s_context->activeScene = Scene::copy(s_context->editorScene);
+        s_context->activeScene->setName("正在运行-" + s_context->activeScene->getName());
         s_context->activeScene->onStartRuntime();
         s_context->sceneState = SceneState::Runtime;
     }

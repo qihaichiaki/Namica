@@ -27,6 +27,11 @@ public:
     NAMICA_API const std::string& getName() const;
 
     /**
+     * @brief 为当前场景设置名字
+     */
+    NAMICA_API void setName(std::string const& _name);
+
+    /**
      * @brief 判断传入的entity是在当前场景存在
      *
      * @param _entity 实体对象
@@ -159,6 +164,8 @@ private:
     void destroyEntityRecursive(entt::entity);
     void flushDestroyQueue();
     Entity copyEntity_Impl(Entity _entity, Entity _parent);
+    Entity createEntity_Impl(std::string const& _name);
+    Entity createEntity_Impl(const UUID& _uuid, std::string const& _name);
 
     // Scene() = default;
     Scene(std::string const&);

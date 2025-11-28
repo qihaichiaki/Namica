@@ -135,7 +135,8 @@ void PhysicsWorld::getBodyTransform(BodyHandle const& _body, glm::vec3& _positio
     b2BodyId body{tob2BodyId(_body)};
     auto pos = b2Body_GetPosition(body);
     auto rot = b2Body_GetRotation(body);
-    _position = {pos.x, pos.y, _position.z};
+    _position.x = pos.x;
+    _position.y = pos.y;
     _rotation = atan2(rot.s, rot.c);
 }
 

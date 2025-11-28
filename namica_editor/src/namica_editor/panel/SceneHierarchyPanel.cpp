@@ -82,8 +82,10 @@ void SceneHierarchyPanel::drawEntityNode(Entity _entity)
     {
         if (ImGui::MenuItem("添加子实体"))
         {
-            m_context->activeScene->addChildEntity(_entity, m_context->activeScene->createEntity());
+            Entity childEntity{m_context->activeScene->createEntity("子实体")};
+            m_context->activeScene->addChildEntity(_entity, childEntity);
             m_expandNextFrame = entityID;
+            m_context->selectionContext = childEntity;
         }
         if (ImGui::MenuItem("复制实体"))
         {

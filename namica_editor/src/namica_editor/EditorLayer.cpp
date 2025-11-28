@@ -36,6 +36,10 @@ void EditorLayer::onAttach()
 
     // 场景相关初始化
     m_context.editorScene = Scene::create();
+    Entity runtimeCamera{m_context.editorScene->createEntity("相机")};
+    runtimeCamera.addComponent<CameraComponent>();
+    m_context.editorScene->setDrawColliders2D(true);
+
     m_context.activeScene = m_context.editorScene;
 
     // 场景行为初始化
