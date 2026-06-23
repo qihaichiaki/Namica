@@ -5,6 +5,6 @@
 namespace namica
 {
 
-NAMICA_API void printCore();
+NAMICA_API int printCore();
 
 }

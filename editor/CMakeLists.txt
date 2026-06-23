@@ -1,4 +1,4 @@
-project(NamicaEditor)
+project(${NAMICA_EDITOR})
 
 # 设置生成路径
 set(BUILD_DIR "${CMAKE_BINARY_DIR}/bin/${PROJECT_NAME}/${CMAKE_BUILD_TYPE}")
@@ -24,5 +24,5 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    NamicaRuntime
+    ${NAMICA_RUNTIME}
 )
