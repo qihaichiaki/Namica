@@ -1,4 +1,4 @@
-#include "utils/TestUtils.h"
+#include "runtime/utils/TestUtils.h"
 
 void NamicaRuntimeTest::SetUp()
 {
