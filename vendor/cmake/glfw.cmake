@@ -15,6 +15,10 @@ add_subdirectory(
     EXCLUDE_FROM_ALL
 )
 
+target_compile_definitions(glfw INTERFACE
+    -DGLFW_INCLUDE_NONE # glfw不自己包含相关opengl头文件
+)
+
 set_target_properties(glfw PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/vendor/${CMAKE_BUILD_TYPE}"
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/vendor/${CMAKE_BUILD_TYPE}"

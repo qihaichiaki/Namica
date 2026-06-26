@@ -12,7 +12,8 @@ set(PUBLIC_UTILS "")
 set(INCLUDE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # 按照当前测试中每个非utils目录编译一个exe进行测试生成
-function(add_test_exes_from_subdirs build_main depend_list)
+function(add_test_exes_from_subdirs build_main)
+    set(depend_list ${ARGN})
     get_filename_component(CURRENT_DIR_NAME "${CMAKE_CURRENT_SOURCE_DIR}" NAME)
     message("开始生成当前'${CURRENT_DIR_NAME}'测试目标下的测试<BUILD_MAIN: ${build_main}, DEPEND: ${depend_list}>")
 
