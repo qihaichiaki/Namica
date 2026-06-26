@@ -34,3 +34,23 @@ const char* glGetString(GLenum);
 // GL_VERSION  当前OpenGL的版本
 ```
 * 用来查询一些OpenGL的上下文信息
+
+
+### glCreateShader
+```C++
+Gluint glCreateShader(SHADER_TYPE);
+//SHADER_TYPE:
+// GL_VERTEX_SHADER 顶点着色器
+```
+* 创建着色器
+
+### glShaderSource
+```C++
+glShaderSource(SHADER_OBJ, SOURCE_COUNT, SOURCES, SOURCE_LENS);
+// SHADER_OBJ: 通过glCreateShader创建出的shader对象
+// SOURCE_COUNT 源码存在几段, 一般为一段(opengl允许你拆成多段，然后将其合并为一个源码处理)
+// SOURCES const char*[] 源码字符串
+// SOURCE_LENS int* 源码段数的各自长度, 可以设置为nullptr(要求:每个源码字符串都是普通 C 字符串，以 \0 结尾)
+```
+
+* 设置着色器源码
