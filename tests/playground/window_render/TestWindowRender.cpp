@@ -11,6 +11,9 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl)
 {
     std::cout << "这里是测试windowRender_glfw_opengl的测试代码" << std::endl;
 
+    // 可在初始化前注册glfw错误回调函数, 函数类型为void(int error, const char* description)
+    // glfwSetErrorCallback
+
     // glfwInit glfw初始化
     if (glfwInit() == GLFW_FALSE)
     {
@@ -61,6 +64,119 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl)
     std::cout << "renderer: " << glGetString(GL_RENDERER) << std::endl;  // 用来实际渲染的GPU
     std::cout << "version: " << glGetString(GL_VERSION) << std::endl;    // opengl的实际版本
 
+    // 开始渲染管线中需要准备的shader相关数据
+    // 1. 创建vertexShader
+    GLuint vertexShader{glCreateShader(GL_VERTEX_SHADER)};
+    std::string vertexShaderSrc{R"(
+        #version 330 core
+        layout(location = 0) in vec3 position;
+
+        void main() {
+            gl_Position = vec4(position, 1);
+        }
+    )"};
+    char const* cVertexShaderSrc{vertexShaderSrc.c_str()};
+    // 给vertex shader设置源码
+    glShaderSource(vertexShader, 1, &cVertexShaderSrc, nullptr);
+
+    // 2. 创建fragmentShader
+    GLuint fragmentShader{glCreateShader(GL_FRAGMENT_SHADER)};
+    std::string fragmentShaderSrc{R"(
+        #version 330 core
+        out vec4 color;
+
+        void main() {
+            color = vec4(1.0, 0.0, 0.0, 1.0);
+        }
+    )"};
+    char const* cfragmentShaderSrc{fragmentShaderSrc.c_str()};
+    glShaderSource(fragmentShader, 1, &cfragmentShaderSrc, nullptr);
+
+    // 3. 编译两个shader
+    GLuint shaders[2]{vertexShader, fragmentShader};
+    for (int i{0}; i < 2; ++i)
+    {
+        // 编译对应shader
+        glCompileShader(shaders[i]);
+
+        // 检查编译shader是否出错:
+        GLint isCompileSuccess{};
+        glGetShaderiv(shaders[i], GL_COMPILE_STATUS, &isCompileSuccess);
+        if (!isCompileSuccess)
+        {
+            // 打印出错日志
+            GLchar buffer[512]{};
+            glGetShaderInfoLog(shaders[i], 512, nullptr, buffer);
+            std::cerr << "第" << i + 1 << "个shader编译失败:\n" << buffer << std::endl;
+
+            glfwTerminate();
+            ASSERT_TRUE(isCompileSuccess);
+        }
+        else
+        {
+            std::cout << "第" << i + 1 << "个shader编译成功!" << std::endl;
+        }
+    }
+
+    // 4. 创建shader program并进行添加
+    GLuint shaderProgram{glCreateProgram()};
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+
+    // 5. shader program进行链接
+    glLinkProgram(shaderProgram);
+    // 检查链接是否出现问题
+    GLint isLinkSuccess{};
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &isLinkSuccess);
+    if (!isLinkSuccess)
+    {
+        GLchar buffer[512]{};
+        glGetProgramInfoLog(shaderProgram, 512, nullptr, buffer);
+        std::cerr << "shader程序链接失败:\n" << buffer << std::endl;
+
+        glfwTerminate();
+        ASSERT_TRUE(isLinkSuccess);
+    }
+    else
+    {
+        std::cout << "shader程序链接成功!" << std::endl;
+    }
+
+    // 6. 链接成功后删除冗余的shader obj
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    // 准备vertex data, 从CPU端上传到GPU
+    // vbo + vao
+    GLuint vertexBuffer{};
+    glGenBuffers(1, &vertexBuffer);
+    // glCreateBuffers(1, &vertexBuffer);
+
+    // bind vertex buffer
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+
+    // 按照顶点数据顺序, 逆时针旋转
+    float vertices[]{0.0f, 0.5f, 0.0f, -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f};
+    // 静态一次性上传
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 9, vertices, GL_STATIC_DRAW);
+    // 解绑vertex buffer的绑定
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // 创建顶点数组对象, 方便后续的上传顶点布局和绘制数组对象
+    GLuint vertexArray{};
+    glGenVertexArrays(1, &vertexArray);
+    // glCreateVertexArrays(1, &vertexArray);
+    glBindVertexArray(vertexArray);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+
+    // 开始创建顶点布局
+    // 第0个属性, 属性中存在三个基础值, 基础值类型, 是否标准化, 两个顶点之间的字节间隔
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
+    // 整个顶点就一个属性, 设置布局完毕, 启用0属性
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
     // 设置窗口位置
     int const displayScreenWidth{2560};
     int const displayScreenHeight{1440};
@@ -77,6 +193,12 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl)
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         // 清理当前启用的帧缓冲区, 默认为窗口后缓冲区
         glClear(GL_COLOR_BUFFER_BIT);
+
+        // 使用gl shader程序, 便于渲染
+        glUseProgram(shaderProgram);
+        // gl 绘制顶点数组, 按照数组对象中的顶点顺序依次绘制
+        glBindVertexArray(vertexArray);
+        glDrawArrays(GL_TRIANGLES, 0, 3);  // 从0顶点开始, 绘制3个顶点
 
         // 交换窗口的颜色缓冲区(双缓冲区, 防止屏幕出现残影等)
         glfwSwapBuffers(glfwWindow);
