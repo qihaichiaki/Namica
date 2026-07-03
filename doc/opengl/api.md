@@ -191,7 +191,7 @@ void glVertexAttribPointer(ELEMENT_INDEX, ELEMENT_COUNT, SHADER_DATA_BASE_TYPE, 
 // ELEMENT_COUNT:          属性中的数据个数
 // SHADER_DATA_BASE_TYPE:  属性中的数据的类型(推荐为GL_FLOAT, 如果传入整数会将其转换为浮点值)
 // IS_NORMALIZED:          是否对属性的数据进行标准化(归一化: [0, 1]或者[-1, 1])
-// ELEMENT_ALL_OFFSET:     两个相邻顶点之间间隔多少字节(比如顶点只有一个属性, 且为3个float, 那么此时就是3 * 4 byte)
+// ELEMENT_ALL_OFFSET:     两个相邻顶点之间间隔多少字节(整个顶点的字节大小)(比如顶点只有一个属性, 且为3个float, 那么此时就是3 * 4 byte)
 // ELEMENT_CURRENT_OFFSET: 当前属性数据在顶点中的起点位移位置(比如元素1为3个float, 那么此时就是0, 下一个元素就是 3 * 4)
 ```
 
@@ -245,3 +245,17 @@ void glDrawElements(DRAW_BASE_TYPE, DRAW_INDEX_COUNT, INDEX_DATA_TYPE, BYTE_OFFS
 
 * 按照索引数组指定的顺序绘制
 * 使用前注意bindVAO对象
+
+### glGetUniformLocation
+```C++
+Glint glGetUniformLocation(PROGRAM_OBJ, "uniform name");
+```
+
+* 返回shader程序中全局共享的uniform变量地址
+
+### glUniformXXX
+* CPU端给uniform变量上传对应类型的值
+
+```C++
+glUniform4f(UNIFORM_LOCATION, r, g, b, a);
+```

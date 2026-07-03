@@ -70,8 +70,12 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl)
     std::string vertexShaderSrc{R"(
         #version 330 core
         layout(location = 0) in vec3 position;
+        layout(location = 1) in vec3 color;
+
+        out vec3 vColor;
 
         void main() {
+            vColor = color;
             gl_Position = vec4(position, 1);
         }
     )"};
@@ -85,8 +89,12 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl)
         #version 330 core
         out vec4 color;
 
+        in vec3 vColor;
+
+        uniform vec4 uColor;
+
         void main() {
-            color = vec4(1.0, 0.0, 0.0, 1.0);
+            color = vec4(vColor, 1.0) * uColor;
         }
     )"};
     char const* cfragmentShaderSrc{fragmentShaderSrc.c_str()};
@@ -156,9 +164,26 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl)
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
 
     // 按照顶点数据顺序, 逆时针旋转
-    float vertices[]{0.0f, 0.5f, 0.0f, -0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f};
+    float vertices[]{0.0f,
+                     0.5f,
+                     0.0f,
+                     1.0,
+                     0.0,
+                     0.0,
+                     -0.5f,
+                     -0.5f,
+                     0.0f,
+                     0.0,
+                     1.0,
+                     0.0,
+                     0.5f,
+                     -0.5f,
+                     0.0f,
+                     0.0,
+                     0.0,
+                     1.0};
     // 静态一次性上传
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 9, vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 18, vertices, GL_STATIC_DRAW);
     // 解绑vertex buffer的绑定
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -184,11 +209,18 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl)
     // 开始创建顶点布局
     // 第0个属性, 属性中存在三个基础值, 基础值类型, 是否标准化, 两个顶点之间的字节间隔,
     // 属性的起始位置
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
-    // 整个顶点就一个属性, 设置布局完毕, 启用0属性
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, (void*)0);
+    // 启用0属性
     glEnableVertexAttribArray(0);
+    // color属性, 起始位置在顶点数据之后
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+
+    // 获取uniform变量在shader程序中的地址
+    GLint uColorLocation{glGetUniformLocation(shaderProgram, "uColor")};
 
     // 设置窗口位置
     int const displayScreenWidth{2560};
@@ -209,6 +241,8 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl)
 
         // 使用gl shader程序, 便于渲染
         glUseProgram(shaderProgram);
+        // 上传uniform 变量的值
+        glUniform4f(uColorLocation, 0.5, 0.5, 0.5, 1.0);
         // gl 绘制顶点数组, 按照数组对象中的顶点顺序依次绘制
         glBindVertexArray(vertexArray);
         // glDrawArrays(GL_TRIANGLES, 0, 3);  // 从0顶点开始, 绘制3个顶点
