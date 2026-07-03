@@ -179,7 +179,8 @@ void glBindVertexArray(VAO);
 ```
 
 * 绑定当前的VAO
-* 需要注意, 如果bind vertex Buffer, 一般规范是要在bind VAO后进行绑定, 逻辑更加清晰
+* 需要注意, 如果bind vertex Buffer, 一般规范是要在bind VAO再次进行绑定, 逻辑更加清晰
+* GL_ELEMENT_ARRAY_BUFFER 必须在VAO之后再次绑定, 否则索引缓冲区数据无法正确和VertexArray挂钩
 * 后续使用glVertexAttribPointer, 注意一定需要和正确的VBO, VAO挂钩
 * VAO设置为0可以进行解绑
 
@@ -235,6 +236,11 @@ void glDrawArrays(DRAW_BASE_TYPE, START_VERTEX_INDEX, DRAW_VERTEX_COUNT);
 
 ### glDrawElements
 ```C++
+void glDrawElements(DRAW_BASE_TYPE, DRAW_INDEX_COUNT, INDEX_DATA_TYPE, BYTE_OFFSET);
+// DRAW_INDEX_COUNT: 要使用索引缓冲区的索引数量
+// INDEX_DATA_TYPE:  索引缓冲区中数据的类型
+//   GL_UNSIGNED_INT -> uint32_t
+// BYTE_OFFSET:      索引缓冲区的字节偏移, 通常为nullptr
 ```
 
 * 按照索引数组指定的顺序绘制

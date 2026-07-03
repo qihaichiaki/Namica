@@ -150,7 +150,7 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl)
     // vbo + vao
     GLuint vertexBuffer{};
     glGenBuffers(1, &vertexBuffer);
-    // glCreateBuffers(1, &vertexBuffer);
+    // glCreateBuffers(1, &vertexBuffer);  // 330core 不允许使用
 
     // bind vertex buffer
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
@@ -162,15 +162,28 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl)
     // 解绑vertex buffer的绑定
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+    // 创建ebo, 索引缓冲区, 指定顶点的绘制顺序
+    GLuint indexBuffer{};
+    glGenBuffers(1, &indexBuffer);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+    uint32_t indices[]{0, 1, 2};
+
+    // 静态上传索引缓冲区数据
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * 9, indices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
     // 创建顶点数组对象, 方便后续的上传顶点布局和绘制数组对象
     GLuint vertexArray{};
     glGenVertexArrays(1, &vertexArray);
     // glCreateVertexArrays(1, &vertexArray);
     glBindVertexArray(vertexArray);
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
 
     // 开始创建顶点布局
-    // 第0个属性, 属性中存在三个基础值, 基础值类型, 是否标准化, 两个顶点之间的字节间隔
+    // 第0个属性, 属性中存在三个基础值, 基础值类型, 是否标准化, 两个顶点之间的字节间隔,
+    // 属性的起始位置
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
     // 整个顶点就一个属性, 设置布局完毕, 启用0属性
     glEnableVertexAttribArray(0);
@@ -198,7 +211,8 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl)
         glUseProgram(shaderProgram);
         // gl 绘制顶点数组, 按照数组对象中的顶点顺序依次绘制
         glBindVertexArray(vertexArray);
-        glDrawArrays(GL_TRIANGLES, 0, 3);  // 从0顶点开始, 绘制3个顶点
+        // glDrawArrays(GL_TRIANGLES, 0, 3);  // 从0顶点开始, 绘制3个顶点
+        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);  // 通过索引缓冲区绘制
 
         // 交换窗口的颜色缓冲区(双缓冲区, 防止屏幕出现残影等)
         glfwSwapBuffers(glfwWindow);
