@@ -259,3 +259,8 @@ Glint glGetUniformLocation(PROGRAM_OBJ, "uniform name");
 ```C++
 glUniform4f(UNIFORM_LOCATION, r, g, b, a);
 ```
+
+### Context共享资源
+* glfw中可通过创建窗口时传入想要共享openglContext窗口的句柄达成共享, 切换OpenGLContext使用`glfwMakeContextCurrent`.
+    - 其中, glfw中允许共享的对象存在: shaderProgram, VBO, EBO, Texture.
+    - 不允许共享的对象: VAO, FBO...
