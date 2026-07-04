@@ -255,6 +255,7 @@ Glint glGetUniformLocation(PROGRAM_OBJ, "uniform name");
 
 ### glUniformXXX
 * CPU端给uniform变量上传对应类型的值
+* 需要在glUseProgram后进行使用上传
 
 ```C++
 glUniform4f(UNIFORM_LOCATION, r, g, b, a);

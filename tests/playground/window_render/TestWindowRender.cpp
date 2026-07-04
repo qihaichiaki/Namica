@@ -151,6 +151,11 @@ void pollEvents()
 
 }  // namespace glfw_opengl
 
+struct Vector2
+{
+    float x{0.0f}, y{0.0f};
+};
+
 GLuint createShaderProgram(std::string const& _vertexShaderSrc,
                            std::string const& _fragmentShaderSrc)
 {
@@ -628,6 +633,153 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl_windows)
     for (auto& [window, _] : windows)
     {
         glfw_opengl::destroyWindow(window);
+    }
+
+    glfw_opengl::windowShutdown();
+}
+
+TEST_F(TestWindowRender, windowRender_glfw_opengl_backWhiteCheckerBoard)
+{
+    std::cout << "<< 这里是测试windowRender_glfw_opengl渲染白黑棋盘背景 >>" << std::endl;
+
+    ASSERT_TRUE(glfw_opengl::windowRenderInit());
+    GLFWwindow* const mainWindow{glfw_opengl::createWindow("backWhiteCheckerBoard", 1280, 1280)};
+    if (mainWindow == nullptr)
+    {
+        glfw_opengl::windowShutdown();
+        ASSERT_TRUE(false);
+    }
+    bool const isInitSuccess{glfw_opengl::renderContextInit(mainWindow)};
+    if (!isInitSuccess)
+    {
+        glfw_opengl::windowShutdown();
+        ASSERT_TRUE(false);
+    }
+
+    // 3 * 3 的黑白棋盘
+    // 渲染思路: 准备一个四边形纯色渲染即可, 利用uniform变量控制此四边形渲染的位置和颜色即可
+    // shader source
+    std::string const vertexShaderSource{R"(
+        #version 330 core
+        layout(location=0) in vec3 position;
+
+        uniform float uScale;
+        uniform vec2 uTranslation;
+
+        void main() {
+            gl_Position = vec4(position.x * uScale + uTranslation.x, position.y * uScale + uTranslation.y, position.z * uScale, 1.0);
+        }
+    )"};
+    std::string const fragmentShaderSource{R"(
+        #version 330 core
+        uniform vec4 uColor;
+
+        out vec4 color;
+
+        void main() {
+            color = uColor;
+        }
+    )"};
+    GLuint shaderProgram{createShaderProgram(vertexShaderSource, fragmentShaderSource)};
+    if (shaderProgram == 0)
+    {
+        glfw_opengl::windowShutdown();
+        ASSERT_TRUE(false);
+    }
+
+    GLint uScaleLoc{glGetUniformLocation(shaderProgram, "uScale")};
+    GLint uTranslationLoc{glGetUniformLocation(shaderProgram, "uTranslation")};
+    GLint uColorLoc{glGetUniformLocation(shaderProgram, "uColor")};
+
+    GLuint squareVAO{};
+    {
+        std::vector<float> squareVertice{
+            0.0f,
+            0.0f,
+            0.0f,  // vertex1
+            0.0f,
+            -2.0f,
+            0.0f,  // vertex2
+            2.0f,
+            -2.0f,
+            0.0f,  // vertex3
+            2.0f,
+            0.0f,
+            0.0f,  // vertex4
+        };
+        GLuint squareVBO{};
+        GLuint squareEBO{};
+
+        glGenBuffers(1, &squareVBO);
+        glGenVertexArrays(1, &squareVAO);
+        glBindVertexArray(squareVAO);
+
+        glBindBuffer(GL_ARRAY_BUFFER, squareVBO);
+        glBufferData(GL_ARRAY_BUFFER,
+                     squareVertice.size() * sizeof(float),
+                     squareVertice.data(),
+                     GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
+        glEnableVertexAttribArray(0);
+
+        std::vector<uint32_t> squareIndices{0, 1, 2, 2, 3, 0};
+        glGenBuffers(1, &squareEBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, squareEBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                     sizeof(uint32_t) * squareIndices.size(),
+                     squareIndices.data(),
+                     GL_STATIC_DRAW);
+
+        glBindVertexArray(0);
+    }
+
+    float const step{1.0f / 3.0f};
+
+    while (!glfw_opengl::windowShouldClose(mainWindow))
+    {
+        glfw_opengl::pollEvents();
+
+        // renderer
+        glClearColor(0.0, 1.0, 0.0, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // render
+        glUseProgram(shaderProgram);
+        glBindVertexArray(squareVAO);
+        glUniform1f(uScaleLoc, step);
+
+        // glUniform2f(uTranslationLoc, -1.0f, 1.0f);
+        // glUniform4f(uColorLoc, 0.0f, 0.0f, 0.0f, 1.0f);
+        // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+
+        // glUniform2f(uTranslationLoc, -1.0f + 2 * step, 1.0f - 2 * step);
+        // glUniform4f(uColorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
+        // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+
+        for (int x{0}; x < 3; ++x)
+        {
+            for (int y{0}; y < 3; ++y)
+            {
+                glUniform2f(uTranslationLoc, -1.0f + x * step * 2, 1.0f - y * step * 2);
+                // * 2的原因是x/y的范围为[-1, 1], 长度为2
+
+                if ((x + y * 3) % 2 == 0)
+                {
+                    // 偶数个, 白色
+                    glUniform4f(uColorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
+                }
+                else
+                {
+                    // 奇数个, 黑色
+                    glUniform4f(uColorLoc, 0.0f, 0.0f, 0.0f, 1.0f);
+                }
+
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+            }
+        }
+
+        glfw_opengl::swapBuffers(mainWindow);
     }
 
     glfw_opengl::windowShutdown();

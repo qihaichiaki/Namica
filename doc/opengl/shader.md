@@ -53,3 +53,4 @@ uniform type name;
 ```
 
 * 全局GPU变量, 可以通过CPU传输到GPU
+* 注意没有输入输出修饰符(in/out)
