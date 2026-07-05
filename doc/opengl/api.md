@@ -226,7 +226,8 @@ void glUseProgram(PROGRAM_OBJ);
 ```C++
 void glDrawArrays(DRAW_BASE_TYPE, START_VERTEX_INDEX, DRAW_VERTEX_COUNT);
 // DRAW_BASE_TYPE 绘制的图元类型
-//   GL_TRIANGLES 三角形(逆时针)
+//   GL_TRIANGLES      三角形(逆时针), 每三个点画一个三角形
+//   GL_TRIANGLE_STRIP 三角形, 绘制首尾相连, 共享边的三角形带(比如绘制四个顶点: a,b,c,d 会按照: abc, cbd的顺序画, /斜三角)
 // START_VERTEX_INDEX: 绘制的起始顶点
 // DRAW_VERTEX_COUNT:  绘制多少个顶点
 ```

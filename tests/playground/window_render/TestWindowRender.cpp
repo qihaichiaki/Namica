@@ -735,6 +735,39 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl_backWhiteCheckerBoard)
     }
 
     float const step{1.0f / 3.0f};
+    Vector2 playerTranslation{-1.0f + 2 * step + step * 0.5f, 1.0f - 2 * step - step * 0.5f};
+    glfwSetWindowUserPointer(mainWindow, &playerTranslation);
+    // 设置窗口事件的回调函数
+    // GLFWkeyfun: void (*)(GLFWwindow *, int, int, int, int) (aka void (*)(GLFWwindow *, int, int,
+    // int, int))
+    glfwSetKeyCallback(mainWindow,
+                       [](GLFWwindow* _window, int _key, int _scancode, int _action, int _mods) {
+                           float const speed{0.1f};
+                           Vector2& playerTranslation{*(Vector2*)glfwGetWindowUserPointer(_window)};
+
+                           if (_action == GLFW_PRESS)
+                           {
+                               if (_key == GLFW_KEY_RIGHT)
+                               {
+                                   playerTranslation.x += speed;
+                               }
+
+                               if (_key == GLFW_KEY_LEFT)
+                               {
+                                   playerTranslation.x -= speed;
+                               }
+
+                               if (_key == GLFW_KEY_DOWN)
+                               {
+                                   playerTranslation.y -= speed;
+                               }
+
+                               if (_key == GLFW_KEY_UP)
+                               {
+                                   playerTranslation.y += speed;
+                               }
+                           }
+                       });
 
     while (!glfw_opengl::windowShouldClose(mainWindow))
     {
@@ -778,6 +811,12 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl_backWhiteCheckerBoard)
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
             }
         }
+
+        // player
+        glUniform1f(uScaleLoc, step * 0.5f);
+        glUniform2f(uTranslationLoc, playerTranslation.x, playerTranslation.y);
+        glUniform4f(uColorLoc, 1.0f, 0.0f, 0.0f, 1.0f);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
         glfw_opengl::swapBuffers(mainWindow);
     }
