@@ -43,14 +43,20 @@ void windowShutdown()
     glfwTerminate();  // 终止glfw, 清理资源
 }
 
-void setWindowCenterPos(GLFWwindow* const _window)
+std::pair<int, int> getPrimaryMonitorSize()
 {
     // 获取主显示器
     GLFWmonitor* const monitor{glfwGetPrimaryMonitor()};
     // 获取主显示器相关模式
     GLFWvidmode const* monitorMode{glfwGetVideoMode(monitor)};
-    int const screenWidth{monitorMode->width};
-    int const screenHeight{monitorMode->height};
+    return {monitorMode->width, monitorMode->height};
+}
+
+void setWindowCenterPos(GLFWwindow* const _window)
+{
+    auto const size{getPrimaryMonitorSize()};
+    int const screenWidth{size.first};
+    int const screenHeight{size.second};
 
     int windowWidth{};
     int windowHeight{};
@@ -643,7 +649,9 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl_backWhiteCheckerBoard)
     std::cout << "<< 这里是测试windowRender_glfw_opengl渲染白黑棋盘背景 >>" << std::endl;
 
     ASSERT_TRUE(glfw_opengl::windowRenderInit());
-    GLFWwindow* const mainWindow{glfw_opengl::createWindow("backWhiteCheckerBoard", 1280, 1280)};
+    auto const size{glfw_opengl::getPrimaryMonitorSize()};
+    GLFWwindow* const mainWindow{
+        glfw_opengl::createWindow("backWhiteCheckerBoard", size.first / 4, size.first / 4)};
     if (mainWindow == nullptr)
     {
         glfw_opengl::windowShutdown();
