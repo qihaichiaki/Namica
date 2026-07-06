@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <unordered_map>
 
 #include <gtest/gtest.h>
 #include <GLFW/glfw3.h>
@@ -159,7 +160,14 @@ void pollEvents()
 
 struct Vector2
 {
-    float x{0.0f}, y{0.0f};
+    float x, y;
+
+    Vector2() : x{0.0f}, y{0.0f}
+    {
+    }
+    Vector2(float _x, float _y) : x{_x}, y{_y}
+    {
+    }
 };
 
 GLuint createShaderProgram(std::string const& _vertexShaderSrc,
@@ -827,6 +835,222 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl_backWhiteCheckerBoard)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
         glfw_opengl::swapBuffers(mainWindow);
+    }
+
+    glfw_opengl::windowShutdown();
+}
+
+TEST_F(TestWindowRender, windowRender_glfw_opengl_font)
+{
+    std::cout << "<< 这里是测试windowRender_glfw_opengl渲染字体 >>" << std::endl;
+    glfw_opengl::windowRenderInit();
+    GLFWwindow* const window{glfw_opengl::createWindow("渲染字体", 360, 640)};
+    glfw_opengl::renderContextInit(window);
+
+    // render data
+    GLuint shaderProgram{};
+    GLuint vao{};
+    {
+        // create shaderProgram
+        std::string vertexShaderSource{R"(
+            #version 330 core
+            layout(location = 0) in vec2 position;
+
+            uniform vec2 uScale;
+            uniform vec2 uTranslation;
+
+            void main(){
+                gl_Position = vec4(position.x * uScale.x + uTranslation.x, position.y * uScale.y + uTranslation.y, 0.0, 1.0);
+            }
+        )"};
+        std::string fragmentShaderSource{R"(
+            #version 330 core
+
+            uniform vec4 uColor;
+
+            out vec4 color;
+
+            void main() {
+                color = uColor;
+            }
+        )"};
+
+        shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
+
+        // vao + vbo + ebo
+        glGenVertexArrays(1, &vao);
+        glBindVertexArray(vao);
+
+        GLuint vbo{};
+        glGenBuffers(1, &vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+        //  0-----2
+        //  |  /  |
+        //  1-----3
+        std::vector<float> vertices{
+            -0.5,
+            0.5,  // vertex1
+            -0.5,
+            -0.5,  // vertx2
+            0.5,
+            0.5,  // vertex3
+            0.5,
+            -0.5,  // vertex4
+        };
+
+        glBufferData(
+            GL_ARRAY_BUFFER, sizeof(float) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+
+        GLuint ebo{};
+        glGenBuffers(1, &ebo);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+
+        std::vector<uint32_t> indices{0, 1, 2, 2, 1, 3};
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                     sizeof(uint32_t) * indices.size(),
+                     indices.data(),
+                     GL_STATIC_DRAW);
+
+        glBindVertexArray(0);
+    }
+
+    GLint uScale{glGetUniformLocation(shaderProgram, "uScale")};
+    GLint uTranslation{glGetUniformLocation(shaderProgram, "uTranslation")};
+    GLint uColor{glGetUniformLocation(shaderProgram, "uColor")};
+
+    float fontSize{0.1f};
+
+    /*
+    A:        B:        C:        D:        E:        F:        G:        H:        I
+    0,1,1,1,0 1,1,1,1,0 0,1,1,1,1 1,1,1,1,0 1,1,1,1,1 1,1,1,1,1 0,1,1,1,1 1,0,0,0,1 1,1,1,1,1
+    1,0,0,0,1 1,0,0,0,1 1,0,0,0,0 1,0,0,0,1 1,0,0,0,0 1,0,0,0,0 1,0,0,0,0 1,0,0,0,1 0,0,1,0,0
+    1,1,1,1,1 1,1,1,1,0 1,0,0,0,0 1,0,0,0,1 1,1,1,1,0 1,1,1,1,0 1,0,1,1,1 1,1,1,1,1 0,0,1,0,0
+    1,0,0,0,1 1,0,0,0,1 1,0,0,0,0 1,0,0,0,1 1,0,0,0,0 1,0,0,0,0 1,0,0,0,1 1,0,0,0,1 0,0,1,0,0
+    1,0,0,0,1 1,1,1,1,0 0,1,1,1,1 1,1,1,1,0 1,1,1,1,1 1,0,0,0,0 0,1,1,1,0 1,0,0,0,1 1,1,1,1,1
+    J:        k:        L:        M:        N:        O:        P:        Q:        R:
+    0,0,1,1,1 1,0,0,0,1 1,0,0,0,0 1,0,0,0,1 1,0,0,0,1 0,1,1,1,0 1,1,1,1,0 0,1,1,1,0 1,1,1,1,0
+    0,0,0,1,0 1,0,0,1,0 1,0,0,0,0 1,1,0,1,1 1,1,0,0,1 1,0,0,0,1 1,0,0,0,1 1,0,0,0,1 1,0,0,0,1
+    0,0,0,1,0 1,1,1,0,0 1,0,0,0,0 1,0,1,0,1 1,0,1,0,1 1,0,0,0,1 1,1,1,0,0 1,0,1,0,1 1,1,1,1,0
+    1,0,0,1,0 1,0,0,1,0 1,0,0,0,0 1,0,0,0,1 1,0,0,1,1 1,0,0,0,1 1,0,0,0,0 1,0,0,1,0 1,0,0,1,0
+    0,1,1,0,0 1,0,0,0,1 1,1,1,1,1 1,0,0,0,1 1,0,0,0,1 0,1,1,1,0 1,0,0,0,0 0,1,1,0,1 1,0,0,0,1
+    S:        T:        U:        V         W:        X:        Y:        Z:
+    0,1,1,1,1 1,1,1,1,1 1,0,0,0,1 1,0,0,0,1 1,0,0,0,1 1,0,0,0,1 1,0,0,0,1 1,1,1,1,1
+    1,0,0,0,0 0,0,1,0,0 1,0,0,0,1 1,0,0,0,1 1,0,0,0,1 0,1,0,1,0 0,1,0,1,0 0,0,0,1,0
+    0,1,1,1,0 0,0,1,0,0 1,0,0,0,1 1,0,0,0,1 1,0,1,0,1 0,0,1,0,0 0,0,1,0,0 0,0,1,0,0
+    0,0,0,0,1 0,0,1,0,0 1,0,0,0,1 0,1,0,1,0 1,1,0,1,1 0,1,0,1,0 0,0,1,0,0 0,1,0,0,0
+    1,1,1,1,0 0,0,1,0,0 0,1,1,1,0 0,0,1,0,0 1,0,0,0,1 1,0,0,0,1 0,0,1,0,0 1,0,0,0,0
+    .:        ,:        ::        !:        ?:        -:
+    0,0,0,0,0 0,0,0,0,0 0,0,0,0,0 0,0,1,0,0 0,1,1,1,0 0,0,0,0,0
+    0,0,0,0,0 0,0,0,0,0 0,0,1,0,0 0,0,1,0,0 1,0,0,0,1 0,0,0,0,0
+    0,0,0,0,0 0,0,0,0,0 0,0,0,0,0 0,0,1,0,0 0,0,0,1,0 1,1,1,1,1
+    0,0,0,0,0 0,0,1,0,0 0,0,1,0,0 0,0,0,0,0 0,0,0,0,0 0,0,0,0,0
+    0,0,1,0,0 0,1,0,0,0 0,0,0,0,0 0,0,1,0,0 0,0,1,0,0 0,0,0,0,0
+    */
+    std::unordered_map<char, std::vector<uint8_t>> fontMap{
+        {'A', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1}},
+        {'B', {1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
+        {'C', {0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1}},
+        {'D', {1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
+        {'E', {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1}},
+        {'F', {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0}},
+        {'G', {0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
+        {'H', {1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1}},
+        {'I', {1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1}},
+        {'J', {0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0}},
+        {'K', {1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1}},
+        {'L', {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1}},
+        {'M', {1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1}},
+        {'N', {1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1}},
+        {'O', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
+        {'P', {1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0}},
+        {'Q', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1}},
+        {'R', {1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1}},
+        {'S', {0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
+        {'T', {1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0}},
+        {'U', {1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
+        {'V', {1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0}},
+        {'W', {1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1}},
+        {'X', {1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1}},
+        {'Y', {1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0}},
+        {'Z', {1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1}},
+        {',', {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0}},
+        {' ', {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}};
+
+    auto drawChar = [&](char _char, Vector2 const& _position, float _fontSize) {
+        glUseProgram(shaderProgram);
+        const float fontCharSize{_fontSize / 5.0f};
+        glUniform2f(uScale, fontCharSize, fontCharSize);
+
+        auto it{fontMap.find(_char)};
+        if (it == fontMap.end())
+        {
+            it = fontMap.find(' ');
+        }
+        auto& renderFontCells{it->second};
+        glBindVertexArray(vao);
+        for (int x{0}; x < 5; ++x)
+        {
+            for (int y{0}; y < 5; ++y)
+            {
+                glUniform2f(uTranslation,
+                            (x - 2) * fontCharSize + _position.x,
+                            (2 - y) * fontCharSize + _position.y);
+                if (renderFontCells[x + y * 5] == 1)
+                {
+                    glUniform4f(uColor, 1.0f, 1.0f, 1.0f, 1.0f);
+                }
+                else
+                {
+                    glUniform4f(uColor, 0.0f, 0.0f, 0.0f, 1.0f);
+                }
+
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+        }
+    };
+
+    auto drawString{[&](std::string const& _str, Vector2 const& _position, float _fontSize) {
+        const float fontCharSize{_fontSize / 5.0f};
+        int strSize{static_cast<int>(_str.size())};
+        int halfStrSize{strSize / 2};
+
+        for (int i{0}; i < strSize; ++i)
+        {
+            float charTransfX{};
+            if (i < halfStrSize)
+            {
+                charTransfX = (i - halfStrSize) * _fontSize + (i - halfStrSize + 1) * fontCharSize -
+                    fontCharSize / 2.0f + _fontSize / 2.0f;
+            }
+            else
+            {
+                charTransfX = (i - halfStrSize + 1) * _fontSize + (i - halfStrSize) * fontCharSize +
+                    fontCharSize / 2.0f - _fontSize / 2.0f;
+            }
+
+            drawChar(_str[i], {_position.x + charTransfX, _position.y}, _fontSize);
+        }
+    }};
+
+    while (!glfw_opengl::windowShouldClose(window))
+    {
+        glfw_opengl::pollEvents();
+
+        // render
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // render font
+        // drawChar('A', {}, fontSize);
+        // drawChar('B', {fontSize + 0.01f, 0.0f}, fontSize);
+
+        drawString("ABCDEFGHIJKLMNOPQRSTUVWXYZ", {}, fontSize / 2.0f);
+        drawString("     HELLO, WORLD    QIHAI", {0.0f, -fontSize - 0.03f}, fontSize / 3.0f);
+
+        glfw_opengl::swapBuffers(window);
     }
 
     glfw_opengl::windowShutdown();
