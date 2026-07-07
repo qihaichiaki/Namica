@@ -110,6 +110,11 @@ GLFWwindow* createWindow(std::string_view _title, int _width = 1280, int _height
     return glfwWindow;
 }
 
+void setWindowResizeEnable(GLFWwindow* const _window, bool _enable)
+{
+    glfwSetWindowAttrib(_window, GLFW_RESIZABLE, _enable ? GLFW_TRUE : GLFW_FALSE);
+}
+
 void destroyWindow(GLFWwindow* _window)
 {
     glfwDestroyWindow(_window);
@@ -845,6 +850,7 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl_font)
     std::cout << "<< 这里是测试windowRender_glfw_opengl渲染字体 >>" << std::endl;
     glfw_opengl::windowRenderInit();
     GLFWwindow* const window{glfw_opengl::createWindow("渲染字体", 360, 640)};
+    glfw_opengl::setWindowResizeEnable(window, false);
     glfw_opengl::renderContextInit(window);
 
     // render data
