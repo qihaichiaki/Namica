@@ -226,6 +226,179 @@ GLuint createShaderProgram(std::string const& _vertexShaderSrc,
     return shaderProgram;
 }
 
+namespace
+{
+// render data
+GLuint shaderProgram{};
+GLuint vao{};
+GLint uScale{};
+GLint uTranslation{};
+GLint uColor{};
+
+std::unordered_map<char, std::vector<uint8_t>> fontMap{
+    {'A', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1}},
+    {'B', {1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
+    {'C', {0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1}},
+    {'D', {1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
+    {'E', {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1}},
+    {'F', {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0}},
+    {'G', {0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
+    {'H', {1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1}},
+    {'I', {1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1}},
+    {'J', {0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0}},
+    {'K', {1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1}},
+    {'L', {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1}},
+    {'M', {1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1}},
+    {'N', {1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1}},
+    {'O', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
+    {'P', {1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0}},
+    {'Q', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1}},
+    {'R', {1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1}},
+    {'S', {0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
+    {'T', {1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0}},
+    {'U', {1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
+    {'V', {1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0}},
+    {'W', {1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1}},
+    {'X', {1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1}},
+    {'Y', {1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0}},
+    {'Z', {1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1}},
+    {',', {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0}},
+    {'0', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
+    {'1', {0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0}},
+    {'2', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1}},
+    {'3', {1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
+    {'4', {1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0}},
+    {'5', {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
+    {'6', {0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
+    {'7', {1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0}},
+    {'8', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
+    {'9', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
+    {' ', {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}};
+
+// 全局状态变量
+float uiFontMax{0.045f};
+float uiFontMin{0.035f};
+float uiFontSpeed{0.0005f};
+float uiFont{uiFontMin};
+bool isFontEnlarge{true};
+
+bool isGameStart{true};
+bool isGameRun{false};
+
+// update func
+
+// 处理窗口的全局键盘事件
+void onKeyEvent(GLFWwindow* _window, int _key, int _scancode, int _action, int _mods)
+{
+    // 如果键盘按下
+    if (_action == GLFW_PRESS)
+    {
+        // 游戏开始窗口
+        if (isGameStart)
+        {
+            isGameStart = false;
+            isGameRun = true;
+        }
+    }
+}
+
+// 更新开始界面
+void updateGameStart(float _delta)
+{
+    static float uiTimeCount{0.0f};  // UI事件计时累计器
+
+    uiTimeCount += _delta;
+    if (uiTimeCount > 0.1f)
+    {
+        uiFont = isFontEnlarge ? uiFont + uiFontSpeed : uiFont - uiFontSpeed;
+        if (uiFont > uiFontMax)
+        {
+            uiFont = uiFontMax;
+            isFontEnlarge = false;
+        }
+        if (uiFont < uiFontMin)
+        {
+            uiFont = uiFontMin;
+            isFontEnlarge = true;
+        }
+        uiTimeCount = 0.0f;
+    }
+}
+
+// render func
+void drawChar(char _char,
+              Vec2 const& _position,
+              float _fontSize,
+              Vec4 const& _color = Vec4{0.0f, 0.0f, 0.0f, 1.0f})
+{
+    glUseProgram(shaderProgram);
+    float const fontCharSize{_fontSize / 5.0f};
+    glUniform2f(uScale, fontCharSize, fontCharSize);
+
+    auto it{fontMap.find(_char)};
+    if (it == fontMap.end())
+    {
+        it = fontMap.find(' ');
+    }
+    auto& renderFontCells{it->second};
+    glBindVertexArray(vao);
+    for (int x{0}; x < 5; ++x)
+    {
+        for (int y{0}; y < 5; ++y)
+        {
+            glUniform2f(uTranslation,
+                        (x - 2) * fontCharSize + _position.x,
+                        (2 - y) * fontCharSize + _position.y);
+            if (renderFontCells[x + y * 5] == 1)
+            {
+                glUniform4f(uColor, _color.r, _color.g, _color.b, _color.a);
+            }
+            else
+            {
+                glUniform4f(uColor, 0.0f, 0.0f, 0.0f, 0.0f);
+            }
+
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        }
+    }
+}
+
+void drawString(std::string const& _str,
+                Vec2 const& _position,
+                float _fontSize,
+                Vec4 const& _color = Vec4{0.0f, 0.0f, 0.0f, 1.0f})
+{
+    float const fontCharSize{_fontSize / 5.0f};
+    int strSize{static_cast<int>(_str.size())};
+    int halfStrSize{strSize / 2};
+
+    for (int i{0}; i < strSize; ++i)
+    {
+        float charTransfX{};
+        if (i < halfStrSize)
+        {
+            charTransfX = (i - halfStrSize) * _fontSize + (i - halfStrSize + 1) * fontCharSize -
+                fontCharSize / 2.0f + _fontSize / 2.0f;
+        }
+        else
+        {
+            charTransfX = (i - halfStrSize + 1) * _fontSize + (i - halfStrSize) * fontCharSize +
+                fontCharSize / 2.0f - _fontSize / 2.0f;
+        }
+
+        drawChar(_str[i], {_position.x + charTransfX, _position.y}, _fontSize, _color);
+    }
+}
+
+// 绘制开始界面
+void drawGameStart()
+{
+    drawString("SNAKE GAME", {0.0f, 0.3f}, 0.1f, Vec4{0.227f, 0.200f, 0.169f, 1.0f});
+    drawString("PRESS ANY KEY TO START", {0.0f, 0.0f}, uiFont, Vec4{0.227f, 0.200f, 0.169f, 1.0f});
+}
+
+}  // namespace
+
 TEST_F(TestSnakeGame, SnakeGameMain)
 {
     glfw_opengl::windowRenderInit();
@@ -233,9 +406,7 @@ TEST_F(TestSnakeGame, SnakeGameMain)
     glfw_opengl::setWindowResizeEnable(window, false);
     glfw_opengl::renderContextInit(window);
 
-    // render data
-    GLuint shaderProgram{};
-    GLuint vao{};
+    // render准备
     {
         // create shaderProgram
         std::string vertexShaderSource{R"(
@@ -302,120 +473,15 @@ TEST_F(TestSnakeGame, SnakeGameMain)
 
         glBindVertexArray(0);
     }
-    GLint uScale{glGetUniformLocation(shaderProgram, "uScale")};
-    GLint uTranslation{glGetUniformLocation(shaderProgram, "uTranslation")};
-    GLint uColor{glGetUniformLocation(shaderProgram, "uColor")};
+    uScale = glGetUniformLocation(shaderProgram, "uScale");
+    uTranslation = glGetUniformLocation(shaderProgram, "uTranslation");
+    uColor = glGetUniformLocation(shaderProgram, "uColor");
 
-    std::unordered_map<char, std::vector<uint8_t>> fontMap{
-        {'A', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1}},
-        {'B', {1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
-        {'C', {0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1}},
-        {'D', {1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
-        {'E', {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1}},
-        {'F', {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0}},
-        {'G', {0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
-        {'H', {1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1}},
-        {'I', {1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1}},
-        {'J', {0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0}},
-        {'K', {1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1}},
-        {'L', {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1}},
-        {'M', {1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1}},
-        {'N', {1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1}},
-        {'O', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
-        {'P', {1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0}},
-        {'Q', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1}},
-        {'R', {1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1}},
-        {'S', {0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
-        {'T', {1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0}},
-        {'U', {1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
-        {'V', {1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0}},
-        {'W', {1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1}},
-        {'X', {1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1}},
-        {'Y', {1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0}},
-        {'Z', {1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1}},
-        {',', {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0}},
-        {'0', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
-        {'1', {0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0}},
-        {'2', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1}},
-        {'3', {1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
-        {'4', {1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0}},
-        {'5', {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
-        {'6', {0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
-        {'7', {1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0}},
-        {'8', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0}},
-        {'9', {0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0}},
-        {' ', {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}};
-
-    auto drawChar = [&](char _char,
-                        Vec2 const& _position,
-                        float _fontSize,
-                        Vec4 const& _color = Vec4{0.0f, 0.0f, 0.0f, 1.0f}) {
-        glUseProgram(shaderProgram);
-        const float fontCharSize{_fontSize / 5.0f};
-        glUniform2f(uScale, fontCharSize, fontCharSize);
-
-        auto it{fontMap.find(_char)};
-        if (it == fontMap.end())
-        {
-            it = fontMap.find(' ');
-        }
-        auto& renderFontCells{it->second};
-        glBindVertexArray(vao);
-        for (int x{0}; x < 5; ++x)
-        {
-            for (int y{0}; y < 5; ++y)
-            {
-                glUniform2f(uTranslation,
-                            (x - 2) * fontCharSize + _position.x,
-                            (2 - y) * fontCharSize + _position.y);
-                if (renderFontCells[x + y * 5] == 1)
-                {
-                    glUniform4f(uColor, _color.r, _color.g, _color.b, _color.a);
-                }
-                else
-                {
-                    glUniform4f(uColor, 0.0f, 0.0f, 0.0f, 0.0f);
-                }
-
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-            }
-        }
-    };
-
-    auto drawString{[&](std::string const& _str,
-                        Vec2 const& _position,
-                        float _fontSize,
-                        Vec4 const& _color = Vec4{0.0f, 0.0f, 0.0f, 1.0f}) {
-        const float fontCharSize{_fontSize / 5.0f};
-        int strSize{static_cast<int>(_str.size())};
-        int halfStrSize{strSize / 2};
-
-        for (int i{0}; i < strSize; ++i)
-        {
-            float charTransfX{};
-            if (i < halfStrSize)
-            {
-                charTransfX = (i - halfStrSize) * _fontSize + (i - halfStrSize + 1) * fontCharSize -
-                    fontCharSize / 2.0f + _fontSize / 2.0f;
-            }
-            else
-            {
-                charTransfX = (i - halfStrSize + 1) * _fontSize + (i - halfStrSize) * fontCharSize +
-                    fontCharSize / 2.0f - _fontSize / 2.0f;
-            }
-
-            drawChar(_str[i], {_position.x + charTransfX, _position.y}, _fontSize, _color);
-        }
-    }};
+    // 设置键盘回调函数
+    glfwSetKeyCallback(window, onKeyEvent);
 
     std::chrono::time_point<std::chrono::steady_clock> preTime{std::chrono::steady_clock::now()};
 
-    float uiTimeCount{0.0f};  // UI事件计时累计器
-    float uiFontMax{0.045f};
-    float uiFontMin{0.035f};
-    float uiFontSpeed{0.0005f};
-    float uiFont{uiFontMin};
-    bool isFontEnlarge{true};
     while (!glfw_opengl::windowShouldClose(window))
     {
         // delta
@@ -427,32 +493,25 @@ TEST_F(TestSnakeGame, SnakeGameMain)
         glfw_opengl::pollEvents();
 
         // update
-        uiTimeCount += delta;
-        if (uiTimeCount > 0.1f)
+        if (isGameStart)
         {
-            uiFont = isFontEnlarge ? uiFont + uiFontSpeed : uiFont - uiFontSpeed;
-            if (uiFont > uiFontMax)
-            {
-                uiFont = uiFontMax;
-                isFontEnlarge = false;
-            }
-            if (uiFont < uiFontMin)
-            {
-                uiFont = uiFontMin;
-                isFontEnlarge = true;
-            }
-            uiTimeCount = 0.0f;
+            updateGameStart(delta);
         }
 
         // render
         glClearColor(0.961f, 0.961f, 0.863f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        drawString("SNAKE GAME", {0.0f, 0.3f}, 0.1f, Vec4{0.227f, 0.200f, 0.169f, 1.0f});
-        drawString(
-            "PRESS ANY KEY TO START", {0.0f, 0.0f}, uiFont, Vec4{0.227f, 0.200f, 0.169f, 1.0f});
+        if (isGameStart)
+        {
+            drawGameStart();
+        }
+
+        // 绘制游戏FPS
         drawString("FPS " + std::to_string(static_cast<int>(1.0f / delta)), {0.85f, 0.96f}, 0.025f);
 
         glfw_opengl::swapBuffers(window);
     }
+
+    glfw_opengl::windowShutdown();
 }
