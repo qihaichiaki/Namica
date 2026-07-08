@@ -1,5 +1,8 @@
 #include <iostream>
+#include <unordered_map>
 #include <chrono>
+#include <list>
+#include <random>
 #include <gtest/gtest.h>
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
@@ -27,6 +30,11 @@ struct Veci2
     }
     Veci2(int _x, int _y) : x{_x}, y{_y}
     {
+    }
+
+    bool operator==(Veci2 const& _other) const
+    {
+        return this->x == _other.x && this->y == _other.y;
     }
 };
 
@@ -276,34 +284,118 @@ std::unordered_map<char, std::vector<uint8_t>> fontMap{
     {' ', {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}};
 
 // 全局状态变量
+int const cellMaxWidth{16 * 2};
+int const cellMaxHeight{18 * 2};
+float const cellWidthScale{2.0f / cellMaxWidth};
+float const cellHeightScale{2.0f / cellMaxHeight};
+
+Vec4 uiColor{0.227f, 0.200f, 0.169f, 1.0f};
+Vec4 wallColor{0.353f, 0.396f, 0.451f, 1.0f};
+Vec4 snakeColor{0.0f, 0.0f, 1.0f, 1.0f};
+Vec4 foodColor{1.0f, 0.0f, 0.0f, 1.0f};
+
+enum class GameStatus
+{
+    start,
+    run,
+    over
+};
+GameStatus gameStatus{GameStatus::start};
+
+// game start
 float uiFontMax{0.045f};
 float uiFontMin{0.035f};
 float uiFontSpeed{0.0005f};
 float uiFont{uiFontMin};
 bool isFontEnlarge{true};
 
-bool isGameStart{true};
-bool isGameRun{false};
+// game run
+// 蛇的初始body
+Veci2 snakeStartBody[3]{Veci2{8, 7}, Veci2{7, 7}, Veci2{6, 7}};
+std::list<Veci2> snakeBody{};  //  使用链表数据结构
+enum class SnakeDir
+{
+    right,
+    left,
+    up,
+    down
+};
+SnakeDir snakeDir{SnakeDir::right};
+float const snakeStartSpeed{0.3f};
+float snakeSpeed{snakeStartSpeed};
+bool haveFood{false};
+Veci2 foodPos{};
+int score{0};
+bool eatFood{false};
+
+// game over
 
 // update func
+
+// 游戏运行时状态清除
+void gameRunStatusReset()
+{
+    snakeBody.clear();
+    snakeBody.push_back(snakeStartBody[0]);
+    snakeBody.push_back(snakeStartBody[1]);
+    snakeBody.push_back(snakeStartBody[2]);
+
+    snakeDir = SnakeDir::right;
+    snakeSpeed = snakeStartSpeed;
+    haveFood = false;
+    score = 0;
+    eatFood = false;
+}
 
 // 处理窗口的全局键盘事件
 void onKeyEvent(GLFWwindow* _window, int _key, int _scancode, int _action, int _mods)
 {
-    // 如果键盘按下
-    if (_action == GLFW_PRESS)
+    // 游戏开始窗口
+    if (gameStatus == GameStatus::start)
     {
-        // 游戏开始窗口
-        if (isGameStart)
+        // 如果键盘按下
+        if (_action == GLFW_PRESS)
         {
-            isGameStart = false;
-            isGameRun = true;
+            gameStatus = GameStatus::run;
+            gameRunStatusReset();
+        }
+    }
+
+    if (gameStatus == GameStatus::run)
+    {
+        if (_action == GLFW_PRESS)
+        {
+            if (_key == GLFW_KEY_LEFT && snakeDir != SnakeDir::right)
+            {
+                snakeDir = SnakeDir::left;
+            }
+            if (_key == GLFW_KEY_RIGHT && snakeDir != SnakeDir::left)
+            {
+                snakeDir = SnakeDir::right;
+            }
+            if (_key == GLFW_KEY_UP && snakeDir != SnakeDir::down)
+            {
+                snakeDir = SnakeDir::up;
+            }
+            if (_key == GLFW_KEY_DOWN && snakeDir != SnakeDir::up)
+            {
+                snakeDir = SnakeDir::down;
+            }
+        }
+    }
+
+    if (gameStatus == GameStatus::over)
+    {
+        if (_action == GLFW_PRESS && _key == GLFW_KEY_R)
+        {
+            gameStatus = GameStatus::run;
+            gameRunStatusReset();
         }
     }
 }
 
-// 更新开始界面
-void updateGameStart(float _delta)
+// 更新字体缩放
+void updateGameFontEnlarge(float _delta)
 {
     static float uiTimeCount{0.0f};  // UI事件计时累计器
 
@@ -322,6 +414,97 @@ void updateGameStart(float _delta)
             isFontEnlarge = true;
         }
         uiTimeCount = 0.0f;
+    }
+}
+
+Veci2 randomPos()
+{
+    static std::random_device rd;
+    static std::mt19937 rng{rd()};
+    std::uniform_int_distribution<int> distX(1, cellMaxWidth - 2);
+    std::uniform_int_distribution<int> distY(1, cellMaxHeight - 2);
+    return Veci2{distX(rng), distY(rng)};
+}
+
+// 更新游戏运行态
+void updateGameRun(float _delta)
+{
+    static float timeCount{0.0f};
+    timeCount += _delta;
+
+    // check
+    Veci2 head{snakeBody.front()};
+    if (head.x <= 0 || head.x >= cellMaxWidth - 1 || head.y <= 0 || head.y >= cellMaxHeight - 1)
+    {
+        // 碰撞上墙壁了
+        gameStatus = GameStatus::over;
+        return;
+    }
+    // 检查是否撞在自己身上了
+    auto it{snakeBody.begin()};
+    ++it;
+    while (it != snakeBody.end())
+    {
+        if (head == *(it))
+        {
+            // 撞到自己了
+            gameStatus = GameStatus::over;
+            return;
+        }
+
+        ++it;
+    }
+
+    // 是否吃到果子了
+    if (haveFood)
+    {
+        if (head == foodPos)
+        {
+            // 吃到了
+            ++score;
+            eatFood = true;
+            haveFood = false;
+        }
+    }
+    else
+    {
+        foodPos = randomPos();
+        haveFood = true;
+    }
+
+    // move
+    if (timeCount > snakeSpeed)
+    {
+        switch (snakeDir)
+        {
+            case SnakeDir::right:
+                head.x += 1;
+                break;
+            case SnakeDir::left:
+                head.x -= 1;
+                break;
+            case SnakeDir::up:
+                head.y -= 1;
+                break;
+            case SnakeDir::down:
+                head.y += 1;
+                break;
+            default:
+                break;
+        }
+
+        snakeBody.push_front(head);
+        if (eatFood)
+        {
+            eatFood = false;
+            snakeSpeed *= 0.85f;
+        }
+        else
+        {
+            snakeBody.pop_back();
+        }
+
+        timeCount = 0.0f;
     }
 }
 
@@ -390,11 +573,82 @@ void drawString(std::string const& _str,
     }
 }
 
+void drawCell(Veci2 const& _position, Vec4 const& _color)
+{
+    glUseProgram(shaderProgram);
+    glUniform2f(uScale, cellWidthScale, cellHeightScale);
+    glUniform4f(uColor, _color.r, _color.g, _color.b, _color.a);
+
+    static float cellHalfWidth{1.0f / cellMaxWidth};
+    static float cellHalfHeight{1.0f / cellMaxHeight};
+    static int cellMaxHalfWidth{cellMaxWidth / 2 - 1 < 0 ? 0 : cellMaxWidth / 2 - 1};
+    static int cellMaxHalfHeith{cellMaxHeight / 2 - 1 < 0 ? 0 : cellMaxHeight / 2 - 1};
+
+    Vec2 position{};
+
+    if (_position.x <= cellMaxHalfWidth)
+    {
+        position.x = -2.0f * cellHalfWidth * (cellMaxHalfWidth - _position.x) - cellHalfWidth;
+    }
+    else
+    {
+        position.x = (_position.x - cellMaxHalfWidth - 1) * 2.0f * cellHalfWidth + cellHalfWidth;
+    }
+
+    if (_position.y <= cellMaxHalfHeith)
+    {
+        position.y = 2.0f * cellHalfHeight * (cellMaxHalfHeith - _position.y) + cellHalfHeight;
+    }
+    else
+    {
+        position.y = -2.0f * cellHalfHeight * (_position.y - cellMaxHalfHeith - 1) - cellHalfHeight;
+    }
+
+    glUniform2f(uTranslation, position.x, position.y);
+    glBindVertexArray(vao);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+
 // 绘制开始界面
 void drawGameStart()
 {
-    drawString("SNAKE GAME", {0.0f, 0.3f}, 0.1f, Vec4{0.227f, 0.200f, 0.169f, 1.0f});
-    drawString("PRESS ANY KEY TO START", {0.0f, 0.0f}, uiFont, Vec4{0.227f, 0.200f, 0.169f, 1.0f});
+    drawString("SNAKE GAME", {0.0f, 0.3f}, 0.1f, uiColor);
+    drawString("PRESS ANY KEY TO START", {0.0f, 0.0f}, uiFont, uiColor);
+}
+
+// 绘制结束界面
+void drawGameOver()
+{
+    drawString("GAME OVER", {0.0f, 0.3f}, 0.1f, Vec4{1.0f, 0.0f, 0.0f, 1.0f});
+    drawString("SCORE: " + std::to_string(score), {0.0f, 0.0f}, 0.08f, uiColor);
+    drawString("PRESS R KEY TO REPLAY", {0.0f, -0.2f}, uiFont, uiColor);
+}
+
+// 绘制游戏运行界面
+void drawGameRun()
+{
+    // 绘制墙壁
+    for (int i{0}; i < cellMaxWidth; ++i)
+    {
+        drawCell(Veci2{i, 0}, wallColor);
+        drawCell(Veci2{i, cellMaxHeight - 1}, wallColor);
+    }
+    for (int i{0}; i < cellMaxHeight; ++i)
+    {
+        drawCell(Veci2{0, i}, wallColor);
+        drawCell(Veci2{cellMaxWidth - 1, i}, wallColor);
+    }
+
+    // 绘制蛇
+    for (auto& snakePos : snakeBody)
+    {
+        drawCell(snakePos, snakeColor);
+    }
+    // 绘制食物
+    if (haveFood)
+    {
+        drawCell(foodPos, foodColor);
+    }
 }
 
 }  // namespace
@@ -493,22 +747,43 @@ TEST_F(TestSnakeGame, SnakeGameMain)
         glfw_opengl::pollEvents();
 
         // update
-        if (isGameStart)
+        if (gameStatus == GameStatus::start)
         {
-            updateGameStart(delta);
+            updateGameFontEnlarge(delta);
+        }
+        if (gameStatus == GameStatus::run)
+        {
+            updateGameRun(delta);
+        }
+        if (gameStatus == GameStatus::over)
+        {
+            updateGameFontEnlarge(delta);
         }
 
         // render
         glClearColor(0.961f, 0.961f, 0.863f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        if (isGameStart)
+        if (gameStatus == GameStatus::start)
         {
             drawGameStart();
         }
+        if (gameStatus == GameStatus::run)
+        {
+            drawGameRun();
+        }
+        if (gameStatus == GameStatus::over)
+        {
+            drawGameRun();
+            drawGameOver();
+        }
 
+        drawString("SCORE: " + std::to_string(score), {-0.85f, 0.98f}, 0.025f, uiColor);
         // 绘制游戏FPS
-        drawString("FPS " + std::to_string(static_cast<int>(1.0f / delta)), {0.85f, 0.96f}, 0.025f);
+        drawString("FPS " + std::to_string(static_cast<int>(1.0f / delta)),
+                   {0.85f, 0.98f},
+                   0.025f,
+                   uiColor);
 
         glfw_opengl::swapBuffers(window);
     }
