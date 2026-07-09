@@ -23,6 +23,9 @@ in/out TYPE NAME;
 * NAME 变量名
 * 在vertex shader中out, 会传递到fragment shader中去;fragment shader则是输出对应像素的颜色 
 
+### 变量类型
+* vec 向量类型: vec3, vec4
+
 ### shader main
 ```C++
 void main()
@@ -50,3 +53,4 @@ uniform type name;
 ```
 
 * 全局GPU变量, 可以通过CPU传输到GPU
+* 注意没有输入输出修饰符(in/out)

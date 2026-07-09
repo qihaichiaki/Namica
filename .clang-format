@@ -55,6 +55,6 @@ BraceWrapping: {
     AfterExternBlock: 'true',
     SplitEmptyFunction: 'true',
     SplitEmptyRecord: 'true',
-    SplitEmptyNamespace: 'true',
+    SplitEmptyNamespace: 'true'
 }
 QualifierAlignment: Right
