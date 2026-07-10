@@ -528,7 +528,7 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl_backWhiteCheckerBoard)
     }
 
     float const step{1.0f / 3.0f};
-    Vector2 playerTranslation{-1.0f + 2 * step + step * 0.5f, 1.0f - 2 * step - step * 0.5f};
+    Vec2 playerTranslation{-1.0f + 2 * step + step * 0.5f, 1.0f - 2 * step - step * 0.5f};
     glfwSetWindowUserPointer(mainWindow, &playerTranslation);
     // 设置窗口事件的回调函数
     // GLFWkeyfun: void (*)(GLFWwindow *, int, int, int, int) (aka void (*)(GLFWwindow *, int, int,
@@ -536,7 +536,7 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl_backWhiteCheckerBoard)
     glfwSetKeyCallback(mainWindow,
                        [](GLFWwindow* _window, int _key, int _scancode, int _action, int _mods) {
                            float const speed{0.1f};
-                           Vector2& playerTranslation{*(Vector2*)glfwGetWindowUserPointer(_window)};
+                           Vec2& playerTranslation{*(Vec2*)glfwGetWindowUserPointer(_window)};
 
                            if (_action == GLFW_PRESS)
                            {
@@ -757,7 +757,7 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl_font)
         {',', {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0}},
         {' ', {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}};
 
-    auto drawChar = [&](char _char, Vector2 const& _position, float _fontSize) {
+    auto drawChar = [&](char _char, Vec2 const& _position, float _fontSize) {
         glUseProgram(shaderProgram);
         const float fontCharSize{_fontSize / 5.0f};
         glUniform2f(uScale, fontCharSize, fontCharSize);
@@ -790,7 +790,7 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl_font)
         }
     };
 
-    auto drawString{[&](std::string const& _str, Vector2 const& _position, float _fontSize) {
+    auto drawString{[&](std::string const& _str, Vec2 const& _position, float _fontSize) {
         const float fontCharSize{_fontSize / 5.0f};
         int strSize{static_cast<int>(_str.size())};
         int halfStrSize{strSize / 2};

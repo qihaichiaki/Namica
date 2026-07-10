@@ -98,6 +98,14 @@ GLFWwindow* createWindow(std::string_view _title, int _width, int _height)
     return glfwWindow;
 }
 
+GLFWwindow* createWindow(std::string_view _title, float _widthRatio, float _heightRatio)
+{
+    auto mainWindowSize{getPrimaryMonitorSize()};
+    Veci2 windowSize{static_cast<int>(mainWindowSize.first * _widthRatio),
+                     static_cast<int>(mainWindowSize.second * _heightRatio)};
+    return createWindow(_title, windowSize.x, windowSize.y);
+}
+
 void setWindowResizeEnable(GLFWwindow* const _window, bool _enable)
 {
     glfwSetWindowAttrib(_window, GLFW_RESIZABLE, _enable ? GLFW_TRUE : GLFW_FALSE);
