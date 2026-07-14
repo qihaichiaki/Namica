@@ -229,13 +229,13 @@ TEST_F(TestWindowRender, cube_render)
     // render data
     std::string vertexShaderSrc{R"(
         #version 330 core
-        layout(location = 0) in vec2 position;
+        layout(location = 0) in vec3 position;
         layout(location = 1) in vec4 color;
 
         out vec4 vColor;
 
         void main() {
-            gl_Position = vec4(position, 0.0, 1.0);
+            gl_Position = vec4(position, 1.0);
             vColor = color;
         }
     )"};
@@ -258,18 +258,37 @@ TEST_F(TestWindowRender, cube_render)
     material.setShaderProgram(createShaderProgram(vertexShaderSrc, fragmentShaderSrc));
     material.setParam("uColor", namica::Vec4{1.0f, 1.0f, 1.0f, 1.0f});
 
+    //       6 ---- 5
+    //      /      /|              z y
+    //     0 ---- 2 |              |/
+    //     | 7    | 4              |-> x
+    //     |      |/
+    //     1 ---- 3
+    //
+
     std::vector<namica::Float> vertices{
-        -0.5f, 0.5f,  1.0f, 0.0f, 0.0f, 1.0f,  // vertex1
-        -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f,  // vertex2
-        0.5f,  0.5f,  0.0f, 0.0f, 1.0f, 0.0f,  // vertex3
-        0.5f,  -0.5f, 1.0f, 1.0f, 1.0f, 0.0f,  // vertex4
+        -0.5f, -0.5f, 0.5f,  1.0f, 0.0f, 0.0f, 1.0f,  // vertex0
+        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f,  // vertex1
+        0.5f,  -0.5f, 0.5f,  0.0f, 0.0f, 1.0f, 1.0f,  // vertex2
+        0.5f,  -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f,  // vertex3
+        0.5f,  0.5f,  -0.5f, 1.0f, 0.0f, 0.0f, 1.0f,  // vertex4
+        0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 1.0f,  // vertex5
+        -0.5f, 0.5f,  0.5f,  0.0f, 0.0f, 1.0f, 1.0f,  // vertex6
+        -0.5f, 0.5f,  -0.5f, 1.0f, 1.0f, 1.0f, 1.0f,  // vertex7
     };
     VertexLayout vertexLayout{
-        VertexElement{GL_FLOAT, 2},  // pos
+        VertexElement{GL_FLOAT, 3},  // pos
         VertexElement{GL_FLOAT, 4},  // color
     };
 
-    std::vector<namica::UInt> indices{0, 1, 2, 2, 1, 3};
+    std::vector<namica::UInt> indices{
+        0, 1, 2, 2, 1, 3,  // face0 front
+        2, 3, 5, 5, 3, 4,  // face1 front right
+        5, 4, 6, 6, 4, 7,  // face2 back
+        6, 7, 0, 0, 7, 1,  // face3 front left
+        1, 7, 3, 3, 7, 4,  // face4 bottom
+        6, 0, 5, 5, 0, 2,  // face5 top
+    };
     Mesh mesh{vertexLayout, vertices, indices};
 
     while (!glfw_opengl::windowShouldClose(window))

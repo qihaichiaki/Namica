@@ -137,6 +137,13 @@ bool renderContextInit(GLFWwindow* _window)
     std::cout << "OpenGL的实际版本[version]: " << glGetString(GL_VERSION)
               << std::endl;  // opengl的实际版本
 
+    // 启用纹理混合
+    glEnable(GL_BLEND);
+    // 经典混合函数, 实现透明效果
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    // 启用深度测试
+    glEnable(GL_DEPTH_TEST);
+
     return true;
 }
 
