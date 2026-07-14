@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  // IWYU pragma: keep
+#include <concepts>
 #include <cmath>
 
 #include "namica/Common.h"
