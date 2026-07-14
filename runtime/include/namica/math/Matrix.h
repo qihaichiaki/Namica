@@ -11,7 +11,7 @@ class NAMICA_API Mat4
 {
 public:
     Mat4() noexcept;  // 默认为单位矩阵
-    Mat4(Float _value) noexcept;
+    explicit Mat4(Float _value) noexcept;
     Mat4(Float _v00,
          Float _v01,
          Float _v02,
