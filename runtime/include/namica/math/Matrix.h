@@ -58,6 +58,16 @@ Vec4 operator*(Mat4 const& _mat, Vec4 const& _vec) noexcept;
  */
 Mat4 translate(Mat4 const& _mat, Vec3 const& _offset) noexcept;
 
+/**
+ * @brief 对矩阵沿着axis进行旋转变换
+ *
+ * @param _mat 4x4矩阵
+ * @param _angle 旋转角度(弧度值)
+ * @param _axis 旋转轴
+ * @return Mat4
+ */
+Mat4 rotate(Mat4 const& _mat, Float const _angle, Vec3 const& _axis) noexcept;
+
 }  // namespace namica
 
 #include "namica/math/Matrix.inl"

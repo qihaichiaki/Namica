@@ -130,4 +130,11 @@ inline Mat4 translate(Mat4 const& _mat, Vec3 const& _offset) noexcept
     return result;
 }
 
+inline Mat4 rotate(Mat4 const& _mat, Float const _angle, Vec3 const& _axis) noexcept
+{
+    Mat4 result{_mat};
+
+    return result;
+}
+
 }  // namespace namica

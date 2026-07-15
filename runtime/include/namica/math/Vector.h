@@ -67,13 +67,24 @@ public:
         requires std::floating_point<T>;
 
     // 获取原始数据
-    T* data() noexcept;
-    T const* data() const noexcept;
+
+    [[nodiscard]] T* data() noexcept;
+    [[nodiscard]] T const* data() const noexcept;
 
     // 基础运算
-    Vector operator*(Vector const& _other) const noexcept;
-    Vector operator*(Float const _val) const noexcept;
-    Vector operator+(Vector const& _other) const noexcept;
+
+    // 诸分量相乘
+    [[nodiscard]] Vector operator*(Vector const& _other) const noexcept;
+    [[nodiscard]] Vector operator*(Float const _val) const noexcept;
+    Vector& operator*=(Float const _val) noexcept;
+    [[nodiscard]] Vector operator+(Vector const& _other) const noexcept;
+
+    // 点乘
+    Float dot(Vector const& _other) const noexcept;
+
+    // 归一化操作
+    Vector& normalize() noexcept;
+    [[nodiscard]] Vector normalized() const noexcept;
 
 private:
     T m_data[D]{};
