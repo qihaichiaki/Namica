@@ -1,17 +1,22 @@
 #pragma once
 
-#include "namica/Base.h"
-#include "namica/Common.h"
+#include "namica/math/Vector.h"
 
 namespace namica
 {
 
 // 4 x 4矩阵类型
-class NAMICA_API Mat4
+
+// 列主序矩阵
+// R T
+// x 1
+// vec4 vec4 vec4 vec4
+class Mat4
 {
 public:
-    Mat4() noexcept;  // 默认为单位矩阵
+    Mat4() noexcept;  // 默认为0矩阵
     explicit Mat4(Float _value) noexcept;
+    // _v行列
     Mat4(Float _v00,
          Float _v01,
          Float _v02,
@@ -29,19 +34,29 @@ public:
          Float _v32,
          Float _v33) noexcept;
 
-    ~Mat4();
+    Float& operator()(Int _row, Int _column) noexcept;
+    Float const& operator()(Int _row, Int _column) const noexcept;
 
-    Float& operator()(Int _x, Int _y) noexcept;
-    Float const& operator()(Int _x, Int _y) const noexcept;
-    Float* operator[](Int _x) noexcept;
-    Float const* operator[](Int _x) const noexcept;
+    Vec4& operator[](Int _column) noexcept;
+    Vec4 const& operator[](Int _column) const noexcept;
+
+    Float* data() noexcept;
+    Float const* data() const noexcept;
 
 private:
-    Float m_data[4][4]{{1.0f, 0.0f, 0.0f, 0.0f},
-                       {0.0f, 1.0f, 0.0f, 0.0f},
-                       {0.0f, 0.0f, 1.0f, 0.0f},
-                       {0.0f, 0.0f, 0.0f, 1.0f}};
+    Vec4 m_columns[4]{};  // 4个列向量 columns
 };
+
+Vec4 operator*(Mat4 const& _mat, Vec4 const& _vec) noexcept;
+
+/**
+ * @brief 对矩阵进行平移转换
+ *
+ * @param _mat 4x4矩阵
+ * @param _offset 位移量
+ * @return Mat4 平移转换后的矩阵
+ */
+Mat4 translate(Mat4 const& _mat, Vec3 const& _offset) noexcept;
 
 }  // namespace namica
 
