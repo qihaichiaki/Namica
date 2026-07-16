@@ -34,39 +34,42 @@ public:
          Float _v32,
          Float _v33) noexcept;
 
-    Float& operator()(Int _row, Int _column) noexcept;
-    Float const& operator()(Int _row, Int _column) const noexcept;
+    [[nodiscard]] Float& operator()(Int _row, Int _column) noexcept;
+    [[nodiscard]] Float const& operator()(Int _row, Int _column) const noexcept;
 
-    Vec4& operator[](Int _column) noexcept;
-    Vec4 const& operator[](Int _column) const noexcept;
+    [[nodiscard]] Vec4& operator[](Int _column) noexcept;
+    [[nodiscard]] Vec4 const& operator[](Int _column) const noexcept;
 
-    Float* data() noexcept;
-    Float const* data() const noexcept;
+    [[nodiscard]] Float* data() noexcept;
+    [[nodiscard]] Float const* data() const noexcept;
+
+    // 矩阵相关运算
+    [[nodiscard]] Vec4 operator*(Vec4 const& _vec) const noexcept;
+    [[nodiscard]] Mat4 operator*(Mat4 const& _other) const noexcept;
+    Mat4& operator*=(Mat4 const& _other) noexcept;
+
+    /**
+     * @brief 对当前矩阵进行平移转换
+     *
+     * @param _offset 位移量
+     * @return 平移转换后的矩阵
+     */
+    Mat4& translate(Vec3 const& _offset) noexcept;
+    [[nodiscard]] Mat4 translated(Vec3 const& _offset) const noexcept;
+
+    /**
+     * @brief 对当前矩阵沿着axis进行旋转变换
+     *
+     * @param _angle 旋转角度(弧度值)
+     * @param _axis 旋转轴(在运算时会归一化)
+     * @return 旋转转换后的矩阵
+     */
+    Mat4& rotate(Float const _angle, Vec3 const& _axis) noexcept;
+    [[nodiscard]] Mat4 rotated(Float const _angle, Vec3 const& _axis) const noexcept;
 
 private:
     Vec4 m_columns[4]{};  // 4个列向量 columns
 };
-
-Vec4 operator*(Mat4 const& _mat, Vec4 const& _vec) noexcept;
-
-/**
- * @brief 对矩阵进行平移转换
- *
- * @param _mat 4x4矩阵
- * @param _offset 位移量
- * @return Mat4 平移转换后的矩阵
- */
-Mat4 translate(Mat4 const& _mat, Vec3 const& _offset) noexcept;
-
-/**
- * @brief 对矩阵沿着axis进行旋转变换
- *
- * @param _mat 4x4矩阵
- * @param _angle 旋转角度(弧度值)
- * @param _axis 旋转轴
- * @return Mat4
- */
-Mat4 rotate(Mat4 const& _mat, Float const _angle, Vec3 const& _axis) noexcept;
 
 }  // namespace namica
 

@@ -19,42 +19,42 @@ public:
 
     explicit Vector(T value) noexcept;
 
-    T& operator[](Int _index) noexcept;
-    T const& operator[](Int _index) const noexcept;
+    [[nodiscard]] T& operator[](Int _index) noexcept;
+    [[nodiscard]] T const& operator[](Int _index) const noexcept;
 
     // 特化访问方法
-    T& x() noexcept
+    [[nodiscard]] T& x() noexcept
         requires(D >= 1);
-    T const& x() const noexcept
+    [[nodiscard]] T const& x() const noexcept
         requires(D >= 1);
-    T& y() noexcept
+    [[nodiscard]] T& y() noexcept
         requires(D >= 2);
-    T const& y() const noexcept
+    [[nodiscard]] T const& y() const noexcept
         requires(D >= 2);
-    T& z() noexcept
+    [[nodiscard]] T& z() noexcept
         requires(D >= 3);
-    T const& z() const noexcept
+    [[nodiscard]] T const& z() const noexcept
         requires(D >= 3);
-    T& w() noexcept
+    [[nodiscard]] T& w() noexcept
         requires(D >= 4);
-    T const& w() const noexcept
+    [[nodiscard]] T const& w() const noexcept
         requires(D >= 4);
-    T& r() noexcept
+    [[nodiscard]] T& r() noexcept
         requires(D >= 1);
-    T const& r() const noexcept
+    [[nodiscard]] T const& r() const noexcept
         requires(D >= 1);
-    T& g() noexcept
+    [[nodiscard]] T& g() noexcept
         requires(D >= 2);
-    T const& g() const noexcept
+    [[nodiscard]] T const& g() const noexcept
         requires(D >= 2);
-    T& b() noexcept
+    [[nodiscard]] T& b() noexcept
         requires(D >= 3);
-    T const& b() const noexcept
+    [[nodiscard]] T const& b() const noexcept
         requires(D >= 3);
-    T& a() noexcept
+    [[nodiscard]] T& a() noexcept
         requires(D >= 4);
 
-    T const& a() const noexcept
+    [[nodiscard]] T const& a() const noexcept
         requires(D >= 4);
 
     // 整数类型的比较
@@ -80,11 +80,13 @@ public:
     [[nodiscard]] Vector operator+(Vector const& _other) const noexcept;
 
     // 点乘
-    Float dot(Vector const& _other) const noexcept;
+    [[nodiscard]] Float dot(Vector const& _other) const noexcept;
 
     // 归一化操作
-    Vector& normalize() noexcept;
-    [[nodiscard]] Vector normalized() const noexcept;
+    Vector& normalize() noexcept
+        requires std::floating_point<T>;
+    [[nodiscard]] Vector normalized() const noexcept
+        requires std::floating_point<T>;
 
 private:
     T m_data[D]{};

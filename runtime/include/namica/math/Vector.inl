@@ -218,6 +218,8 @@ inline Vector<T, D> Vector<T, D>::operator*(Float const _val) const noexcept
 template <typename T, Int D>
 inline Vector<T, D>& Vector<T, D>::operator*=(Float const _val) noexcept
 {
+    *this = (*this) * _val;
+    return *this;
 }
 
 template <typename T, Int D>
@@ -248,14 +250,28 @@ inline Float Vector<T, D>::dot(Vector<T, D> const& _other) const noexcept
 
 template <typename T, Int D>
 inline Vector<T, D>& Vector<T, D>::normalize() noexcept
+    requires std::floating_point<T>
 {
-    Float const inverseLength{1.0f / std::sqrt(dot(*this))};
-    (*this) *= inverseLength;
+    T const lengthSquared{this->dot(*this)};
+
+    // TODO: 溢出
+
+    // 防止0向量
+    if (lengthSquared > T{0})
+    {
+        T const inverseLength{1.0f / std::sqrt(lengthSquared)};
+        (*this) *= inverseLength;
+    }
+
+    return *this;
 }
 
 template <typename T, Int D>
 inline Vector<T, D> Vector<T, D>::normalized() const noexcept
+    requires std::floating_point<T>
 {
+    Vector<T, D> result{*this};
+    return result.normalize();
 }
 
 }  // namespace namica

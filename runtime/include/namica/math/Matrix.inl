@@ -76,17 +76,18 @@ inline Float const* Mat4::data() const noexcept
 }
 
 // [4, 4] x [4, 1] = [4, 1]
-inline Vec4 operator*(Mat4 const& _mat, Vec4 const& _vec) noexcept
+inline Vec4 Mat4::operator*(Vec4 const& _vec) const noexcept
 {
+    Mat4 const& mat{*this};
     Vec4 result{};
-    result[0] = _mat(0, 0) * _vec[0] + _mat(0, 1) * _vec[1] + _mat(0, 2) * _vec[2] +
-        _mat(0, 3) * _vec[3];  // 第一行 x 第一列
-    result[1] = _mat(1, 0) * _vec[0] + _mat(1, 1) * _vec[1] + _mat(1, 2) * _vec[2] +
-        _mat(1, 3) * _vec[3];  // 第二行 x 第一列
-    result[2] = _mat(2, 0) * _vec[0] + _mat(2, 1) * _vec[1] + _mat(2, 2) * _vec[2] +
-        _mat(2, 3) * _vec[3];  // 第三行 x 第一列
-    result[3] = _mat(3, 0) * _vec[0] + _mat(3, 1) * _vec[1] + _mat(3, 2) * _vec[2] +
-        _mat(3, 3) * _vec[3];  // 第四行 x 第一列
+    result[0] = mat(0, 0) * _vec[0] + mat(0, 1) * _vec[1] + mat(0, 2) * _vec[2] +
+        mat(0, 3) * _vec[3];  // 第一行 x 第一列
+    result[1] = mat(1, 0) * _vec[0] + mat(1, 1) * _vec[1] + mat(1, 2) * _vec[2] +
+        mat(1, 3) * _vec[3];  // 第二行 x 第一列
+    result[2] = mat(2, 0) * _vec[0] + mat(2, 1) * _vec[1] + mat(2, 2) * _vec[2] +
+        mat(2, 3) * _vec[3];  // 第三行 x 第一列
+    result[3] = mat(3, 0) * _vec[0] + mat(3, 1) * _vec[1] + mat(3, 2) * _vec[2] +
+        mat(3, 3) * _vec[3];  // 第四行 x 第一列
 
     return result;
 }
@@ -108,9 +109,28 @@ inline Vec4 operator*(Mat4 const& _mat, Vec4 const& _vec) noexcept
 //     return result;
 // }
 
-inline Mat4 translate(Mat4 const& _mat, Vec3 const& _offset) noexcept
+inline Mat4 Mat4::operator*(Mat4 const& _other) const noexcept
 {
-    Mat4 result{_mat};
+    Mat4 const& mat{*this};
+    Mat4 result{};
+
+    result[0] = mat * _other[0];
+    result[1] = mat * _other[1];
+    result[2] = mat * _other[2];
+    result[3] = mat * _other[3];
+
+    return result;
+}
+
+inline Mat4& Mat4::operator*=(Mat4 const& _other) noexcept
+{
+    *this = (*this) * _other;
+    return *this;
+}
+
+inline Mat4& Mat4::translate(Vec3 const& _offset) noexcept
+{
+    Mat4& result{*this};
 
     // R T'  x  1 T
     // x 1      0 1
@@ -126,15 +146,58 @@ inline Mat4 translate(Mat4 const& _mat, Vec3 const& _offset) noexcept
     // a b  x  e  = ae + bf => (a, c) * e + (b, d) * f
     // c d     f    ce + df
 
-    result[3] = _mat[0] * _offset.x() + _mat[1] * _offset.y() + _mat[2] * _offset.z() + _mat[3];
+    result[3] =
+        result[0] * _offset.x() + result[1] * _offset.y() + result[2] * _offset.z() + result[3];
     return result;
 }
 
-inline Mat4 rotate(Mat4 const& _mat, Float const _angle, Vec3 const& _axis) noexcept
+inline Mat4 Mat4::translated(Vec3 const& _offset) const noexcept
 {
-    Mat4 result{_mat};
+    Mat4 result{*this};
+    return result.translate(_offset);
+}
 
-    return result;
+inline Mat4& Mat4::rotate(Float const _angle, Vec3 const& _axis) noexcept
+{
+    // 如果是0向量直接返回
+    if (_axis.isEqual(Vec3{0.0f}))
+    {
+        return *this;
+    }
+
+    // 使用Rodrigues公式计算
+    Vec3 const axis{_axis.normalized()};
+
+    Float const x{axis.x()};
+    Float const y{axis.y()};
+    Float const z{axis.z()};
+
+    Float const c{std::cos(_angle)};
+    Float const s{std::sin(_angle)};
+    Float const t{1.0f - c};
+
+    Mat4 rotation{1.0f};
+
+    // column, row
+    rotation[0][0] = c + t * x * x;
+    rotation[0][1] = t * x * y + s * z;
+    rotation[0][2] = t * x * z - s * y;
+
+    rotation[1][0] = t * x * y - s * z;
+    rotation[1][1] = c + t * y * y;
+    rotation[1][2] = t * y * z + s * x;
+
+    rotation[2][0] = t * x * z + s * y;
+    rotation[2][1] = t * y * z - s * x;
+    rotation[2][2] = c + t * z * z;
+
+    return (*this) *= rotation;
+}
+
+inline Mat4 Mat4::rotated(Float const _angle, Vec3 const& _axis) const noexcept
+{
+    Mat4 mat{*this};
+    return mat.rotate(_angle, _axis);
 }
 
 }  // namespace namica
