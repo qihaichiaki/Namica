@@ -52,7 +52,7 @@ public:
      * @brief 对当前矩阵进行平移转换
      *
      * @param _offset 位移量
-     * @return 平移转换后的矩阵
+     * @return 平移变换后的矩阵
      */
     Mat4& translate(Vec3 const& _offset) noexcept;
     [[nodiscard]] Mat4 translated(Vec3 const& _offset) const noexcept;
@@ -62,10 +62,19 @@ public:
      *
      * @param _angle 旋转角度(弧度值)
      * @param _axis 旋转轴(在运算时会归一化)
-     * @return 旋转转换后的矩阵
+     * @return 旋转变换后的矩阵
      */
     Mat4& rotate(Float const _angle, Vec3 const& _axis) noexcept;
     [[nodiscard]] Mat4 rotated(Float const _angle, Vec3 const& _axis) const noexcept;
+
+    /**
+     * @brief 对当前矩阵进行缩放变换
+     *
+     * @param _scale 缩放值
+     * @return 缩放变换后的矩阵
+     */
+    Mat4& scale(Vec3 const& _scale) noexcept;
+    [[nodiscard]] Mat4 scaled(Vec3 const& _scale) const noexcept;
 
 private:
     Vec4 m_columns[4]{};  // 4个列向量 columns

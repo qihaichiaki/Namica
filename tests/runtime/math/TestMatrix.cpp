@@ -818,3 +818,208 @@ TEST_F(NamicaRuntimeTest, DISABLED_RotateMaximumMagnitudeAxisMatchesEquivalentAx
 
     ExpectMat4Near(actual, expected, 1e-5f);
 }
+
+// 验证mat scale
+
+// 单位矩阵缩放
+TEST_F(NamicaRuntimeTest, ScaleIdentityMatrixCreatesExpectedScaleMatrix)
+{
+    Mat4 const actual{Mat4{1.0f}.scaled(Vec3{2.0f, -3.0f, 0.5f})};
+
+    // clang-format off
+    Mat4 const expected{
+        2.0f,  0.0f, 0.0f, 0.0f,
+        0.0f, -3.0f, 0.0f, 0.0f,
+        0.0f,  0.0f, 0.5f, 0.0f,
+        0.0f,  0.0f, 0.0f, 1.0f
+    };
+    // clang-format on
+
+    ExpectMat4Near(actual, expected);
+}
+
+// 单位缩放保持矩阵不变
+TEST_F(NamicaRuntimeTest, ScaleWithUnitFactorsPreservesMatrix)
+{
+    // clang-format off
+    Mat4 const matrix{
+         1.0f,  2.0f,  3.0f,  4.0f,
+         5.0f,  6.0f,  7.0f,  8.0f,
+         9.0f, 10.0f, 11.0f, 12.0f,
+        13.0f, 14.0f, 15.0f, 16.0f
+    };
+    // clang-format on
+
+    Mat4 const actual{matrix.scaled(Vec3{1.0f, 1.0f, 1.0f})};
+
+    ExpectMat4Near(actual, matrix);
+}
+
+// 验证后乘与列缩放
+TEST_F(NamicaRuntimeTest, ScalePostMultipliesGeneralMatrix)
+{
+    // clang-format off
+    Mat4 const matrix{
+         1.0f,  2.0f,  3.0f,  4.0f,
+         5.0f,  6.0f,  7.0f,  8.0f,
+         9.0f, 10.0f, 11.0f, 12.0f,
+        13.0f, 14.0f, 15.0f, 16.0f
+    };
+
+    Mat4 const expected{
+         2.0f,  -6.0f, 1.5f,  4.0f,
+        10.0f, -18.0f, 3.5f,  8.0f,
+        18.0f, -30.0f, 5.5f, 12.0f,
+        26.0f, -42.0f, 7.5f, 16.0f
+    };
+    // clang-format on
+
+    Vec3 const factors{2.0f, -3.0f, 0.5f};
+
+    Mat4 const actual{matrix.scaled(factors)};
+
+    ExpectMat4Near(actual, expected);
+
+    ExpectVectorNear(actual[0], matrix[0] * factors.x());
+
+    ExpectVectorNear(actual[1], matrix[1] * factors.y());
+
+    ExpectVectorNear(actual[2], matrix[2] * factors.z());
+
+    // 后乘缩放不改变平移列。
+    ExpectVectorNear(actual[3], matrix[3]);
+}
+
+// 验证原地和副本接口
+TEST_F(NamicaRuntimeTest, ScaleMutatesWhileScaledReturnsCopy)
+{
+    // clang-format off
+    Mat4 const source{
+        2.0f, 0.0f, 0.0f, 10.0f,
+        0.0f, 3.0f, 0.0f, 20.0f,
+        0.0f, 0.0f, 4.0f, 30.0f,
+        0.0f, 0.0f, 0.0f,  1.0f
+    };
+    // clang-format on
+
+    Vec3 const factors{0.5f, -2.0f, 0.0f};
+
+    Mat4 const before{source};
+
+    Mat4 const copied{source.scaled(factors)};
+
+    // scaled() 不修改源矩阵。
+    ExpectMat4Near(source, before);
+
+    Mat4 mutableMatrix{source};
+
+    Mat4& returned{mutableMatrix.scale(factors)};
+
+    EXPECT_EQ(&returned, &mutableMatrix);
+    ExpectMat4Near(mutableMatrix, copied);
+
+    // 平移列始终保持不变。
+    ExpectVectorNear(copied[3], source[3]);
+}
+
+// 零、负数和小数缩放
+TEST_F(NamicaRuntimeTest, ScaleSupportsZeroNegativeAndFractionalFactors)
+{
+    Mat4 const scaling{Mat4{1.0f}.scaled(Vec3{0.0f, -2.0f, 0.5f})};
+
+    Vec4 const point{3.0f, 4.0f, -6.0f, 1.0f};
+
+    Vec4 const direction{3.0f, 4.0f, -6.0f, 0.0f};
+
+    ExpectVectorNear(scaling * point, Vec4{0.0f, -8.0f, -3.0f, 1.0f});
+
+    ExpectVectorNear(scaling * direction, Vec4{0.0f, -8.0f, -3.0f, 0.0f});
+}
+
+// 连续缩放组合
+TEST_F(NamicaRuntimeTest, ScaleCompositionMultipliesFactors)
+{
+    Mat4 matrix{1.0f};
+
+    Mat4& returned{matrix.scale(Vec3{2.0f, -3.0f, 0.5f}).scale(Vec3{4.0f, -2.0f, 8.0f})};
+
+    EXPECT_EQ(&returned, &matrix);
+
+    // clang-format off
+    Mat4 const expected{
+        8.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 6.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 4.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+    // clang-format on
+
+    ExpectMat4Near(matrix, expected);
+}
+
+// 矩阵 平移、旋转、缩放组合测试
+
+TEST_F(NamicaRuntimeTest, AffineTranslateRotateScaleComposesAsTrs)
+{
+    constexpr Float angle{std::numbers::pi_v<Float> * 0.5f};
+
+    Vec3 const translation{10.0f, 20.0f, 30.0f};
+
+    Vec3 const rotationAxis{0.0f, 0.0f, 1.0f};
+
+    Vec3 const scaleFactors{2.0f, 3.0f, 4.0f};
+
+    Mat4 actual{1.0f};
+
+    Mat4& returned{actual.translate(translation).rotate(angle, rotationAxis).scale(scaleFactors)};
+
+    EXPECT_EQ(&returned, &actual);
+
+    // actual = T * Rz(90°) * S
+    //
+    // clang-format off
+    Mat4 const expected{
+        0.0f, -3.0f, 0.0f, 10.0f,
+        2.0f,  0.0f, 0.0f, 20.0f,
+        0.0f,  0.0f, 4.0f, 30.0f,
+        0.0f,  0.0f, 0.0f,  1.0f
+    };
+    // clang-format on
+
+    ExpectMat4Near(actual, expected, 1e-5f);
+
+    // 非原地版本应得到相同结果。
+    Mat4 const identity{1.0f};
+
+    Mat4 const copied{
+        identity.translated(translation).rotated(angle, rotationAxis).scaled(scaleFactors)};
+
+    ExpectMat4Near(copied, expected, 1e-5f);
+
+    // identity 不应被非原地接口修改。
+    ExpectMat4Near(identity, Mat4{1.0f});
+
+    Vec4 const point{1.0f, 2.0f, 3.0f, 1.0f};
+
+    Vec4 const direction{1.0f, 2.0f, 3.0f, 0.0f};
+
+    Vec4 const origin{0.0f, 0.0f, 0.0f, 1.0f};
+
+    // 点的实际变换过程：
+    //
+    // Scale:
+    //     (1, 2, 3) -> (2, 6, 12)
+    //
+    // Rotate Z 90°:
+    //     (2, 6, 12) -> (-6, 2, 12)
+    //
+    // Translate:
+    //     (-6, 2, 12) -> (4, 22, 42)
+    ExpectVectorNear(actual * point, Vec4{4.0f, 22.0f, 42.0f, 1.0f}, 1e-5f);
+
+    // w == 0 的方向向量不受平移影响。
+    ExpectVectorNear(actual * direction, Vec4{-6.0f, 2.0f, 12.0f, 0.0f}, 1e-5f);
+
+    // 局部原点最终移动到平移位置。
+    ExpectVectorNear(actual * origin, Vec4{10.0f, 20.0f, 30.0f, 1.0f}, 1e-5f);
+}

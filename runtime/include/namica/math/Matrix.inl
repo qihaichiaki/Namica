@@ -200,4 +200,22 @@ inline Mat4 Mat4::rotated(Float const _angle, Vec3 const& _axis) const noexcept
     return mat.rotate(_angle, _axis);
 }
 
+inline Mat4& Mat4::scale(Vec3 const& _scale) noexcept
+{
+    Mat4& result{*this};
+
+    result[0] = result[0] * _scale.x();
+    result[1] = result[1] * _scale.y();
+    result[2] = result[2] * _scale.z();
+    // result[3] = result[3] * 1.0f;
+
+    return result;
+}
+
+inline Mat4 Mat4::scaled(Vec3 const& _scale) const noexcept
+{
+    Mat4 result{*this};
+    return result.scale(_scale);
+}
+
 }  // namespace namica
