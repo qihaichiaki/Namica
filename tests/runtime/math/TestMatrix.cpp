@@ -1216,3 +1216,145 @@ TEST_F(NamicaRuntimeTest, InverseSmallWellConditionedMatrixIsNotRejected)
     ExpectMat4Near(inverse, expected, 1e-3f);
     ExpectMat4Near(matrix * inverse, Mat4{1.0f}, 1e-5f);
 }
+
+// perspective 相关测试
+
+TEST_F(NamicaRuntimeTest, PerspectiveCreatesExpectedRightHandedOpenGlMatrix)
+{
+    constexpr Float fov{std::numbers::pi_v<Float> / 2.0f};
+    constexpr Float aspect{2.0f};
+    constexpr Float zNear{1.0f};
+    constexpr Float zFar{9.0f};
+
+    Mat4 const actual{perspective(fov, aspect, zNear, zFar)};
+
+    // 以下按照矩阵的行视图书写。
+    // clang-format off
+    Mat4 const expected{
+        0.5f, 0.0f,  0.0f,  0.0f,
+        0.0f, 1.0f,  0.0f,  0.0f,
+        0.0f, 0.0f, -1.25f, -2.25f,
+        0.0f, 0.0f, -1.0f,  0.0f
+    };
+    // clang-format on
+
+    ExpectMat4Near(actual, expected, 1e-5f);
+}
+
+TEST_F(NamicaRuntimeTest, PerspectiveMapsNearAndFarPlanesToOpenGlNdcDepth)
+{
+    constexpr Float fov{std::numbers::pi_v<Float> / 2.0f};
+    constexpr Float aspect{2.0f};
+    constexpr Float zNear{1.0f};
+    constexpr Float zFar{9.0f};
+
+    Mat4 const projection{perspective(fov, aspect, zNear, zFar)};
+
+    // 右手观察空间中，相机前方是 -Z。
+    Vec4 const nearClip{projection * Vec4{0.0f, 0.0f, -zNear, 1.0f}};
+
+    Vec4 const farClip{projection * Vec4{0.0f, 0.0f, -zFar, 1.0f}};
+
+    ExpectVectorNear(nearClip, Vec4{0.0f, 0.0f, -1.0f, 1.0f}, 1e-5f);
+
+    ExpectVectorNear(farClip, Vec4{0.0f, 0.0f, 9.0f, 9.0f}, 1e-5f);
+
+    // OpenGL NDC：near -> -1，far -> +1。
+    EXPECT_NEAR(nearClip.z() / nearClip.w(), -1.0f, 1e-5f);
+
+    EXPECT_NEAR(farClip.z() / farClip.w(), 1.0f, 1e-5f);
+
+    // clip.w == -view.z。
+    EXPECT_NEAR(nearClip.w(), zNear, kEpsilon);
+    EXPECT_NEAR(farClip.w(), zFar, kEpsilon);
+
+    // +Z 位于相机后方，因此 clip.w 为负。
+    Vec4 const behindClip{projection * Vec4{0.0f, 0.0f, zNear, 1.0f}};
+
+    EXPECT_LT(behindClip.w(), 0.0f);
+}
+
+TEST_F(NamicaRuntimeTest, PerspectiveMapsFrustumBoundariesToNdcCube)
+{
+    constexpr Float fov{std::numbers::pi_v<Float> / 2.0f};
+    constexpr Float aspect{2.0f};
+    constexpr Float zNear{1.0f};
+    constexpr Float zFar{9.0f};
+
+    Mat4 const projection{perspective(fov, aspect, zNear, zFar)};
+
+    auto const toNdc = [](Vec4 const& _clip) noexcept -> Vec3 {
+        return Vec3{_clip.x() / _clip.w(), _clip.y() / _clip.w(), _clip.z() / _clip.w()};
+    };
+
+    // vertical FOV = 90°：
+    //
+    // near half-height = 1
+    // near half-width  = 2
+    Vec4 const nearUpperRight{projection * Vec4{2.0f, 1.0f, -zNear, 1.0f}};
+
+    Vec4 const nearLowerLeft{projection * Vec4{-2.0f, -1.0f, -zNear, 1.0f}};
+
+    // far half-height = 9
+    // far half-width  = 18
+    Vec4 const farUpperRight{projection * Vec4{18.0f, 9.0f, -zFar, 1.0f}};
+
+    ExpectVectorNear(toNdc(nearUpperRight), Vec3{1.0f, 1.0f, -1.0f}, 1e-5f);
+
+    ExpectVectorNear(toNdc(nearLowerLeft), Vec3{-1.0f, -1.0f, -1.0f}, 1e-5f);
+
+    ExpectVectorNear(toNdc(farUpperRight), Vec3{1.0f, 1.0f, 1.0f}, 1e-5f);
+}
+
+TEST_F(NamicaRuntimeTest, PerspectiveUsesVerticalFovAndWidthToHeightAspect)
+{
+    constexpr Float fov90{std::numbers::pi_v<Float> / 2.0f};
+
+    constexpr Float fov60{std::numbers::pi_v<Float> / 3.0f};
+
+    Mat4 const square{perspective(fov90, 1.0f, 1.0f, 9.0f)};
+
+    Mat4 const wide{perspective(fov90, 2.0f, 1.0f, 9.0f)};
+
+    Mat4 const narrowFov{perspective(fov60, 2.0f, 1.0f, 9.0f)};
+
+    constexpr Float sqrt3{std::numbers::sqrt3_v<Float>};
+
+    // aspect 变大只减小水平方向缩放。
+    EXPECT_NEAR(square(0, 0), 1.0f, 1e-5f);
+    EXPECT_NEAR(square(1, 1), 1.0f, 1e-5f);
+
+    EXPECT_NEAR(wide(0, 0), 0.5f, 1e-5f);
+    EXPECT_NEAR(wide(1, 1), 1.0f, 1e-5f);
+
+    // vertical FOV = 60°，1 / tan(30°) = sqrt(3)。
+    EXPECT_NEAR(narrowFov(0, 0), sqrt3 / 2.0f, 1e-5f);
+
+    EXPECT_NEAR(narrowFov(1, 1), sqrt3, 1e-5f);
+
+    // aspect 和 FOV 不应改变深度映射。
+    EXPECT_NEAR(square(2, 2), wide(2, 2), kEpsilon);
+    EXPECT_NEAR(square(2, 3), wide(2, 3), kEpsilon);
+
+    EXPECT_NEAR(wide(2, 2), narrowFov(2, 2), kEpsilon);
+    EXPECT_NEAR(wide(2, 3), narrowFov(2, 3), kEpsilon);
+}
+
+TEST_F(NamicaRuntimeTest, PerspectiveProducesExpectedClipAndNdcCoordinates)
+{
+    constexpr Float fov{std::numbers::pi_v<Float> / 2.0f};
+
+    Mat4 const projection{perspective(fov, 2.0f, 1.0f, 9.0f)};
+    Vec4 const viewPoint{0.75f, -0.5f, -4.0f, 1.0f};
+    Vec4 const clipPoint{projection * viewPoint};
+
+    ExpectVectorNear(clipPoint, Vec4{0.375f, -0.5f, 2.75f, 4.0f}, 1e-5f);
+
+    EXPECT_NEAR(clipPoint.w(), -viewPoint.z(), kEpsilon);
+
+    Vec3 const ndcPoint{clipPoint.x() / clipPoint.w(),
+                        clipPoint.y() / clipPoint.w(),
+                        clipPoint.z() / clipPoint.w()};
+
+    ExpectVectorNear(ndcPoint, Vec3{0.09375f, -0.125f, 0.6875f}, 1e-5f);
+}

@@ -1,6 +1,7 @@
 #include <unordered_map>
 #include "playground/window_render/GlfwOpengl.h"
 #include <namica/math/Matrix.h>
+#include <namica/math/Utils.h>
 #include <gtest/gtest.h>
 
 class TestWindowRender : public testing::Test
@@ -17,6 +18,11 @@ public:
     void setShaderProgram(GLuint _shaderProgram)
     {
         m_shaderProgram = _shaderProgram;
+    }
+
+    GLuint getShaderProgram() const
+    {
+        return m_shaderProgram;
     }
 
     void setParam(std::string const& _id, namica::Float const& _value)
@@ -212,6 +218,34 @@ private:
     namica::UInt64 m_indexCount{};
 };
 
+struct Transform
+{
+    namica::Vec3 position{};
+    namica::Vec3 rotation{};
+    namica::Vec3 scale{1.0f};
+
+    namica::Mat4 getTransform() const
+    {
+        namica::Mat4 model{1.0f};
+
+        model.translate(position);
+        model.rotate(rotation.x(), namica::Vec3{1.0f, 0.0f, 0.0f});
+        model.rotate(rotation.y(), namica::Vec3{0.0f, 1.0f, 0.0f});
+        model.rotate(rotation.z(), namica::Vec3{0.0f, 0.0f, 1.0f});
+        model.scale(scale);
+
+        return model;
+    }
+};
+
+struct CameraData
+{
+    namica::Float fov{};
+    namica::Float aspect{};
+    namica::Float zNear{};
+    namica::Float zFar{};
+};
+
 }  // namespace
 
 TEST_F(TestWindowRender, cube_render)
@@ -227,15 +261,35 @@ TEST_F(TestWindowRender, cube_render)
     glfw_opengl::renderContextInit(window);
 
     // render data
+
+    // 3d render
+    // std::string vertexShaderSrc{R"(
+    //     #version 330 core
+    //     layout(location = 0) in vec3 position;
+    //     layout(location = 1) in vec4 color;
+
+    //     out vec4 vColor;
+
+    //     void main() {
+    //         gl_Position = vec4(position, 1.0);
+    //         vColor = color;
+    //     }
+    // )"};
+
+    // 2d render
     std::string vertexShaderSrc{R"(
         #version 330 core
-        layout(location = 0) in vec3 position;
+        layout(location = 0) in vec2 position;
         layout(location = 1) in vec4 color;
 
         out vec4 vColor;
 
+        uniform mat4 uModel;
+        uniform mat4 uView;
+        uniform mat4 uProjection;
+
         void main() {
-            gl_Position = vec4(position, 1.0);
+            gl_Position = uProjection * uView * uModel * vec4(position, -1.0, 1.0);
             vColor = color;
         }
     )"};
@@ -255,9 +309,11 @@ TEST_F(TestWindowRender, cube_render)
     )"};
 
     Material material{};
-    material.setShaderProgram(createShaderProgram(vertexShaderSrc, fragmentShaderSrc));
+    GLuint const materialShaderProgram{createShaderProgram(vertexShaderSrc, fragmentShaderSrc)};
+    material.setShaderProgram(materialShaderProgram);
     material.setParam("uColor", namica::Vec4{1.0f, 1.0f, 1.0f, 1.0f});
 
+    // 3d 立方体
     //       6 ---- 5
     //      /      /|              z y
     //     0 ---- 2 |              |/
@@ -266,30 +322,72 @@ TEST_F(TestWindowRender, cube_render)
     //     1 ---- 3
     //
 
+    // std::vector<namica::Float> vertices{
+    //     -0.5f, -0.5f, 0.5f,  1.0f, 0.0f, 0.0f, 1.0f,  // vertex0
+    //     -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f,  // vertex1
+    //     0.5f,  -0.5f, 0.5f,  0.0f, 0.0f, 1.0f, 1.0f,  // vertex2
+    //     0.5f,  -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f,  // vertex3
+    //     0.5f,  0.5f,  -0.5f, 1.0f, 0.0f, 0.0f, 1.0f,  // vertex4
+    //     0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 1.0f,  // vertex5
+    //     -0.5f, 0.5f,  0.5f,  0.0f, 0.0f, 1.0f, 1.0f,  // vertex6
+    //     -0.5f, 0.5f,  -0.5f, 1.0f, 1.0f, 1.0f, 1.0f,  // vertex7
+    // };
+    // VertexLayout vertexLayout{
+    //     VertexElement{GL_FLOAT, 3},  // pos
+    //     VertexElement{GL_FLOAT, 4},  // color
+    // };
+
+    // std::vector<namica::UInt> indices{
+    //     0, 1, 2, 2, 1, 3,  // face0 front
+    //     2, 3, 5, 5, 3, 4,  // face1 front right
+    //     5, 4, 6, 6, 4, 7,  // face2 back
+    //     6, 7, 0, 0, 7, 1,  // face3 front left
+    //     1, 7, 3, 3, 7, 4,  // face4 bottom
+    //     6, 0, 5, 5, 0, 2,  // face5 top
+    // };
+
+    // std::vector<namica::UInt> indices{
+    //     0, 1, 2, 2, 1, 3,  // face0 front
+    //     2, 3, 5, 5, 3, 4,  // face1 front right
+    //     5, 4, 6, 6, 4, 7,  // face2 back
+    //     6, 7, 0, 0, 7, 1,  // face3 front left
+    //     1, 7, 3, 3, 7, 4,  // face4 bottom
+    //     6, 0, 5, 5, 0, 2,  // face5 top
+    // };
+
+    // 2d 矩形
+    // 0 ----- 2
+    // |   /   |
+    // 1 ----- 3
+
     std::vector<namica::Float> vertices{
-        -0.5f, -0.5f, 0.5f,  1.0f, 0.0f, 0.0f, 1.0f,  // vertex0
-        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f,  // vertex1
-        0.5f,  -0.5f, 0.5f,  0.0f, 0.0f, 1.0f, 1.0f,  // vertex2
-        0.5f,  -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f,  // vertex3
-        0.5f,  0.5f,  -0.5f, 1.0f, 0.0f, 0.0f, 1.0f,  // vertex4
-        0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 1.0f,  // vertex5
-        -0.5f, 0.5f,  0.5f,  0.0f, 0.0f, 1.0f, 1.0f,  // vertex6
-        -0.5f, 0.5f,  -0.5f, 1.0f, 1.0f, 1.0f, 1.0f,  // vertex7
+        -0.5f, 0.5f,  1.0f, 0.0f, 0.0f, 1.0f,  // vertex0
+        -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f,  // vertex1
+        0.5f,  0.5f,  0.0f, 0.0f, 1.0f, 1.0f,  // vertex2
+        0.5f,  -0.5f, 1.0f, 1.0f, 1.0f, 1.0f,  // vertex3
     };
     VertexLayout vertexLayout{
-        VertexElement{GL_FLOAT, 3},  // pos
+        VertexElement{GL_FLOAT, 2},  // pos
         VertexElement{GL_FLOAT, 4},  // color
     };
+    std::vector<namica::UInt> indices{0, 1, 2, 2, 1, 3};
 
-    std::vector<namica::UInt> indices{
-        0, 1, 2, 2, 1, 3,  // face0 front
-        2, 3, 5, 5, 3, 4,  // face1 front right
-        5, 4, 6, 6, 4, 7,  // face2 back
-        6, 7, 0, 0, 7, 1,  // face3 front left
-        1, 7, 3, 3, 7, 4,  // face4 bottom
-        6, 0, 5, 5, 0, 2,  // face5 top
-    };
     Mesh mesh{vertexLayout, vertices, indices};
+
+    Transform cubTransform{};
+
+    Transform cameraTransform{};
+    CameraData cameraData{};
+    cameraData.fov = namica::radians(60.0f);
+    auto windowSize{glfw_opengl::getWindowSize(window)};
+    cameraData.aspect = 1.0f * windowSize.first / windowSize.second;
+    cameraData.zNear = 0.1f;
+    cameraData.zFar = 1000.0f;
+
+    // 获取除开材质之外的uniform location
+    GLint const uModelLoc{glGetUniformLocation(materialShaderProgram, "uModel")};
+    GLint const uViewLoc{glGetUniformLocation(materialShaderProgram, "uView")};
+    GLint const uProjectionLoc{glGetUniformLocation(materialShaderProgram, "uProjection")};
 
     while (!glfw_opengl::windowShouldClose(window))
     {
@@ -301,6 +399,14 @@ TEST_F(TestWindowRender, cube_render)
         glClear(GL_COLOR_BUFFER_BIT);
 
         material.bind();
+        // 上传其他uniform
+        glUniformMatrix4fv(uModelLoc, 1, GL_FALSE, cubTransform.getTransform().data());
+        glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, cameraTransform.getTransform().inversed().data());
+        // project
+        namica::Mat4 const perspective{namica::perspective(
+            cameraData.fov, cameraData.aspect, cameraData.zNear, cameraData.zFar)};
+        glUniformMatrix4fv(uProjectionLoc, 1, GL_FALSE, perspective.data());
+
         mesh.draw();
 
         glfw_opengl::swapBuffers(window);

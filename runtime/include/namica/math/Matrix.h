@@ -110,6 +110,23 @@ private:
     Vec4 m_columns[4]{};  // 4个列向量 columns
 };
 
+// 关于矩阵的相关实用函数
+
+/**
+ * @brief 根据视野角度, 近远平面距离, 宽高比生成投影透视矩阵
+ * @warning 注意当前矩阵适用于右手系, NDC为[-1, 1]的投影透视矩阵
+ *
+ * @param _fov 视野角度, 注意是弧度制
+ * @param _aspect 宽高比
+ * @param _zNear 近平面距离
+ * @param _zFar 远平面距离
+ * @return 输出投影透视矩阵
+ */
+[[nodiscard]] Mat4 perspective(Float const _fov,
+                               Float const _aspect,
+                               Float const _zNear,
+                               Float const _zFar) noexcept;
+
 }  // namespace namica
 
 #include "namica/math/Matrix.inl"

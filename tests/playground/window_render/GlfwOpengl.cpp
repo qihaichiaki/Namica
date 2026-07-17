@@ -106,6 +106,13 @@ GLFWwindow* createWindow(std::string_view _title, float _widthRatio, float _heig
     return createWindow(_title, windowSize.x, windowSize.y);
 }
 
+std::pair<int, int> getWindowSize(GLFWwindow* const _window)
+{
+    std::pair<int, int> size{};
+    glfwGetWindowSize(_window, &(size.first), &(size.second));
+    return size;
+}
+
 void setWindowResizeEnable(GLFWwindow* const _window, bool _enable)
 {
     glfwSetWindowAttrib(_window, GLFW_RESIZABLE, _enable ? GLFW_TRUE : GLFW_FALSE);
@@ -116,7 +123,7 @@ void destroyWindow(GLFWwindow* _window)
     glfwDestroyWindow(_window);
 }
 
-bool renderContextInit(GLFWwindow* _window)
+bool renderContextInit(GLFWwindow* _window, bool depthTest)
 {
     // 创建完窗口后, glfw设置指定窗口为当前线程的opengl上下文
     // 多窗口的切换渲染也利用此进行实现, 但是gl的全局函数加载只需要一次即可
@@ -141,8 +148,11 @@ bool renderContextInit(GLFWwindow* _window)
     glEnable(GL_BLEND);
     // 经典混合函数, 实现透明效果
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    // 启用深度测试
-    glEnable(GL_DEPTH_TEST);
+    if (depthTest)
+    {
+        // 启用深度测试
+        glEnable(GL_DEPTH_TEST);
+    }
 
     return true;
 }

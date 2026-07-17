@@ -759,7 +759,7 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl_font)
 
     auto drawChar = [&](char _char, Vec2 const& _position, float _fontSize) {
         glUseProgram(shaderProgram);
-        const float fontCharSize{_fontSize / 5.0f};
+        float const fontCharSize{_fontSize / 5.0f};
         glUniform2f(uScale, fontCharSize, fontCharSize);
 
         auto it{fontMap.find(_char)};
@@ -791,7 +791,7 @@ TEST_F(TestWindowRender, windowRender_glfw_opengl_font)
     };
 
     auto drawString{[&](std::string const& _str, Vec2 const& _position, float _fontSize) {
-        const float fontCharSize{_fontSize / 5.0f};
+        float const fontCharSize{_fontSize / 5.0f};
         int strSize{static_cast<int>(_str.size())};
         int halfStrSize{strSize / 2};
 

@@ -262,6 +262,12 @@ Glint glGetUniformLocation(PROGRAM_OBJ, "uniform name");
 glUniform4f(UNIFORM_LOCATION, r, g, b, a);
 ```
 
+```C++
+glUniformMatrix4fv(UNIFORM_LOCATION, MAT4_COUNT, TRANSPOSE, GLFloat*);
+// MAT4_COUNT: 传入多少个矩阵
+// TRANSPOSE为false时, 按照列主序解释, 否则按照行主序解释
+```
+
 ### Context共享资源
 * glfw中可通过创建窗口时传入想要共享openglContext窗口的句柄达成共享, 切换OpenGLContext使用`glfwMakeContextCurrent`.
     - 其中, glfw中允许共享的对象存在: shaderProgram, VBO, EBO, Texture.

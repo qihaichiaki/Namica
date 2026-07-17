@@ -67,11 +67,13 @@ GLFWwindow* createWindow(std::string_view _title, int _width = 1280, int _height
 
 GLFWwindow* createWindow(std::string_view _title, float _widthRatio, float _heightRatio);
 
+std::pair<int, int> getWindowSize(GLFWwindow* const _window);
+
 void setWindowResizeEnable(GLFWwindow* const _window, bool _enable);
 
 void destroyWindow(GLFWwindow* _window);
 
-bool renderContextInit(GLFWwindow* _window);
+bool renderContextInit(GLFWwindow* _window, bool const depthTest = false);
 
 bool windowShouldClose(GLFWwindow* const _window);
 

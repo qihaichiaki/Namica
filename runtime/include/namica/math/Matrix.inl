@@ -365,4 +365,23 @@ inline Mat4 Mat4::inversed() const noexcept
     return result.inverse();
 }
 
+// 矩阵相关实用函数
+
+inline Mat4 perspective(Float const _fov,
+                        Float const _aspect,
+                        Float const _zNear,
+                        Float const _zFar) noexcept
+{
+    Float const tanHalfFov{std::tan(_fov / 2.0f)};
+    Mat4 result{};
+
+    result[0][0] = 1.0f / (_aspect * tanHalfFov);
+    result[1][1] = 1.0f / tanHalfFov;
+    result[2][2] = -(_zFar + _zNear) / (_zFar - _zNear);
+    result[2][3] = -1.0f;
+    result[3][2] = -(2.0f * _zFar * _zNear) / (_zFar - _zNear);
+
+    return result;
+}
+
 }  // namespace namica
