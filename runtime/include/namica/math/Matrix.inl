@@ -218,4 +218,151 @@ inline Mat4 Mat4::scaled(Vec3 const& _scale) const noexcept
     return result.scale(_scale);
 }
 
+inline Float Mat4::determinant3x3(Float const _a00,
+                                  Float const _a01,
+                                  Float const _a02,
+                                  Float const _a10,
+                                  Float const _a11,
+                                  Float const _a12,
+                                  Float const _a20,
+                                  Float const _a21,
+                                  Float const _a22) const noexcept
+{
+    /**
+     * 计算 3×3 矩阵的行列式。
+     *
+     * 参数按照数学上的行优先顺序传入：
+     *
+     * | a00 a01 a02 |
+     * | a10 a11 a12 |
+     * | a20 a21 a22 |
+     */
+
+    return _a00 * (_a11 * _a22 - _a12 * _a21) - _a01 * (_a10 * _a22 - _a12 * _a20) +
+        _a02 * (_a10 * _a21 - _a11 * _a20);
+}
+
+inline Float Mat4::minorDeterminant(UInt const _removedRow,
+                                    UInt const _removedColumn) const noexcept
+{
+    /**
+     * 删除 4×4 矩阵中的指定行、指定列，
+     * 然后计算剩余 3×3 矩阵的行列式。
+     */
+
+    Float values[9]{};
+    UInt index{0};
+
+    for (UInt row{0}; row < 4; ++row)
+    {
+        if (row == _removedRow)
+        {
+            continue;
+        }
+
+        for (std::size_t column{0}; column < 4; ++column)
+        {
+            if (column == _removedColumn)
+            {
+                continue;
+            }
+
+            values[index] = m_columns[column][row];
+            ++index;
+        }
+    }
+
+    return determinant3x3(values[0],
+                          values[1],
+                          values[2],
+                          values[3],
+                          values[4],
+                          values[5],
+                          values[6],
+                          values[7],
+                          values[8]);
+}
+
+inline Float Mat4::determinant() const noexcept
+{
+    // 矩阵对空间有向面积或者体积的整体缩放倍数
+
+    Float result{};
+
+    for (UInt column{0}; column < 4; ++column)
+    {
+        Float const minor{this->minorDeterminant(0, column)};
+        Float const value{m_columns[column][0] * minor};
+
+        if (column % 2 == 0)
+        {
+            result += value;
+        }
+        else
+        {
+            result -= value;
+        }
+    }
+
+    return result;
+}
+
+inline Mat4& Mat4::inverse() noexcept
+{
+    Float const determinantValue{this->determinant()};
+    Mat4 result{};
+    if (determinantValue == 0.0f)
+    {
+        return *this;
+    }
+
+    Float const inverseDeterminant{1.0f / determinantValue};
+    for (UInt column{0}; column < 4; ++column)
+    {
+        for (UInt row{0}; row < 4; ++row)
+        {
+            /*
+             * 逆矩阵：
+             *
+             * A^-1 = transpose(C) / det(A)
+             *
+             * 其中 C 是代数余子式矩阵。
+             *
+             * result[column][row] 对应数学上的：
+             *
+             * inverse[row][column]
+             *
+             * 因为需要对余子式矩阵转置，所以这里删除的是：
+             *
+             * removedRow    = column
+             * removedColumn = row
+             */
+            Float cofactor{minorDeterminant(column, row)};
+
+            // 代数余子式的棋盘符号：
+            //
+            // + - + -
+            // - + - +
+            // + - + -
+            // - + - +
+            if ((column + row) % 2 != 0)
+            {
+                cofactor = -cofactor;
+            }
+
+            result[column][row] = cofactor * inverseDeterminant;
+        }
+    }
+
+    *this = result;
+
+    return *this;
+}
+
+inline Mat4 Mat4::inversed() const noexcept
+{
+    Mat4 result{*this};
+    return result.inverse();
+}
+
 }  // namespace namica

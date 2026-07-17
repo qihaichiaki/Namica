@@ -76,6 +76,36 @@ public:
     Mat4& scale(Vec3 const& _scale) noexcept;
     [[nodiscard]] Mat4 scaled(Vec3 const& _scale) const noexcept;
 
+    /**
+     * @brief 计算当前矩阵的行列式
+     *
+     * @return Float
+     */
+    [[nodiscard]] Float determinant() const noexcept;
+
+    /**
+     * @brief 对当前矩阵求逆
+     *
+     * @return Mat4& 当前矩阵的逆矩阵
+     */
+    Mat4& inverse() noexcept;
+    [[nodiscard]] Mat4 inversed() const noexcept;
+
+private:
+    // 工具函数, 用来求3x3矩阵的行列式
+    Float determinant3x3(Float const _a00,
+                         Float const _a01,
+                         Float const _a02,
+                         Float const _a10,
+                         Float const _a11,
+                         Float const _a12,
+                         Float const _a20,
+                         Float const _a21,
+                         Float const _a22) const noexcept;
+
+    // 删除4x4矩阵中的指定行指定列, 然后计算剩余3x3矩阵的行列式
+    Float minorDeterminant(UInt const _removedRow, UInt const _removedColumn) const noexcept;
+
 private:
     Vec4 m_columns[4]{};  // 4个列向量 columns
 };

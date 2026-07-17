@@ -1023,3 +1023,196 @@ TEST_F(NamicaRuntimeTest, AffineTranslateRotateScaleComposesAsTrs)
     // 局部原点最终移动到平移位置。
     ExpectVectorNear(actual * origin, Vec4{10.0f, 20.0f, 30.0f, 1.0f}, 1e-5f);
 }
+
+// 矩阵求逆测试
+
+// determinant：零矩阵、单位矩阵、对角矩阵、一般矩阵以及交换两行
+TEST_F(NamicaRuntimeTest, DeterminantHandlesBasicAndRowSwapCases)
+{
+    Mat4 const zero{};
+    Mat4 const identity{1.0f};
+
+    // clang-format off
+    Mat4 const diagonal{
+        2.0f,  0.0f, 0.0f, 0.0f,
+        0.0f, -3.0f, 0.0f, 0.0f,
+        0.0f,  0.0f, 4.0f, 0.0f,
+        0.0f,  0.0f, 0.0f, 5.0f
+    };
+
+    Mat4 const general{
+        1.0f, 2.0f, 0.0f, 0.0f,
+        1.0f, 3.0f, 1.0f, 0.0f,
+        0.0f, 1.0f, 2.0f, 1.0f,
+        0.0f, 0.0f, 1.0f, 2.0f
+    };
+
+    // general 交换前两行，determinant 应改变符号。
+    Mat4 const firstTwoRowsSwapped{
+        1.0f, 3.0f, 1.0f, 0.0f,
+        1.0f, 2.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 2.0f, 1.0f,
+        0.0f, 0.0f, 1.0f, 2.0f
+    };
+    // clang-format on
+
+    EXPECT_FLOAT_EQ(zero.determinant(), 0.0f);
+    EXPECT_FLOAT_EQ(identity.determinant(), 1.0f);
+    EXPECT_FLOAT_EQ(diagonal.determinant(), -120.0f);
+    EXPECT_FLOAT_EQ(general.determinant(), 1.0f);
+    EXPECT_FLOAT_EQ(firstTwoRowsSwapped.determinant(), -1.0f);
+}
+
+// 对角矩阵的逆矩阵，应为各对角元素的倒数。
+TEST_F(NamicaRuntimeTest, InverseDiagonalMatrixUsesReciprocalDiagonal)
+{
+    // clang-format off
+    Mat4 const matrix{
+        2.0f,  0.0f, 0.0f, 0.0f,
+        0.0f, -4.0f, 0.0f, 0.0f,
+        0.0f,  0.0f, 0.5f, 0.0f,
+        0.0f,  0.0f, 0.0f, 5.0f
+    };
+
+    Mat4 const expected{
+        0.5f,  0.0f, 0.0f, 0.0f,
+        0.0f, -0.25f, 0.0f, 0.0f,
+        0.0f,  0.0f, 2.0f, 0.0f,
+        0.0f,  0.0f, 0.0f, 0.2f
+    };
+    // clang-format on
+
+    Mat4 const actual{matrix.inversed()};
+
+    ExpectMat4Near(actual, expected);
+    ExpectMat4Near(matrix * actual, Mat4{1.0f});
+    ExpectMat4Near(actual * matrix, Mat4{1.0f});
+
+    EXPECT_NEAR(actual.determinant(), 1.0f / matrix.determinant(), kEpsilon);
+}
+
+// 使用显式逆矩阵验证符号和伴随矩阵转置，避免只测试 A * A^-1 而掩盖共同索引错误。
+TEST_F(NamicaRuntimeTest, InverseGeneralMatrixProducesExpectedResult)
+{
+    // clang-format off
+    Mat4 source{
+        1.0f, 2.0f, 0.0f, 0.0f,
+        1.0f, 3.0f, 1.0f, 0.0f,
+        0.0f, 1.0f, 2.0f, 1.0f,
+        0.0f, 0.0f, 1.0f, 2.0f
+    };
+
+    Mat4 const expected{
+         7.0f, -6.0f,  4.0f, -2.0f,
+        -3.0f,  3.0f, -2.0f,  1.0f,
+         2.0f, -2.0f,  2.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,  1.0f
+    };
+    // clang-format on
+
+    Mat4 const before{source};
+
+    // inversed() 返回副本，不修改源矩阵。
+    Mat4 const copied{source.inversed()};
+
+    ExpectMat4Near(source, before);
+    ExpectMat4Near(copied, expected, 1e-5f);
+
+    // 同时验证左逆和右逆。
+    ExpectMat4Near(before * copied, Mat4{1.0f}, 1e-5f);
+    ExpectMat4Near(copied * before, Mat4{1.0f}, 1e-5f);
+
+    // inverse() 原地修改并返回自身引用。
+    Mat4& returned{source.inverse()};
+
+    EXPECT_EQ(&returned, &source);
+    ExpectMat4Near(source, expected, 1e-5f);
+}
+
+// TRS 组合：验证 determinant、显式逆矩阵、左右单位积、点和方向往返。
+TEST_F(NamicaRuntimeTest, InverseAffineTrsMatrixRestoresPointAndDirection)
+{
+    constexpr Float angle{std::numbers::pi_v<Float> * 0.5f};
+
+    Mat4 transform{1.0f};
+
+    transform.translate(Vec3{10.0f, 20.0f, 30.0f})
+        .rotate(angle, Vec3{0.0f, 0.0f, 1.0f})
+        .scale(Vec3{2.0f, 3.0f, 4.0f});
+
+    // transform = T * Rz(90°) * S
+    // det(T) = 1，det(R) = 1，det(S) = 2 * 3 * 4。
+    EXPECT_NEAR(transform.determinant(), 24.0f, 1e-4f);
+
+    // clang-format off
+    Mat4 const expectedInverse{
+         0.0f,        0.5f, 0.0f, -10.0f,
+        -1.0f / 3.0f, 0.0f, 0.0f,  10.0f / 3.0f,
+         0.0f,        0.0f, 0.25f, -7.5f,
+         0.0f,        0.0f, 0.0f,   1.0f
+    };
+    // clang-format on
+
+    Mat4 const inverse{transform.inversed()};
+
+    ExpectMat4Near(inverse, expectedInverse, 1e-5f);
+    ExpectMat4Near(transform * inverse, Mat4{1.0f}, 1e-4f);
+    ExpectMat4Near(inverse * transform, Mat4{1.0f}, 1e-4f);
+
+    Vec4 const localPoint{1.0f, 2.0f, 3.0f, 1.0f};
+    Vec4 const localDirection{1.0f, 2.0f, 3.0f, 0.0f};
+
+    Vec4 const worldPoint{transform * localPoint};
+    Vec4 const worldDirection{transform * localDirection};
+
+    ExpectVectorNear(worldPoint, Vec4{4.0f, 22.0f, 42.0f, 1.0f}, 1e-5f);
+
+    ExpectVectorNear(worldDirection, Vec4{-6.0f, 2.0f, 12.0f, 0.0f}, 1e-5f);
+
+    ExpectVectorNear(inverse * worldPoint, localPoint, 1e-4f);
+    ExpectVectorNear(inverse * worldDirection, localDirection, 1e-4f);
+}
+
+// 锁定当前契约：奇异矩阵求逆时保持原矩阵不变。
+TEST_F(NamicaRuntimeTest, InverseSingularMatrixFollowsCurrentNoOpContract)
+{
+    // 前两行相同，因此不可逆。
+    // clang-format off
+    Mat4 singular{
+        1.0f, 2.0f, 3.0f, 4.0f,
+        1.0f, 2.0f, 3.0f, 4.0f,
+        5.0f, 6.0f, 7.0f, 8.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+    // clang-format on
+
+    Mat4 const before{singular};
+
+    EXPECT_FLOAT_EQ(singular.determinant(), 0.0f);
+
+    Mat4 const copied{singular.inversed()};
+
+    ExpectMat4Near(copied, before);
+    ExpectMat4Near(singular, before);
+
+    Mat4& returned{singular.inverse()};
+
+    EXPECT_EQ(&returned, &singular);
+    ExpectMat4Near(singular, before);
+}
+
+// 奇异矩阵判断
+TEST_F(NamicaRuntimeTest, InverseSmallWellConditionedMatrixIsNotRejected)
+{
+    // 4D 均匀缩放，condition number == 1，是完全可逆的矩阵。
+    // 但 determinant == 1e-8，小于当前 NAMICA_TOL。
+    Mat4 const matrix{0.01f};
+    Mat4 const expected{100.0f};
+
+    EXPECT_NEAR(matrix.determinant(), 1e-8f, 1e-12f);
+
+    Mat4 const inverse{matrix.inversed()};
+
+    ExpectMat4Near(inverse, expected, 1e-3f);
+    ExpectMat4Near(matrix * inverse, Mat4{1.0f}, 1e-5f);
+}
