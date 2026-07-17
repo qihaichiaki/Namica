@@ -229,9 +229,9 @@ struct Transform
         namica::Mat4 model{1.0f};
 
         model.translate(position);
-        model.rotate(rotation.x(), namica::Vec3{1.0f, 0.0f, 0.0f});
-        model.rotate(rotation.y(), namica::Vec3{0.0f, 1.0f, 0.0f});
-        model.rotate(rotation.z(), namica::Vec3{0.0f, 0.0f, 1.0f});
+        model.rotate(namica::radians(rotation.x()), namica::Vec3{1.0f, 0.0f, 0.0f});
+        model.rotate(namica::radians(rotation.y()), namica::Vec3{0.0f, 1.0f, 0.0f});
+        model.rotate(namica::radians(rotation.z()), namica::Vec3{0.0f, 0.0f, 1.0f});
         model.scale(scale);
 
         return model;
@@ -289,7 +289,7 @@ TEST_F(TestWindowRender, cube_render)
         uniform mat4 uProjection;
 
         void main() {
-            gl_Position = uProjection * uView * uModel * vec4(position, -1.0, 1.0);
+            gl_Position = uProjection * uView * uModel * vec4(position, 0.0, 1.0);
             vColor = color;
         }
     )"};
@@ -377,6 +377,7 @@ TEST_F(TestWindowRender, cube_render)
     Transform cubTransform{};
 
     Transform cameraTransform{};
+    cameraTransform.position.z() = 2.0f;
     CameraData cameraData{};
     cameraData.fov = namica::radians(60.0f);
     auto windowSize{glfw_opengl::getWindowSize(window)};
@@ -389,9 +390,30 @@ TEST_F(TestWindowRender, cube_render)
     GLint const uViewLoc{glGetUniformLocation(materialShaderProgram, "uView")};
     GLint const uProjectionLoc{glGetUniformLocation(materialShaderProgram, "uProjection")};
 
+    namica::Float timeCount{};              // 累计时间
+    namica::Float const rotateSpeed{0.5f};  // 旋转速度 0.5s/ 0.5°
+    namica::Float const rotateTime{0.5f};   // 旋转间隔时间 0.5s
+
+    std::chrono::steady_clock::time_point lastPoint{std::chrono::steady_clock::now()};
     while (!glfw_opengl::windowShouldClose(window))
     {
+        std::chrono::steady_clock::time_point curPoint{std::chrono::steady_clock::now()};
+        namica::Float const delta{
+            std::chrono::duration<namica::Float>(curPoint - lastPoint).count()};
+
         glfw_opengl::pollEvents();
+
+        // update
+        timeCount += delta;
+        if (timeCount > rotateTime)
+        {
+            cubTransform.rotation.y() += rotateSpeed;
+            if (cubTransform.rotation.y() >= 360.0f)
+            {
+                cubTransform.rotation.y() = 0.0f;
+            }
+            timeCount = 0.0f;
+        }
 
         // render
         glClearColor(
