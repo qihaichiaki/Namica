@@ -16,6 +16,17 @@ inline Vector<T, D>::Vector(Args&&... args) noexcept
 }
 
 template <typename T, Int D>
+template <Int D2>
+    requires(D2 > D)
+inline Vector<T, D>::Vector(Vector<T, D2> const& _other) noexcept
+{
+    for (Int i{0}; i < D; ++i)
+    {
+        m_data[i] = _other[i];
+    }
+}
+
+template <typename T, Int D>
 inline Vector<T, D>::Vector(T value) noexcept
 {
     for (Int i{0}; i < D; ++i)
@@ -232,6 +243,34 @@ inline Vector<T, D> Vector<T, D>::operator+(Vector<T, D> const& _other) const no
         result[i] = m_data[i] + _other[i];
     }
 
+    return result;
+}
+template <typename T, Int D>
+inline Vector<T, D>& Vector<T, D>::operator+=(Vector<T, D> const& _other) noexcept
+{
+    Vector<T, D>& result{*this};
+    result = result + _other;
+    return result;
+}
+
+template <typename T, Int D>
+inline Vector<T, D> Vector<T, D>::operator-(Vector<T, D> const& _other) const noexcept
+{
+    Vector<T, D> result{};
+
+    for (Int i{0}; i < D; ++i)
+    {
+        result[i] = m_data[i] - _other[i];
+    }
+
+    return result;
+}
+
+template <typename T, Int D>
+inline Vector<T, D>& Vector<T, D>::operator-=(Vector<T, D> const& _other) noexcept
+{
+    Vector<T, D>& result{*this};
+    result = result - _other;
     return result;
 }
 

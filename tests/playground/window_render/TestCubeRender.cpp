@@ -246,6 +246,150 @@ struct CameraData
     namica::Float zFar{};
 };
 
+// 挂载到相机上的
+class PlayerController
+{
+public:
+    PlayerController(Transform& cameraTrasf) : m_cameraTrasf(cameraTrasf)
+    {
+    }
+
+    void init(GLFWwindow* const _window)
+    {
+        // 注册事件响应回调
+        glfwSetWindowUserPointer(_window, this);
+
+        // 键盘回调 void (* GLFWkeyfun)(GLFWwindow* window, int key, int scancode, int action, int
+        // mods);
+        glfwSetKeyCallback(
+            _window, [](GLFWwindow* _window, int _key, int _scancode, int _action, int _mods) {
+                PlayerController* const controller{
+                    static_cast<PlayerController*>(glfwGetWindowUserPointer(_window))};
+                controller->onKeyEvent(_key, _scancode, _action, _mods);
+            });
+
+        // 鼠标按键回调: void (* GLFWmousebuttonfun)(GLFWwindow* window, int button, int action, int
+        // mods);
+        glfwSetMouseButtonCallback(
+            _window, [](GLFWwindow* _window, int _button, int _action, int _mods) {
+                PlayerController* const controller{
+                    static_cast<PlayerController*>(glfwGetWindowUserPointer(_window))};
+                controller->onMouseEvent(_button, _action, _mods);
+            });
+
+        // 鼠标移动位置回调：typedef void (* GLFWcursorposfun)(GLFWwindow* window, double xpos,
+        // double ypos);
+        glfwSetCursorPosCallback(_window, [](GLFWwindow* _window, double _xpos, double _ypos) {
+            PlayerController* const controller{
+                static_cast<PlayerController*>(glfwGetWindowUserPointer(_window))};
+            controller->onMousePosEvent(
+                namica::Vec2{static_cast<namica::Float>(_xpos), static_cast<namica::Float>(_ypos)});
+        });
+    }
+
+    void onKeyEvent(int _key, int _scancode, int _action, int _mods)
+    {
+        if (_key == GLFW_KEY_A)
+        {
+            m_moveKeyState[0] = _action != GLFW_RELEASE;
+        }
+        if (_key == GLFW_KEY_D)
+        {
+            m_moveKeyState[1] = _action != GLFW_RELEASE;
+        }
+        if (_key == GLFW_KEY_W)
+        {
+            m_moveKeyState[2] = _action != GLFW_RELEASE;
+        }
+        if (_key == GLFW_KEY_S)
+        {
+            m_moveKeyState[3] = _action != GLFW_RELEASE;
+        }
+    }
+
+    void onMouseEvent(int _button, int _action, int _mods)
+    {
+        if (_button == GLFW_MOUSE_BUTTON_LEFT)
+        {
+            m_mouseLeftState = _action != GLFW_RELEASE;
+        }
+    }
+
+    void onMousePosEvent(namica::Vec2 const& _pos)
+    {
+        m_mousePos = _pos;
+    }
+
+    void onUpdate(namica::Float const _deltaTime)
+    {
+        // 计算旋转
+        if (m_mouseLeftState)
+        {
+            namica::Float const deltaX{m_mousePos.x() - m_mousePosOld.x()};
+            namica::Float const deltaY{m_mousePos.y() - m_mousePosOld.y()};
+
+            // deltaX 围绕着y轴转, 注意这里给予的值是逆时针方向
+            m_cameraTrasf.rotation.y() -= deltaX * m_sensitivity * _deltaTime;
+            // deltaY 围绕着x轴转
+            m_cameraTrasf.rotation.x() -= deltaY * m_sensitivity * _deltaTime;
+
+            // if (m_cameraTrasf.rotation.y() >= 360.0f || m_cameraTrasf.rotation.y() <= -360.0f)
+            // {
+            //     m_cameraTrasf.rotation.y() = 0.0f;
+            // }
+            // if (m_cameraTrasf.rotation.x() >= 360.0f || m_cameraTrasf.rotation.x() <= -360.0f)
+            // {
+            //     m_cameraTrasf.rotation.x() = 0.0f;
+            // }
+        }
+
+        // 计算平移
+
+        // 计算当前基于相机transform的right和front方向
+        // 计算当前transform的旋转矩阵
+        namica::Mat4 rotate{1.0f};
+        rotate.rotate(namica::radians(m_cameraTrasf.rotation.x()), namica::Vec3{1.0f, 0.0f, 0.0f});
+        rotate.rotate(namica::radians(m_cameraTrasf.rotation.y()), namica::Vec3{0.0f, 1.0f, 0.0f});
+        rotate.rotate(namica::radians(m_cameraTrasf.rotation.z()), namica::Vec3{0.0f, 0.0f, 1.0f});
+
+        // 右手坐标系, 拇指为x正轴
+        namica::Vec3 right{(rotate * namica::Vec4{1.0f, 0.0f, 0.0f, 0.0f}).normalized()};
+        // 同理, 中指为z正轴, 相机是朝向负z轴的
+        namica::Vec3 front{(rotate * namica::Vec4{0.0f, 0.0f, -1.0f, 0.0f}).normalized()};
+
+        if (m_moveKeyState[0])  // A
+        {
+            m_cameraTrasf.position -= right * m_moveSpeed * _deltaTime;
+        }
+        if (m_moveKeyState[1])  // D
+        {
+            m_cameraTrasf.position += right * m_moveSpeed * _deltaTime;
+        }
+        if (m_moveKeyState[2])  // W
+        {
+            m_cameraTrasf.position += front * m_moveSpeed * _deltaTime;
+        }
+        if (m_moveKeyState[3])  // S
+        {
+            m_cameraTrasf.position -= front * m_moveSpeed * _deltaTime;
+        }
+
+        // 更新历史鼠标位置
+        m_mousePosOld = m_mousePos;
+    }
+
+private:
+    Transform& m_cameraTrasf;
+    namica::Bool m_moveKeyState[4]{
+        namica::False, namica::False, namica::False, namica::False};  // A, D, W, S
+    namica::Bool m_mouseLeftState{namica::False};
+    namica::Vec2 m_mousePosOld{};
+    namica::Vec2 m_mousePos{};
+
+    namica::Float m_sensitivity{5.0f};  // 相机旋转灵敏度
+    namica::Float m_moveSpeed{1.0f};    // 相机移动速度
+};
+
 }  // namespace
 
 TEST_F(TestWindowRender, cube_render)
@@ -262,6 +406,7 @@ TEST_F(TestWindowRender, cube_render)
 
     // render data
 
+    // cub相关材质和网格
     // 3d render
     std::string vertexShaderSrc{R"(
         #version 330 core
@@ -385,9 +530,13 @@ TEST_F(TestWindowRender, cube_render)
     GLint const uViewLoc{glGetUniformLocation(materialShaderProgram, "uView")};
     GLint const uProjectionLoc{glGetUniformLocation(materialShaderProgram, "uProjection")};
 
-    namica::Float timeCount{};               // 累计时间
-    namica::Float const rotateSpeed{0.25f};  // 旋转速度 0.5s/ 0.25°
-    namica::Float const rotateTime{0.5f};    // 旋转间隔时间 0.5s
+    // namica::Float timeCount{};              // 累计时间
+    // namica::Float const rotateSpeed{0.0f};  // 旋转速度 0.5s/ 0.25°
+    // namica::Float const rotateTime{0.5f};   // 旋转间隔时间 0.5s
+
+    // 玩家控制器
+    PlayerController playerController{cameraTransform};
+    playerController.init(window);
 
     std::chrono::steady_clock::time_point lastPoint{std::chrono::steady_clock::now()};
     while (!glfw_opengl::windowShouldClose(window))
@@ -395,22 +544,26 @@ TEST_F(TestWindowRender, cube_render)
         std::chrono::steady_clock::time_point curPoint{std::chrono::steady_clock::now()};
         namica::Float const delta{
             std::chrono::duration<namica::Float>(curPoint - lastPoint).count()};
+        lastPoint = curPoint;
 
         glfw_opengl::pollEvents();
 
         // update
-        timeCount += delta;
-        if (timeCount > rotateTime)
-        {
-            cubTransform.rotation.y() += rotateSpeed;
-            cubTransform.rotation.x() += rotateSpeed;
-            if (cubTransform.rotation.y() >= 360.0f)
-            {
-                cubTransform.rotation.y() = 0.0f;
-                cubTransform.rotation.x() = 0.0f;
-            }
-            timeCount = 0.0f;
-        }
+
+        // timeCount += delta;
+        // if (timeCount > rotateTime)
+        // {
+        //     cubTransform.rotation.y() += rotateSpeed;
+        //     cubTransform.rotation.x() += rotateSpeed;
+        //     if (cubTransform.rotation.y() >= 360.0f)
+        //     {
+        //         cubTransform.rotation.y() = 0.0f;
+        //         cubTransform.rotation.x() = 0.0f;
+        //     }
+        //     timeCount = 0.0f;
+        // }
+
+        playerController.onUpdate(delta);
 
         // render
         glClearColor(

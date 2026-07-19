@@ -17,6 +17,10 @@ public:
         requires(sizeof...(Args) == D && (std::convertible_to<Args, T> && ...))
     explicit Vector(Args&&... args) noexcept;
 
+    template <Int D2>
+        requires(D2 > D)
+    explicit Vector(Vector<T, D2> const& _other) noexcept;
+
     explicit Vector(T value) noexcept;
 
     [[nodiscard]] T& operator[](Int _index) noexcept;
@@ -78,6 +82,9 @@ public:
     [[nodiscard]] Vector operator*(Float const _val) const noexcept;
     Vector& operator*=(Float const _val) noexcept;
     [[nodiscard]] Vector operator+(Vector const& _other) const noexcept;
+    Vector& operator+=(Vector const& _other) noexcept;
+    [[nodiscard]] Vector operator-(Vector const& _other) const noexcept;
+    Vector& operator-=(Vector const& _other) noexcept;
 
     // 点乘
     [[nodiscard]] Float dot(Vector const& _other) const noexcept;
