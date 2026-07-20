@@ -1,7 +1,6 @@
 #include <numbers>
 
 #include "runtime/utils/TestUtils.h"
-#include "namica/math/Matrix.h"
 
 using namespace namica;
 
@@ -9,31 +8,6 @@ using namespace namica;
 
 namespace
 {
-
-constexpr Float kEpsilon{1e-6f};
-
-template <Int D>
-void ExpectVectorNear(Vector<Float, D> const& _actual,
-                      Vector<Float, D> const& _expected,
-                      Float const _epsilon = kEpsilon)
-{
-    for (Int index{0}; index < D; ++index)
-    {
-        EXPECT_NEAR(_actual[index], _expected[index], _epsilon) << "component = " << index;
-    }
-}
-
-void ExpectMat4Near(Mat4 const& _actual, Mat4 const& _expected, Float const _epsilon = kEpsilon)
-{
-    for (Int row{0}; row < 4; ++row)
-    {
-        for (Int column{0}; column < 4; ++column)
-        {
-            EXPECT_NEAR(_actual(row, column), _expected(row, column), _epsilon)
-                << "row = " << row << ", column = " << column;
-        }
-    }
-}
 
 template <typename V>
 concept Normalizable = requires(V& _value, V const& _constValue) {
@@ -1226,7 +1200,7 @@ TEST_F(NamicaRuntimeTest, PerspectiveCreatesExpectedRightHandedOpenGlMatrix)
     constexpr Float zNear{1.0f};
     constexpr Float zFar{9.0f};
 
-    Mat4 const actual{perspective(fov, aspect, zNear, zFar)};
+    Mat4 const actual{Mat4::perspective(fov, aspect, zNear, zFar)};
 
     // 以下按照矩阵的行视图书写。
     // clang-format off
@@ -1248,7 +1222,7 @@ TEST_F(NamicaRuntimeTest, PerspectiveMapsNearAndFarPlanesToOpenGlNdcDepth)
     constexpr Float zNear{1.0f};
     constexpr Float zFar{9.0f};
 
-    Mat4 const projection{perspective(fov, aspect, zNear, zFar)};
+    Mat4 const projection{Mat4::perspective(fov, aspect, zNear, zFar)};
 
     // 右手观察空间中，相机前方是 -Z。
     Vec4 const nearClip{projection * Vec4{0.0f, 0.0f, -zNear, 1.0f}};
@@ -1281,7 +1255,7 @@ TEST_F(NamicaRuntimeTest, PerspectiveMapsFrustumBoundariesToNdcCube)
     constexpr Float zNear{1.0f};
     constexpr Float zFar{9.0f};
 
-    Mat4 const projection{perspective(fov, aspect, zNear, zFar)};
+    Mat4 const projection{Mat4::perspective(fov, aspect, zNear, zFar)};
 
     auto const toNdc = [](Vec4 const& _clip) noexcept -> Vec3 {
         return Vec3{_clip.x() / _clip.w(), _clip.y() / _clip.w(), _clip.z() / _clip.w()};
@@ -1312,11 +1286,11 @@ TEST_F(NamicaRuntimeTest, PerspectiveUsesVerticalFovAndWidthToHeightAspect)
 
     constexpr Float fov60{std::numbers::pi_v<Float> / 3.0f};
 
-    Mat4 const square{perspective(fov90, 1.0f, 1.0f, 9.0f)};
+    Mat4 const square{Mat4::perspective(fov90, 1.0f, 1.0f, 9.0f)};
 
-    Mat4 const wide{perspective(fov90, 2.0f, 1.0f, 9.0f)};
+    Mat4 const wide{Mat4::perspective(fov90, 2.0f, 1.0f, 9.0f)};
 
-    Mat4 const narrowFov{perspective(fov60, 2.0f, 1.0f, 9.0f)};
+    Mat4 const narrowFov{Mat4::perspective(fov60, 2.0f, 1.0f, 9.0f)};
 
     constexpr Float sqrt3{std::numbers::sqrt3_v<Float>};
 
@@ -1344,7 +1318,7 @@ TEST_F(NamicaRuntimeTest, PerspectiveProducesExpectedClipAndNdcCoordinates)
 {
     constexpr Float fov{std::numbers::pi_v<Float> / 2.0f};
 
-    Mat4 const projection{perspective(fov, 2.0f, 1.0f, 9.0f)};
+    Mat4 const projection{Mat4::perspective(fov, 2.0f, 1.0f, 9.0f)};
     Vec4 const viewPoint{0.75f, -0.5f, -4.0f, 1.0f};
     Vec4 const clipPoint{projection * viewPoint};
 

@@ -37,24 +37,26 @@ function(add_test_exes_from_subdirs build_main)
                     "${CMAKE_CURRENT_SOURCE_DIR}/${subdir}/*.cpp"
                 )
 
-                add_executable(${subdir} 
+                set(TEST_NAME "Test-${subdir}")
+
+                add_executable(${TEST_NAME} 
                     ${LOCAL_PUBLIC_SOURCES}
                     ${SOURCES}
                 )
 
-                target_link_libraries(${subdir} PRIVATE
+                target_link_libraries(${TEST_NAME} PRIVATE
                     GTest::gtest
                     $<$<BOOL:${build_main}>:GTest::gtest_main>
                     ${depend_list}
                 )
 
-                target_include_directories(${subdir} PRIVATE
+                target_include_directories(${TEST_NAME} PRIVATE
                     "${INCLUDE_SOURCE_DIR}"
                 )
 
-                enable_project_options(${subdir})
+                enable_project_options(${TEST_NAME})
 
-                set_target_properties(${subdir} PROPERTIES 
+                set_target_properties(${TEST_NAME} PROPERTIES 
                     RUNTIME_OUTPUT_DIRECTORY "${BUILD_DIR}/${CURRENT_DIR_NAME}"
                 )
             endif()
@@ -63,23 +65,24 @@ function(add_test_exes_from_subdirs build_main)
 
     # 没有测试模块就将测试目标中平铺的cpp编译为一个exe
     if (NOT HAS_TEST_MODULE)
-        add_executable(${CURRENT_DIR_NAME} 
+        set(TEST_NAME "Test-${CURRENT_DIR_NAME}")
+        add_executable(${TEST_NAME} 
             ${LOCAL_PUBLIC_SOURCES}
         )
 
-        target_link_libraries(${CURRENT_DIR_NAME} PRIVATE
+        target_link_libraries(${TEST_NAME} PRIVATE
             GTest::gtest
             $<$<BOOL:${build_main}>:GTest::gtest_main>
             ${depend_list}
         )
 
-        target_include_directories(${CURRENT_DIR_NAME} PRIVATE
+        target_include_directories(${TEST_NAME} PRIVATE
             "${INCLUDE_SOURCE_DIR}"
         )
 
-        enable_project_options(${CURRENT_DIR_NAME})
+        enable_project_options(${TEST_NAME})
 
-        set_target_properties(${CURRENT_DIR_NAME} PROPERTIES 
+        set_target_properties(${TEST_NAME} PROPERTIES 
             RUNTIME_OUTPUT_DIRECTORY "${BUILD_DIR}/${CURRENT_DIR_NAME}"
         )
     endif()

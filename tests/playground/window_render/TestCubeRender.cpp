@@ -397,7 +397,7 @@ TEST_F(TestWindowRender, cube_render)
     // 立方体渲染 - 3d渲染
 
     namica::Vec2 sizeRatio{0.3f, 0.3f};
-    namica::Vec4 backgroundColor{0.961f, 0.961f, 0.863f, 1.0f};
+    namica::Vec4 backgroundColor{0.0f, 0.0f, 0.0f, 1.0f};
 
     // init
     glfw_opengl::windowRenderInit();
@@ -575,7 +575,7 @@ TEST_F(TestWindowRender, cube_render)
         glUniformMatrix4fv(uModelLoc, 1, GL_FALSE, cubTransform.getTransform().data());
         glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, cameraTransform.getTransform().inversed().data());
         // project
-        namica::Mat4 const perspective{namica::perspective(
+        namica::Mat4 const perspective{namica::Mat4::perspective(
             cameraData.fov, cameraData.aspect, cameraData.zNear, cameraData.zFar)};
         glUniformMatrix4fv(uProjectionLoc, 1, GL_FALSE, perspective.data());
 

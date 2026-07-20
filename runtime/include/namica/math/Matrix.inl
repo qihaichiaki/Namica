@@ -367,10 +367,10 @@ inline Mat4 Mat4::inversed() const noexcept
 
 // 矩阵相关实用函数
 
-inline Mat4 perspective(Float const _fov,
-                        Float const _aspect,
-                        Float const _zNear,
-                        Float const _zFar) noexcept
+inline Mat4 Mat4::perspective(Float const _fov,
+                              Float const _aspect,
+                              Float const _zNear,
+                              Float const _zFar) noexcept
 {
     Float const tanHalfFov{std::tan(_fov / 2.0f)};
     Mat4 result{};
