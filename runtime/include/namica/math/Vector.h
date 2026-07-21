@@ -21,6 +21,10 @@ public:
         requires(D2 > D)
     explicit Vector(Vector<T, D2> const& _other) noexcept;
 
+    template <Int D2, typename... Args>
+        requires(D2 < D, (sizeof...(Args) == (D - D2) && (std::convertible_to<Args, T> && ...)))
+    explicit Vector(Vector<T, D2> const& _other, Args&&... args) noexcept;
+
     explicit Vector(T value) noexcept;
 
     [[nodiscard]] T& operator[](Int _index) noexcept;

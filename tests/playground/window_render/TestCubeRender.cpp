@@ -1,8 +1,9 @@
 #include <unordered_map>
+#include <gtest/gtest.h>
 #include "playground/window_render/GlfwOpengl.h"
 #include <namica/math/Matrix.h>
 #include <namica/math/Utils.h>
-#include <gtest/gtest.h>
+#include <namica/math/Quaternion.h>
 
 class TestWindowRender : public testing::Test
 {
@@ -221,7 +222,8 @@ private:
 struct Transform
 {
     namica::Vec3 position{};
-    namica::Vec3 rotation{};
+    // namica::Vec3 rotation{};
+    namica::Quat rotation{1.0f, 0.0f, 0.0f, 0.0f};
     namica::Vec3 scale{1.0f};
 
     namica::Mat4 getTransform() const
@@ -229,9 +231,10 @@ struct Transform
         namica::Mat4 model{1.0f};
 
         model.translate(position);
-        model.rotate(namica::radians(rotation.x()), namica::Vec3{1.0f, 0.0f, 0.0f});
-        model.rotate(namica::radians(rotation.y()), namica::Vec3{0.0f, 1.0f, 0.0f});
-        model.rotate(namica::radians(rotation.z()), namica::Vec3{0.0f, 0.0f, 1.0f});
+        // model.rotate(namica::radians(rotation.x()), namica::Vec3{1.0f, 0.0f, 0.0f});
+        // model.rotate(namica::radians(rotation.y()), namica::Vec3{0.0f, 1.0f, 0.0f});
+        // model.rotate(namica::radians(rotation.z()), namica::Vec3{0.0f, 0.0f, 1.0f});
+        model *= rotation.toMatrix();
         model.scale(scale);
 
         return model;
@@ -329,33 +332,25 @@ public:
             namica::Float const deltaY{m_mousePos.y() - m_mousePosOld.y()};
 
             // deltaX 围绕着y轴转, 注意这里给予的值是逆时针方向
-            m_cameraTrasf.rotation.y() -= deltaX * m_sensitivity * _deltaTime;
-            // deltaY 围绕着x轴转
-            m_cameraTrasf.rotation.x() -= deltaY * m_sensitivity * _deltaTime;
+            namica::Float const yAngle{-deltaX * m_sensitivity * _deltaTime};
+            namica::Quat yRot{namica::Quat::angleAxis(yAngle, namica::Vec3{0.0f, 1.0f, 0.0f})};
 
-            // if (m_cameraTrasf.rotation.y() >= 360.0f || m_cameraTrasf.rotation.y() <= -360.0f)
-            // {
-            //     m_cameraTrasf.rotation.y() = 0.0f;
-            // }
-            // if (m_cameraTrasf.rotation.x() >= 360.0f || m_cameraTrasf.rotation.x() <= -360.0f)
-            // {
-            //     m_cameraTrasf.rotation.x() = 0.0f;
-            // }
+            // deltaY 围绕着x轴转
+            namica::Float const xAngle{-deltaY * m_sensitivity * _deltaTime};
+            namica::Vec3 right{m_cameraTrasf.rotation * namica::Vec3{1.0f, 0.0f, 0.0f}};
+            namica::Quat xRot{namica::Quat::angleAxis(xAngle, right)};
+
+            namica::Quat deltaRot{yRot * xRot};
+            m_cameraTrasf.rotation = (deltaRot * m_cameraTrasf.rotation).normalized();
         }
 
         // 计算平移
 
         // 计算当前基于相机transform的right和front方向
-        // 计算当前transform的旋转矩阵
-        namica::Mat4 rotate{1.0f};
-        rotate.rotate(namica::radians(m_cameraTrasf.rotation.x()), namica::Vec3{1.0f, 0.0f, 0.0f});
-        rotate.rotate(namica::radians(m_cameraTrasf.rotation.y()), namica::Vec3{0.0f, 1.0f, 0.0f});
-        rotate.rotate(namica::radians(m_cameraTrasf.rotation.z()), namica::Vec3{0.0f, 0.0f, 1.0f});
-
         // 右手坐标系, 拇指为x正轴
-        namica::Vec3 right{(rotate * namica::Vec4{1.0f, 0.0f, 0.0f, 0.0f}).normalized()};
+        namica::Vec3 right{m_cameraTrasf.rotation * namica::Vec3{1.0f, 0.0f, 0.0f}};
         // 同理, 中指为z正轴, 相机是朝向负z轴的
-        namica::Vec3 front{(rotate * namica::Vec4{0.0f, 0.0f, -1.0f, 0.0f}).normalized()};
+        namica::Vec3 front{m_cameraTrasf.rotation * namica::Vec3{0.0f, 0.0f, -1.0f}};
 
         if (m_moveKeyState[0])  // A
         {
@@ -386,7 +381,7 @@ private:
     namica::Vec2 m_mousePosOld{};
     namica::Vec2 m_mousePos{};
 
-    namica::Float m_sensitivity{5.0f};  // 相机旋转灵敏度
+    namica::Float m_sensitivity{0.5f};  // 相机旋转灵敏度
     namica::Float m_moveSpeed{1.0f};    // 相机移动速度
 };
 
@@ -573,7 +568,14 @@ TEST_F(TestWindowRender, cube_render)
         material.bind();
         // 上传其他uniform
         glUniformMatrix4fv(uModelLoc, 1, GL_FALSE, cubTransform.getTransform().data());
-        glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, cameraTransform.getTransform().inversed().data());
+
+        // camera transform
+        // namica::Mat4 viewMat{cameraTransform.getTransform().inversed()};
+        namica::Mat4 viewMat{cameraTransform.rotation.toMatrix()};
+        viewMat[3] = namica::Vec4{cameraTransform.position, 1.0f};
+        viewMat.inverse();
+        glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, viewMat.data());
+
         // project
         namica::Mat4 const perspective{namica::Mat4::perspective(
             cameraData.fov, cameraData.aspect, cameraData.zNear, cameraData.zFar)};

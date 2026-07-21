@@ -27,6 +27,20 @@ inline Vector<T, D>::Vector(Vector<T, D2> const& _other) noexcept
 }
 
 template <typename T, Int D>
+template <Int D2, typename... Args>
+    requires(D2 < D, (sizeof...(Args) == (D - D2) && (std::convertible_to<Args, T> && ...)))
+inline Vector<T, D>::Vector(Vector<T, D2> const& _other, Args&&... args) noexcept
+{
+    Int index{0};
+    for (Int i{0}; i < D2; ++i)
+    {
+        m_data[index++] = _other[i];
+    }
+
+    ((m_data[index++] = std::forward<Args>(args)), ...);
+}
+
+template <typename T, Int D>
 inline Vector<T, D>::Vector(T value) noexcept
 {
     for (Int i{0}; i < D; ++i)
