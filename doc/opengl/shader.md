@@ -54,3 +54,7 @@ uniform type name;
 
 * 全局GPU变量, 可以通过CPU传输到GPU
 * 注意没有输入输出修饰符(in/out)
+
+* type为sampler2D为贴图对象, 在片段着色器中通过uv坐标进行采样获取
+    * vec4 texColor = texture(sampler2DObj, uv);
+* sampler2D在GPU中存在多个纹理单元, 通过上传uniform变量告诉GPU用的什么槽位的纹理(glUniform1i)

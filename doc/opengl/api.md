@@ -268,7 +268,77 @@ glUniformMatrix4fv(UNIFORM_LOCATION, MAT4_COUNT, TRANSPOSE, GLFloat*);
 // TRANSPOSE为false时, 按照列主序解释, 否则按照行主序解释
 ```
 
+```c++
+glUniform1i(UNIFORM_LOCATION, data);
+// UNIFORM_LOCATION 可以是sampler2D对象, 方便shader绑定对应纹理槽中的纹理
+```
+
 ### Context共享资源
 * glfw中可通过创建窗口时传入想要共享openglContext窗口的句柄达成共享, 切换OpenGLContext使用`glfwMakeContextCurrent`.
     - 其中, glfw中允许共享的对象存在: shaderProgram, VBO, EBO, Texture.
     - 不允许共享的对象: VAO, FBO...
+
+
+### glGenTextures
+```C++
+glGenTextures(TEXTURE_NUMS, OUT_TEXTURE_OBJS);
+// TEXTURE_NUMS     创建的纹理个数
+// OUT_TEXTURE_OBJS 输出纹理对象们
+```
+* 创建纹理对象
+
+### glBindTexture
+```C++
+glBindTexture(TEXTURE_TYPE, TEXTURE_OBJ)
+// TEXTURE_TYPE: GL_TEXTURE_2D
+```
+
+* 绑定纹理对象
+
+### glTexImage2D
+```C++
+glTexImage2D(TEXTURE_TYPE, level, GL_RGB, WIDTH, HEIGHT, 0(无边框), GL_RGB, GL_UNSIGED_BYTE(数据类型), DATA);
+```
+
+* 上传纹理数据
+
+### glGenerateMipmap
+```C++
+glGenerateMipmap(TEXTURE_TYPE)
+```
+
+* 同一贴图逐渐变小的版本. 物体移近或者移远平滑过渡
+
+### glTexParameteri
+```C++
+glTexParameteri(TEXTURE_TYPE, TEXTURE_PARAMETER, MODLE);
+// TEXTURE_PARAMETER:  
+//     TEXTURE_WARP 贴图环绕
+//     TEXTURE_FILTER 过滤
+//
+// TEXTURE_WARP:
+//    GL_TEXTURE_WARP_S(U), GL_TEXTURE_WARP_T(V)
+// MODLE:
+//          GL_REPEAT
+//
+// TEXTURE_FILTER:
+//    GL_TEXTURE_MIN_FILTER(缩小), GL_TEXTURE_MAX_FILTER(放大)
+// MODLE:
+//     GL_LINEAR_MIPMAP_LINEAR(线性，使用mipmap -> 缩小使用)
+//     GL_LINEAR(线性 -> 放大使用, 可以产生平滑的结果)
+```
+
+* 贴图环绕(uv 超出0-1的表现) 
+    - 默认为repeat(重复，无限平铺即可) 适合砖块, 草地等图案
+    - mirrored repeat 镜像重复
+    - clamp to edge, 边缘像素向外拉伸  适合UI元素
+
+* 过滤, 决定了当前贴图绘制的比其实际分辨率大或者小的时候如何进行缩放
+
+### glActiveTexture
+```C++
+glActiveTexture(GL_TEXTURE0 + TEXTURE_INDEX)
+```
+
+* 激活纹理为对应纹理槽
+* 后面绑定纹理即给纹理槽给予对应纹理
