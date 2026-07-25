@@ -329,16 +329,16 @@ glGenerateMipmap(TEXTURE_TYPE)
 ```C++
 glTexParameteri(TEXTURE_TYPE, TEXTURE_PARAMETER, MODLE);
 // TEXTURE_PARAMETER:  
-//     TEXTURE_WARP 贴图环绕
+//     TEXTURE_WRAP 贴图环绕
 //     TEXTURE_FILTER 过滤
 //
-// TEXTURE_WARP:
-//    GL_TEXTURE_WARP_S(U), GL_TEXTURE_WARP_T(V)
+// TEXTURE_WRAP:
+//    GL_TEXTURE_WRAP_S(U), GL_TEXTURE_WRAP_T(V)
 // MODLE:
 //          GL_REPEAT
 //
 // TEXTURE_FILTER:
-//    GL_TEXTURE_MIN_FILTER(缩小), GL_TEXTURE_MAX_FILTER(放大)
+//    GL_TEXTURE_MIN_FILTER(缩小), GL_TEXTURE_MAG_FILTER(放大)
 // MODLE:
 //     GL_LINEAR_MIPMAP_LINEAR(线性，使用mipmap -> 缩小使用)
 //     GL_LINEAR(线性 -> 放大使用, 可以产生平滑的结果)

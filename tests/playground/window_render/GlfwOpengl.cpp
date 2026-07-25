@@ -176,6 +176,33 @@ void pollEvents()
 
 }  // namespace glfw_opengl
 
+// Texture
+Texture::Texture(namica::Int const _width, namica::Int const _height, namica::UChar const* _data)
+{
+    glGenTextures(1, &m_textureObj);
+    glBindTexture(GL_TEXTURE_2D, m_textureObj);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, _width, _height, 0, GL_RGB, GL_UNSIGNED_BYTE, _data);
+
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    // 贴图环绕
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    // 贴图过滤
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+}
+
+Texture::~Texture()
+{
+    glDeleteTextures(1, &m_textureObj);
+}
+
+void Texture::bind()
+{
+    glBindTexture(GL_TEXTURE_2D, m_textureObj);
+}
+
 // ShaderProgram
 ShaderProgram::ShaderProgram(std::string const& _vertexShaderSrc,
                              std::string const& _fragmentShaderSrc)
@@ -242,6 +269,8 @@ void ShaderProgram::bind()
 {
     // 使用当前的shader程序, 便于后续的uniform数据上传和渲染
     glUseProgram(m_shaderProgram);
+
+    m_curTextureIndex = 0;  // 置空
 }
 
 GLint ShaderProgram::getUniformLocation(std::string const& _id)
@@ -279,6 +308,14 @@ void ShaderProgram::setParam(std::string const& _id, namica::Mat4 const& _value)
     glUniformMatrix4fv(this->getUniformLocation(_id), 1, GL_FALSE, _value.data());
 }
 
+void ShaderProgram::setParam(std::string const& _id, Texture* _value)
+{
+    glActiveTexture(GL_TEXTURE0 + m_curTextureIndex);
+    _value->bind();
+    glUniform1i(this->getUniformLocation(_id), m_curTextureIndex);
+    m_curTextureIndex++;
+}
+
 // Material
 Material::Material(std::shared_ptr<ShaderProgram> const& _shaderProgram)
     : m_shaderProgram{_shaderProgram}
@@ -310,6 +347,11 @@ void Material::setParam(std::string const& _id, namica::Vec4 const& _value)
     m_vec4Data[_id] = _value;
 }
 
+void Material::setParam(std::string const& _id, std::shared_ptr<Texture> const& _value)
+{
+    m_textureData[_id] = _value;
+}
+
 void Material::bind()
 {
     m_shaderProgram->bind();
@@ -330,6 +372,10 @@ void Material::bind()
     for (auto& [id, value] : m_vec4Data)
     {
         m_shaderProgram->setParam(id, value);
+    }
+    for (auto& [id, value] : m_textureData)
+    {
+        m_shaderProgram->setParam(id, value.get());
     }
 }
 

@@ -22,6 +22,9 @@ std::shared_ptr<Material> createCubMaterial()
         #version 330 core
 
         layout(location = 0) in vec3 position;
+        layout(location = 1) in vec2 uv;
+
+        out vec2 vUV;
 
         uniform mat4 uModel;
         uniform mat4 uView;
@@ -29,6 +32,7 @@ std::shared_ptr<Material> createCubMaterial()
 
         void main(){
             gl_Position = uProject * uView * uModel * vec4(position, 1.0);
+            vUV = uv;
         }
     )"};
 
@@ -36,12 +40,16 @@ std::shared_ptr<Material> createCubMaterial()
     std::string fragmentShaderSRC{R"(
         #version 330 core
 
+        in vec2 vUV;
+
         out vec4 color;
 
         uniform vec4 uColor;
+        uniform sampler2D uTexture;
 
         void main(){
-            color = uColor;
+            vec4 texColor = texture(uTexture, vUV);
+            color = texColor * uColor;
         }
     )"};
 
@@ -62,25 +70,63 @@ std::shared_ptr<Mesh> createCubMesh()
     //     1 ---- 3
     //
 
+    // -0.5f, -0.5f, 0.5f   // vertex0
+    // -0.5f, -0.5f, -0.5f  // vertex1
+    // 0.5f,  -0.5f, 0.5f   // vertex2
+    // 0.5f,  -0.5f, -0.5f  // vertex3
+    // 0.5f,  0.5f,  -0.5f  // vertex4
+    // 0.5f,  0.5f,  0.5f   // vertex5
+    // -0.5f, 0.5f,  0.5f   // vertex6
+    // -0.5f, 0.5f,  -0.5f  // vertex7
+
+    // 贴图
+    //     (0,1)----(1,1)
+    //       |   /    |
+    //     (0,0)----(1,0)
+
+    // clang-format off
     std::vector<namica::Float> vertices{
-        -0.5f, -0.5f, 0.5f,   // vertex0
-        -0.5f, -0.5f, -0.5f,  // vertex1
-        0.5f,  -0.5f, 0.5f,   // vertex2
-        0.5f,  -0.5f, -0.5f,  // vertex3
-        0.5f,  0.5f,  -0.5f,  // vertex4
-        0.5f,  0.5f,  0.5f,   // vertex5
-        -0.5f, 0.5f,  0.5f,   // vertex6
-        -0.5f, 0.5f,  -0.5f,  // vertex7
+        -0.5f, -0.5f, 0.5f, 0.0f, 1.0f,           // vertex0(0)
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,         // vertex1(1)
+        0.5f,  -0.5f, 0.5f, 1.0f, 1.0f,      // vertex2(2)
+        0.5f,  -0.5f, -0.5f, 1.0f, 0.0f,     // vertex3(3)
+
+        0.5f,  -0.5f, 0.5f, 0.0f, 1.0f,      // vertex4(2)
+        0.5f,  -0.5f, -0.5f, 0.0f, 0.0f,     // vertex5(3)
+        0.5f,  0.5f,  0.5f, 1.0f, 1.0f,      // vertex6(5)
+        0.5f,  0.5f,  -0.5f, 1.0f, 0.0f,     // vertex7(4)
+
+        0.5f,  0.5f,  0.5f, 0.0f, 1.0f,      // vertex8(5)
+        0.5f,  0.5f,  -0.5f, 0.0f, 0.0f,     // vertex9(4)
+        -0.5f, 0.5f,  0.5f, 1.0f, 1.0f,      // vertex10(6)
+        -0.5f, 0.5f,  -0.5f, 1.0f, 0.0f,     // vertex11(7)
+
+        -0.5f, 0.5f,  0.5f, 0.0f, 1.0f,      // vertex12(6)
+        -0.5f, 0.5f,  -0.5f, 0.0f, 0.0f,     // vertex13(7)
+        -0.5f, -0.5f, 0.5f, 1.0f, 1.0f,      // vertex14(0)
+        -0.5f, -0.5f, -0.5f, 1.0f, 0.0f,     // vertex15(1)
+
+        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,     // vertex16(1)
+        -0.5f, 0.5f, -0.5f, 0.0f, 0.0f,      // vertex17(7)
+        0.5f,  -0.5f, -0.5f, 1.0f, 1.0f,     // vertex18(3)
+        0.5f,  0.5f,  -0.5f, 1.0f, 0.0f,     // vertex19(4)
+
+        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f,  // vertex20(6)
+        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, // vertex21(0)
+        0.5f,  0.5f,  0.5f, 1.0f, 1.0f, // vertex22(5)
+        0.5f,  -0.5f, 0.5f, 1.0f, 0.0f, // vertex23(2)
     };
-    VertexLayout vertexLayout{VertexElement{GL_FLOAT, 3}};
+
     std::vector<namica::UInt> indices{
-        0, 1, 2, 2, 1, 3,  // face0 front
-        2, 3, 5, 5, 3, 4,  // face1 front right
-        5, 4, 6, 6, 4, 7,  // face2 back
-        6, 7, 0, 0, 7, 1,  // face3 front left
-        1, 7, 3, 3, 7, 4,  // face4 bottom
-        6, 0, 5, 5, 0, 2,  // face5 top
+        0, 1, 2, 2, 1, 3,             // face0 front (0, 1, 2, 2, 1, 3,)
+        4, 5, 6, 6, 5, 7,           // face1 front right (2, 3, 5, 5, 3, 4)
+        8, 9, 10, 10, 9, 11,    // face2 back (5, 4, 6, 6, 4, 7)
+        12, 13, 14, 14, 13, 15, // face3 front left (6, 7, 0, 0, 7, 1)
+        16, 17, 18, 18, 17, 19, // face4 bottom (1, 7, 3, 3, 7, 4)
+        20, 21, 22, 22, 21, 23, // face5 top (6, 0, 5, 5, 0, 2)
     };
+    // clang-format on
+    VertexLayout vertexLayout{VertexElement{GL_FLOAT, 3}, VertexElement{GL_FLOAT, 2}};
 
     std::shared_ptr<Mesh> cubMesh{std::make_shared<Mesh>(vertexLayout, vertices, indices)};
     return cubMesh;
@@ -112,25 +158,15 @@ public:
         m_material->setParam("uColor", _color);
     }
 
+    Material& getMaterial()
+    {
+        return *m_material;
+    }
+
 private:
     Transform m_transf{};
     std::shared_ptr<Material> m_material{};
     std::shared_ptr<Mesh> m_mesh{};
-};
-
-class Texture
-{
-public:
-    Texture(namica::Int const _width, namica::Int const _height, namica::UChar const* _data)
-    {
-        glGenTextures(1, &m_textureObj);
-        glBindTexture(GL_TEXTURE_2D, m_textureObj);
-        glTexImage2D(
-            GL_TEXTURE_2D, 0, GL_RGB8, _width, _height, 0, GL_RGB, GL_UNSIGNED_BYTE, _data);
-    }
-
-private:
-    GLuint m_textureObj{};
 };
 
 }  // namespace
@@ -159,12 +195,16 @@ TEST_F(TestWindowRender, file_render)
     namica::Int textureChannels{};
     auto textureBuffer{
         fileSystem.loadAssetImage("image/木板.jpg", textureWidth, textureHeight, textureChannels)};
+    std::shared_ptr<Texture> texture{};
     if (!textureBuffer.empty())
     {
         std::cout << "已加载图片: 木板.jpg" << std::endl;
         std::cout << "宽度: " << textureWidth << std::endl;
         std::cout << "高度: " << textureHeight << std::endl;
         std::cout << "通道数: " << textureChannels << std::endl;
+
+        texture = std::make_shared<Texture>(textureWidth, textureHeight, textureBuffer.data());
+        cubObj.getMaterial().setParam("uTexture", texture);
     }
 
     std::chrono::steady_clock::time_point lastPoint{std::chrono::steady_clock::now()};

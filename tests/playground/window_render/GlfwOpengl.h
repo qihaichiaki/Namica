@@ -52,6 +52,17 @@ void pollEvents();
 
 }  // namespace glfw_opengl
 
+class Texture
+{
+public:
+    Texture(namica::Int const _width, namica::Int const _height, namica::UChar const* _data);
+    ~Texture();
+    void bind();
+
+private:
+    GLuint m_textureObj{};
+};
+
 class ShaderProgram
 {
 public:
@@ -60,11 +71,13 @@ public:
 
     void bind();
 
+    // 下面的设置参数值必须在绑定之后设置
     void setParam(std::string const& _id, namica::Float const& _value);
     void setParam(std::string const& _id, namica::Vec2 const& _value);
     void setParam(std::string const& _id, namica::Vec3 const& _value);
     void setParam(std::string const& _id, namica::Vec4 const& _value);
     void setParam(std::string const& _id, namica::Mat4 const& _value);
+    void setParam(std::string const& _id, Texture* _value);
 
 private:
     GLint getUniformLocation(std::string const& _id);
@@ -73,6 +86,7 @@ private:
     GLuint m_shaderProgram{};
 
     std::unordered_map<std::string, GLint> m_uniformLocation{};
+    namica::UInt m_curTextureIndex{};
 };
 
 // 材质: shader program + uniform
@@ -86,6 +100,7 @@ public:
     void setParam(std::string const& _id, namica::Vec2 const& _value);
     void setParam(std::string const& _id, namica::Vec3 const& _value);
     void setParam(std::string const& _id, namica::Vec4 const& _value);
+    void setParam(std::string const& _id, std::shared_ptr<Texture> const& _value);
 
     void bind();
 
@@ -95,6 +110,7 @@ private:
     std::unordered_map<std::string, namica::Vec2> m_vec2Data{};
     std::unordered_map<std::string, namica::Vec3> m_vec3Data{};
     std::unordered_map<std::string, namica::Vec4> m_vec4Data{};
+    std::unordered_map<std::string, std::shared_ptr<Texture>> m_textureData{};
 };
 
 // mesh, VBO + EBO + VAO
