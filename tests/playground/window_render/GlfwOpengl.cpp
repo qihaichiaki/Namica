@@ -176,11 +176,10 @@ void pollEvents()
 
 }  // namespace glfw_opengl
 
-GLuint createShaderProgram(std::string const& _vertexShaderSrc,
-                           std::string const& _fragmentShaderSrc)
+// ShaderProgram
+ShaderProgram::ShaderProgram(std::string const& _vertexShaderSrc,
+                             std::string const& _fragmentShaderSrc)
 {
-    GLuint shaderProgram{};
-
     GLuint vertexShader{glCreateShader(GL_VERTEX_SHADER)};
     GLuint fragmentShader{glCreateShader(GL_FRAGMENT_SHADER)};
 
@@ -199,7 +198,7 @@ GLuint createShaderProgram(std::string const& _vertexShaderSrc,
         glGetShaderInfoLog(vertexShader, 512, nullptr, buffer);
         std::cerr << "shader编译失败: " << buffer << std::endl;
 
-        return 0;
+        return;
     }
     glCompileShader(fragmentShader);
     glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &isCompileSuccess);
@@ -209,42 +208,86 @@ GLuint createShaderProgram(std::string const& _vertexShaderSrc,
         glGetShaderInfoLog(fragmentShader, 512, nullptr, buffer);
         std::cerr << "shader编译失败: " << buffer << std::endl;
 
-        return 0;
+        return;
     }
 
     // shaderProgram
-    shaderProgram = glCreateProgram();
+    m_shaderProgram = glCreateProgram();
     // attach
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
+    glAttachShader(m_shaderProgram, vertexShader);
+    glAttachShader(m_shaderProgram, fragmentShader);
     // link
-    glLinkProgram(shaderProgram);
+    glLinkProgram(m_shaderProgram);
     GLint isLinkSuccess{};
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &isLinkSuccess);
+    glGetProgramiv(m_shaderProgram, GL_LINK_STATUS, &isLinkSuccess);
     if (isLinkSuccess == GL_FALSE)
     {
         char buffer[512]{};
-        glGetProgramInfoLog(shaderProgram, 512, nullptr, buffer);
+        glGetProgramInfoLog(m_shaderProgram, 512, nullptr, buffer);
         std::cerr << "shaderProgram链接失败: " << buffer << std::endl;
 
-        return 0;
+        return;
     }
 
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
+}
 
-    return shaderProgram;
+ShaderProgram::~ShaderProgram()
+{
+    glDeleteProgram(m_shaderProgram);
+}
+
+void ShaderProgram::bind()
+{
+    // 使用当前的shader程序, 便于后续的uniform数据上传和渲染
+    glUseProgram(m_shaderProgram);
+}
+
+GLint ShaderProgram::getUniformLocation(std::string const& _id)
+{
+    if (m_uniformLocation.find(_id) == m_uniformLocation.end())
+    {
+        m_uniformLocation[_id] = glGetUniformLocation(m_shaderProgram, _id.data());
+    }
+
+    return m_uniformLocation[_id];
+}
+
+void ShaderProgram::setParam(std::string const& _id, namica::Float const& _value)
+{
+    glUniform1f(this->getUniformLocation(_id), _value);
+}
+
+void ShaderProgram::setParam(std::string const& _id, namica::Vec2 const& _value)
+{
+    glUniform2f(this->getUniformLocation(_id), _value.x(), _value.y());
+}
+
+void ShaderProgram::setParam(std::string const& _id, namica::Vec3 const& _value)
+{
+    glUniform3f(this->getUniformLocation(_id), _value.x(), _value.y(), _value.z());
+}
+
+void ShaderProgram::setParam(std::string const& _id, namica::Vec4 const& _value)
+{
+    glUniform4f(this->getUniformLocation(_id), _value.x(), _value.y(), _value.z(), _value.w());
+}
+
+void ShaderProgram::setParam(std::string const& _id, namica::Mat4 const& _value)
+{
+    glUniformMatrix4fv(this->getUniformLocation(_id), 1, GL_FALSE, _value.data());
 }
 
 // Material
-void Material::setShaderProgram(GLuint _shaderProgram)
+Material::Material(std::shared_ptr<ShaderProgram> const& _shaderProgram)
+    : m_shaderProgram{_shaderProgram}
 {
-    m_shaderProgram = _shaderProgram;
 }
 
-GLuint Material::getShaderProgram() const
+ShaderProgram& Material::getShaderProgram()
 {
-    return m_shaderProgram;
+    return *m_shaderProgram;
 }
 
 void Material::setParam(std::string const& _id, namica::Float const& _value)
@@ -267,40 +310,27 @@ void Material::setParam(std::string const& _id, namica::Vec4 const& _value)
     m_vec4Data[_id] = _value;
 }
 
-void setParam(std::string const& _id, namica::Mat4 const& _value)
-{
-}
-
 void Material::bind()
 {
-    glUseProgram(m_shaderProgram);
+    m_shaderProgram->bind();
+
     // 遍历data, 依次设置值
     for (auto& [id, value] : m_floatData)
     {
-        glUniform1f(getUniformLocation(id), value);
+        m_shaderProgram->setParam(id, value);
     }
     for (auto& [id, value] : m_vec2Data)
     {
-        glUniform2f(getUniformLocation(id), value.x(), value.y());
+        m_shaderProgram->setParam(id, value);
     }
     for (auto& [id, value] : m_vec3Data)
     {
-        glUniform3f(getUniformLocation(id), value.x(), value.y(), value.z());
+        m_shaderProgram->setParam(id, value);
     }
     for (auto& [id, value] : m_vec4Data)
     {
-        glUniform4f(getUniformLocation(id), value.x(), value.y(), value.z(), value.w());
+        m_shaderProgram->setParam(id, value);
     }
-}
-
-GLint Material::getUniformLocation(std::string const& _id)
-{
-    if (m_uniformlocation.find(_id) == m_uniformlocation.end())
-    {
-        m_uniformlocation[_id] = glGetUniformLocation(m_shaderProgram, _id.data());
-    }
-
-    return m_uniformlocation[_id];
 }
 
 // VertexElement

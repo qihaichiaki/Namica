@@ -74,6 +74,9 @@ endfunction()
 set(NAMICA_RUNTIME "NamicaRuntime")
 set(NAMICA_EDITOR "NamicaEditor")
 
+# 设置资产目录
+set(ASSETS_DIR "${CMAKE_SOURCE_DIR}/assets")
+
 add_subdirectory(runtime)
 add_subdirectory(editor)
 
@@ -93,3 +96,5 @@ endif()
 if(MSVC)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT NamicaEditor)
 endif()
+
+# 复制资产目录

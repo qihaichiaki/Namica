@@ -47,6 +47,65 @@ struct Vec4
     }
 };
 
+GLuint createShaderProgram(std::string const& _vertexShaderSrc,
+                           std::string const& _fragmentShaderSrc)
+{
+    GLuint shaderProgram{};
+    GLuint vertexShader{glCreateShader(GL_VERTEX_SHADER)};
+    GLuint fragmentShader{glCreateShader(GL_FRAGMENT_SHADER)};
+
+    char const* vertexShaderSourceCStr{_vertexShaderSrc.c_str()};
+    glShaderSource(vertexShader, 1, &vertexShaderSourceCStr, nullptr);
+    char const* fragmentShaderSourceCStr{_fragmentShaderSrc.c_str()};
+    glShaderSource(fragmentShader, 1, &fragmentShaderSourceCStr, nullptr);
+
+    // Compile
+    glCompileShader(vertexShader);
+    GLint isCompileSuccess{};
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &isCompileSuccess);
+    if (isCompileSuccess == GL_FALSE)
+    {
+        char buffer[512]{};
+        glGetShaderInfoLog(vertexShader, 512, nullptr, buffer);
+        std::cerr << "shader编译失败: " << buffer << std::endl;
+
+        return 0;
+    }
+    glCompileShader(fragmentShader);
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &isCompileSuccess);
+    if (isCompileSuccess == GL_FALSE)
+    {
+        char buffer[512]{};
+        glGetShaderInfoLog(fragmentShader, 512, nullptr, buffer);
+        std::cerr << "shader编译失败: " << buffer << std::endl;
+
+        return 0;
+    }
+
+    // shaderProgram
+    shaderProgram = glCreateProgram();
+    // attach
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    // link
+    glLinkProgram(shaderProgram);
+    GLint isLinkSuccess{};
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &isLinkSuccess);
+    if (isLinkSuccess == GL_FALSE)
+    {
+        char buffer[512]{};
+        glGetProgramInfoLog(shaderProgram, 512, nullptr, buffer);
+        std::cerr << "shaderProgram链接失败: " << buffer << std::endl;
+
+        return 0;
+    }
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    return shaderProgram;
+}
+
 }  // namespace
 
 TEST_F(TestWindowRender, windowRender_glfw_opengl_helloworld)

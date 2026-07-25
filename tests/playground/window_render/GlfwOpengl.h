@@ -4,6 +4,7 @@
 #include <string_view>
 #include <string>
 #include <unordered_map>
+#include <memory>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -51,27 +52,45 @@ void pollEvents();
 
 }  // namespace glfw_opengl
 
-GLuint createShaderProgram(std::string const& _vertexShaderSrc,
-                           std::string const& _fragmentShaderSrc);
-
-// 材质: shader program + uniform
-class Material
+class ShaderProgram
 {
 public:
-    void setShaderProgram(GLuint _shaderProgram);
-    GLuint getShaderProgram() const;
+    ShaderProgram(std::string const& _vertexShaderSrc, std::string const& _fragmentShaderSrc);
+    ~ShaderProgram();
+
+    void bind();
+
     void setParam(std::string const& _id, namica::Float const& _value);
     void setParam(std::string const& _id, namica::Vec2 const& _value);
     void setParam(std::string const& _id, namica::Vec3 const& _value);
     void setParam(std::string const& _id, namica::Vec4 const& _value);
-    void bind();
+    void setParam(std::string const& _id, namica::Mat4 const& _value);
 
 private:
     GLint getUniformLocation(std::string const& _id);
 
 private:
     GLuint m_shaderProgram{};
-    std::unordered_map<std::string, GLint> m_uniformlocation{};
+
+    std::unordered_map<std::string, GLint> m_uniformLocation{};
+};
+
+// 材质: shader program + uniform
+class Material
+{
+public:
+    Material(std::shared_ptr<ShaderProgram> const& _shaderProgram);
+    ShaderProgram& getShaderProgram();
+
+    void setParam(std::string const& _id, namica::Float const& _value);
+    void setParam(std::string const& _id, namica::Vec2 const& _value);
+    void setParam(std::string const& _id, namica::Vec3 const& _value);
+    void setParam(std::string const& _id, namica::Vec4 const& _value);
+
+    void bind();
+
+private:
+    std::shared_ptr<ShaderProgram> m_shaderProgram{};
     std::unordered_map<std::string, namica::Float> m_floatData{};
     std::unordered_map<std::string, namica::Vec2> m_vec2Data{};
     std::unordered_map<std::string, namica::Vec3> m_vec3Data{};

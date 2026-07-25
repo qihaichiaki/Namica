@@ -6,7 +6,7 @@
 #include <gtest/gtest.h>
 #include "playground/window_render/GlfwOpengl.h"
 #include <chrono>
-#include <memory>
+#include <namica/io/FileSystem.h>
 
 class TestWindowRender : public testing::Test
 {
@@ -17,8 +17,6 @@ namespace
 
 std::shared_ptr<Material> createCubMaterial()
 {
-    std::shared_ptr<Material> cubMaterial{std::make_shared<Material>()};
-
     // 顶点着色器
     std::string vertexShaderSRC{R"(
         #version 330 core
@@ -47,8 +45,9 @@ std::shared_ptr<Material> createCubMaterial()
         }
     )"};
 
-    cubMaterial->setShaderProgram(createShaderProgram(vertexShaderSRC, fragmentShaderSRC));
-
+    std::shared_ptr<ShaderProgram> shaderProgram{
+        std::make_shared<ShaderProgram>(vertexShaderSRC, fragmentShaderSRC)};
+    std::shared_ptr<Material> cubMaterial{std::make_shared<Material>(std::move(shaderProgram))};
     return cubMaterial;
 }
 
@@ -94,20 +93,16 @@ public:
         std::shared_ptr<Mesh> const& _mesh = createCubMesh())
         : m_material{_material}, m_mesh{_mesh}
     {
-        GLuint const materialShaderProgram{_material->getShaderProgram()};
-        m_uModelLoc = {glGetUniformLocation(materialShaderProgram, "uModel")};
-        m_uViewLoc = {glGetUniformLocation(materialShaderProgram, "uView")};
-        m_uProjectionLoc = {glGetUniformLocation(materialShaderProgram, "uProject")};
-
         m_material->setParam("uColor", namica::Vec4{1.0f, 1.0f, 1.0f, 1.0f});
     }
 
     void render(Camera& _camera)
     {
         m_material->bind();
-        glUniformMatrix4fv(m_uModelLoc, 1, GL_FALSE, m_transf.getTransform().data());
-        glUniformMatrix4fv(m_uViewLoc, 1, GL_FALSE, _camera.getView().data());
-        glUniformMatrix4fv(m_uProjectionLoc, 1, GL_FALSE, _camera.getProject().data());
+        ShaderProgram& shaderProgram{m_material->getShaderProgram()};
+        shaderProgram.setParam("uModel", m_transf.getTransform());
+        shaderProgram.setParam("uView", _camera.getView());
+        shaderProgram.setParam("uProject", _camera.getProject());
 
         m_mesh->draw();
     }
@@ -121,10 +116,21 @@ private:
     Transform m_transf{};
     std::shared_ptr<Material> m_material{};
     std::shared_ptr<Mesh> m_mesh{};
+};
 
-    GLint m_uModelLoc{};
-    GLint m_uViewLoc{};
-    GLint m_uProjectionLoc{};
+class Texture
+{
+public:
+    Texture(namica::Int const _width, namica::Int const _height, namica::UChar const* _data)
+    {
+        glGenTextures(1, &m_textureObj);
+        glBindTexture(GL_TEXTURE_2D, m_textureObj);
+        glTexImage2D(
+            GL_TEXTURE_2D, 0, GL_RGB8, _width, _height, 0, GL_RGB, GL_UNSIGNED_BYTE, _data);
+    }
+
+private:
+    GLuint m_textureObj{};
 };
 
 }  // namespace
@@ -144,6 +150,22 @@ TEST_F(TestWindowRender, file_render)
     playerController.init(window);
 
     Cub cubObj{};
+
+    namica::FileSystem fileSystem{};
+    fileSystem.setAssetsFolder(NAMICA_ASSETS_DIR);
+
+    namica::Int textureWidth{};
+    namica::Int textureHeight{};
+    namica::Int textureChannels{};
+    auto textureBuffer{
+        fileSystem.loadAssetImage("image/木板.jpg", textureWidth, textureHeight, textureChannels)};
+    if (!textureBuffer.empty())
+    {
+        std::cout << "已加载图片: 木板.jpg" << std::endl;
+        std::cout << "宽度: " << textureWidth << std::endl;
+        std::cout << "高度: " << textureHeight << std::endl;
+        std::cout << "通道数: " << textureChannels << std::endl;
+    }
 
     std::chrono::steady_clock::time_point lastPoint{std::chrono::steady_clock::now()};
     while (!glfw_opengl::windowShouldClose(window))

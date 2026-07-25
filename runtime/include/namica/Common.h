@@ -17,6 +17,8 @@ using UInt = UInt32;
 using Float = float;
 using Double = double;
 using Bool = bool;
+using Char = char;
+using UChar = unsigned char;
 
 [[maybe_unused]] static constexpr Bool True{true};
 [[maybe_unused]] static constexpr Bool False{false};

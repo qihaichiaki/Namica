@@ -70,9 +70,8 @@ TEST_F(TestWindowRender, cube_render)
         }
     )"};
 
-    Material material{};
-    GLuint const materialShaderProgram{createShaderProgram(vertexShaderSrc, fragmentShaderSrc)};
-    material.setShaderProgram(materialShaderProgram);
+    Material material{std::make_shared<ShaderProgram>(vertexShaderSrc, fragmentShaderSrc)};
+    ShaderProgram& shaderProgram{material.getShaderProgram()};
     material.setParam("uColor", namica::Vec4{1.0f, 1.0f, 1.0f, 1.0f});
 
     // 3d 立方体
@@ -133,11 +132,6 @@ TEST_F(TestWindowRender, cube_render)
     auto windowSize{glfw_opengl::getWindowSize(window)};
     camera.getData().aspect = 1.0f * windowSize.first / windowSize.second;
 
-    // 获取除开材质之外的uniform location
-    GLint const uModelLoc{glGetUniformLocation(materialShaderProgram, "uModel")};
-    GLint const uViewLoc{glGetUniformLocation(materialShaderProgram, "uView")};
-    GLint const uProjectionLoc{glGetUniformLocation(materialShaderProgram, "uProjection")};
-
     // namica::Float timeCount{};              // 累计时间
     // namica::Float const rotateSpeed{0.0f};  // 旋转速度 0.5s/ 0.25°
     // namica::Float const rotateTime{0.5f};   // 旋转间隔时间 0.5s
@@ -180,15 +174,15 @@ TEST_F(TestWindowRender, cube_render)
 
         material.bind();
         // 上传其他uniform
-        glUniformMatrix4fv(uModelLoc, 1, GL_FALSE, cubTransform.getTransform().data());
+        shaderProgram.setParam("uModel", cubTransform.getTransform());
 
         // view
         namica::Mat4 viewMat{camera.getView()};
-        glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, viewMat.data());
+        shaderProgram.setParam("uView", viewMat);
 
         // project
         namica::Mat4 const perspective{camera.getProject()};
-        glUniformMatrix4fv(uProjectionLoc, 1, GL_FALSE, perspective.data());
+        shaderProgram.setParam("uProjection", perspective);
 
         mesh.draw();
 

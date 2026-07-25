@@ -20,6 +20,13 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
+# 三方依赖
+include(${CMAKE_SOURCE_DIR}/vendor/cmake/stb_image.cmake)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    stb_image
+)
+
 # 将所有警告视为错误
 target_compile_options(${PROJECT_NAME} PRIVATE /WX)
 

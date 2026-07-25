@@ -219,7 +219,7 @@ void glEnableVertexAttribArray(ELEMENT_INDEX);
 void glUseProgram(PROGRAM_OBJ);
 ```
 
-* 在绘制流程中使用shader程序, 方便后续的绘制操作
+* 在绘制流程中使用shader程序, 方便后续的上传和绘制操作
 
 
 ### glDrawArrays
@@ -290,14 +290,30 @@ glGenTextures(TEXTURE_NUMS, OUT_TEXTURE_OBJS);
 ### glBindTexture
 ```C++
 glBindTexture(TEXTURE_TYPE, TEXTURE_OBJ)
-// TEXTURE_TYPE: GL_TEXTURE_2D
+// TEXTURE_TYPE: GL_TEXTURE_2D 2维纹理
 ```
 
 * 绑定纹理对象
 
 ### glTexImage2D
 ```C++
-glTexImage2D(TEXTURE_TYPE, level, GL_RGB, WIDTH, HEIGHT, 0(无边框), GL_RGB, GL_UNSIGED_BYTE(数据类型), DATA);
+glTexImage2D(TEXTURE_TYPE, MIPMAP_LEVEL, INTERNAL_FORMAT, WIDTH, HEIGHT, BORDER(0), FORMAT, TYPE, DATA);
+// MIPMAP_LEVEL: Mipmap层级(准备不同分辨率的缩小版本, 一开始上传原始数据可以不用生成)
+//     0 原始尺寸
+//     1 宽高减半
+//     2 继续减半......
+// INTERNAL_FORMAT: OpenGL内部使用的格式保存
+//     GL_RGB8
+//     GL_RGBA8
+// WIDTH: 纹理宽度, 单位为像素
+// HEIGHT: 纹理高度, 单位为像素
+// BORDER: 纹理边框, 必须为0, 似乎为遗留参数
+// FORMAT: CPU像素格式
+//     GL_RGB/GL_RGBA
+// TYPE: 每个颜色分量的数据类型
+//     GL_UNSIGNED_BYTE(对应unsigned char*的data)
+// DATA: CPU端的像素数据
+
 ```
 
 * 上传纹理数据
@@ -334,6 +350,14 @@ glTexParameteri(TEXTURE_TYPE, TEXTURE_PARAMETER, MODLE);
     - clamp to edge, 边缘像素向外拉伸  适合UI元素
 
 * 过滤, 决定了当前贴图绘制的比其实际分辨率大或者小的时候如何进行缩放
+
+
+### glDeleteTexture
+```C++
+glDeleteTexture(TEXTURE_NUMS, TEXTURE_OBJs);
+```
+
+* 删除一些纹理对象们
 
 ### glActiveTexture
 ```C++
