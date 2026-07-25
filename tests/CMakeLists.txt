@@ -37,7 +37,7 @@ function(add_test_exes_from_subdirs build_main)
                     "${CMAKE_CURRENT_SOURCE_DIR}/${subdir}/*.cpp"
                 )
 
-                set(TEST_NAME "Test-${subdir}")
+                set(TEST_NAME "test_${subdir}")
 
                 add_executable(${TEST_NAME} 
                     ${LOCAL_PUBLIC_SOURCES}
@@ -65,7 +65,7 @@ function(add_test_exes_from_subdirs build_main)
 
     # 没有测试模块就将测试目标中平铺的cpp编译为一个exe
     if (NOT HAS_TEST_MODULE)
-        set(TEST_NAME "Test-${CURRENT_DIR_NAME}")
+        set(TEST_NAME "test_${CURRENT_DIR_NAME}")
         add_executable(${TEST_NAME} 
             ${LOCAL_PUBLIC_SOURCES}
         )
