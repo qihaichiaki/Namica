@@ -267,6 +267,10 @@ void Material::setParam(std::string const& _id, namica::Vec4 const& _value)
     m_vec4Data[_id] = _value;
 }
 
+void setParam(std::string const& _id, namica::Mat4 const& _value)
+{
+}
+
 void Material::bind()
 {
     glUseProgram(m_shaderProgram);
