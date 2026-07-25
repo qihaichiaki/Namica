@@ -101,9 +101,9 @@ GLFWwindow* createWindow(std::string_view _title, int _width, int _height)
 GLFWwindow* createWindow(std::string_view _title, float _widthRatio, float _heightRatio)
 {
     auto mainWindowSize{getPrimaryMonitorSize()};
-    Veci2 windowSize{static_cast<int>(mainWindowSize.first * _widthRatio),
-                     static_cast<int>(mainWindowSize.second * _heightRatio)};
-    return createWindow(_title, windowSize.x, windowSize.y);
+    namica::Veci2 windowSize{static_cast<int>(mainWindowSize.first * _widthRatio),
+                             static_cast<int>(mainWindowSize.second * _heightRatio)};
+    return createWindow(_title, windowSize.x(), windowSize.y());
 }
 
 std::pair<int, int> getWindowSize(GLFWwindow* const _window)
@@ -234,4 +234,325 @@ GLuint createShaderProgram(std::string const& _vertexShaderSrc,
     glDeleteShader(fragmentShader);
 
     return shaderProgram;
+}
+
+// Material
+void Material::setShaderProgram(GLuint _shaderProgram)
+{
+    m_shaderProgram = _shaderProgram;
+}
+
+GLuint Material::getShaderProgram() const
+{
+    return m_shaderProgram;
+}
+
+void Material::setParam(std::string const& _id, namica::Float const& _value)
+{
+    m_floatData[_id] = _value;
+}
+
+void Material::setParam(std::string const& _id, namica::Vec2 const& _value)
+{
+    m_vec2Data[_id] = _value;
+}
+
+void Material::setParam(std::string const& _id, namica::Vec3 const& _value)
+{
+    m_vec3Data[_id] = _value;
+}
+
+void Material::setParam(std::string const& _id, namica::Vec4 const& _value)
+{
+    m_vec4Data[_id] = _value;
+}
+
+void Material::bind()
+{
+    glUseProgram(m_shaderProgram);
+    // 遍历data, 依次设置值
+    for (auto& [id, value] : m_floatData)
+    {
+        glUniform1f(getUniformLocation(id), value);
+    }
+    for (auto& [id, value] : m_vec2Data)
+    {
+        glUniform2f(getUniformLocation(id), value.x(), value.y());
+    }
+    for (auto& [id, value] : m_vec3Data)
+    {
+        glUniform3f(getUniformLocation(id), value.x(), value.y(), value.z());
+    }
+    for (auto& [id, value] : m_vec4Data)
+    {
+        glUniform4f(getUniformLocation(id), value.x(), value.y(), value.z(), value.w());
+    }
+}
+
+GLint Material::getUniformLocation(std::string const& _id)
+{
+    if (m_uniformlocation.find(_id) == m_uniformlocation.end())
+    {
+        m_uniformlocation[_id] = glGetUniformLocation(m_shaderProgram, _id.data());
+    }
+
+    return m_uniformlocation[_id];
+}
+
+// VertexElement
+VertexElement::VertexElement(GLenum dataType, GLint _dataSize)
+    : dataType{dataType}, dataSize{_dataSize}
+{
+    switch (dataType)
+    {
+        case GL_FLOAT:
+            dataByte = sizeof(float) * dataSize;
+            break;
+        case GL_INT:
+            dataByte = sizeof(int) * dataSize;
+            break;
+        default:
+            break;
+    }
+}
+
+// VertexLayout
+VertexLayout::VertexLayout(std::initializer_list<VertexElement> const& _elements)
+    : m_elements{_elements}, m_stride{0}
+{
+    for (auto& element : m_elements)
+    {
+        element.offset = m_stride;
+        m_stride += element.dataByte;
+    }
+}
+std::vector<VertexElement>::iterator VertexLayout::begin()
+{
+    return m_elements.begin();
+}
+std::vector<VertexElement>::iterator VertexLayout::end()
+{
+    return m_elements.end();
+}
+std::vector<VertexElement>::const_iterator VertexLayout::begin() const
+{
+    return m_elements.begin();
+}
+std::vector<VertexElement>::const_iterator VertexLayout::end() const
+{
+    return m_elements.end();
+}
+GLsizei VertexLayout::getStride() const
+{
+    return m_stride;
+}
+
+// Mesh
+Mesh::Mesh(VertexLayout const& _vertexLayout,
+           std::vector<namica::Float> const& _vertices,
+           std::vector<namica::UInt> const& _indices)
+    : m_vertexLayout{_vertexLayout}, m_indexCount{_indices.size()}
+{
+    glGenVertexArrays(1, &m_vao);
+    glBindVertexArray(m_vao);
+
+    GLuint vbo, ebo;
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER,
+                 sizeof(namica::Float) * _vertices.size(),
+                 _vertices.data(),
+                 GL_STATIC_DRAW);
+
+    // 设置顶点布局
+    GLuint index{};
+    for (auto const& vertexElement : m_vertexLayout)
+    {
+        glVertexAttribPointer(index,
+                              vertexElement.dataSize,
+                              vertexElement.dataType,
+                              vertexElement.normalized,
+                              m_vertexLayout.getStride(),
+                              (void*)(uintptr_t)(vertexElement.offset));
+        glEnableVertexAttribArray(index++);
+    }
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 sizeof(namica::UInt) * _indices.size(),
+                 _indices.data(),
+                 GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+void Mesh::draw()
+{
+    glBindVertexArray(m_vao);
+    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_indexCount), GL_UNSIGNED_INT, 0);
+}
+
+// Transform
+namica::Mat4 Transform::getTransform() const
+{
+    namica::Mat4 model{1.0f};
+
+    model.translate(position);
+    // model.rotate(namica::radians(rotation.x()), namica::Vec3{1.0f, 0.0f, 0.0f});
+    // model.rotate(namica::radians(rotation.y()), namica::Vec3{0.0f, 1.0f, 0.0f});
+    // model.rotate(namica::radians(rotation.z()), namica::Vec3{0.0f, 0.0f, 1.0f});
+    model *= rotation.toMatrix();
+    model.scale(scale);
+
+    return model;
+}
+
+// Camera
+Transform& Camera::getTransform()
+{
+    return m_trasf;
+}
+CameraData& Camera::getData()
+{
+    return m_data;
+}
+
+namica::Mat4 Camera::getView() const
+{
+    // namica::Mat4 viewMat{cameraTransform.getTransform().inversed()};
+    namica::Mat4 viewMat{m_trasf.rotation.toMatrix()};
+    viewMat[3] = namica::Vec4{m_trasf.position, 1.0f};
+    return viewMat.inverse();
+}
+
+namica::Mat4 Camera::getProject() const
+{
+    return namica::Mat4::perspective(m_data.fov, m_data.aspect, m_data.zNear, m_data.zFar);
+}
+
+// PlayerController
+PlayerController::PlayerController(Camera& _camera) : m_camera(_camera)
+{
+}
+
+void PlayerController::init(GLFWwindow* const _window)
+{
+    // 注册事件响应回调
+    glfwSetWindowUserPointer(_window, this);
+
+    // 键盘回调 void (* GLFWkeyfun)(GLFWwindow* window, int key, int scancode, int action, int
+    // mods);
+    glfwSetKeyCallback(_window,
+                       [](GLFWwindow* _window, int _key, int _scancode, int _action, int _mods) {
+                           PlayerController* const controller{
+                               static_cast<PlayerController*>(glfwGetWindowUserPointer(_window))};
+                           controller->onKeyEvent(_key, _scancode, _action, _mods);
+                       });
+
+    // 鼠标按键回调: void (* GLFWmousebuttonfun)(GLFWwindow* window, int button, int action, int
+    // mods);
+    glfwSetMouseButtonCallback(
+        _window, [](GLFWwindow* _window, int _button, int _action, int _mods) {
+            PlayerController* const controller{
+                static_cast<PlayerController*>(glfwGetWindowUserPointer(_window))};
+            controller->onMouseEvent(_button, _action, _mods);
+        });
+
+    // 鼠标移动位置回调：typedef void (* GLFWcursorposfun)(GLFWwindow* window, double xpos,
+    // double ypos);
+    glfwSetCursorPosCallback(_window, [](GLFWwindow* _window, double _xpos, double _ypos) {
+        PlayerController* const controller{
+            static_cast<PlayerController*>(glfwGetWindowUserPointer(_window))};
+        controller->onMousePosEvent(
+            namica::Vec2{static_cast<namica::Float>(_xpos), static_cast<namica::Float>(_ypos)});
+    });
+}
+
+void PlayerController::onKeyEvent(int _key, int _scancode, int _action, int _mods)
+{
+    if (_key == GLFW_KEY_A)
+    {
+        m_moveKeyState[0] = _action != GLFW_RELEASE;
+    }
+    if (_key == GLFW_KEY_D)
+    {
+        m_moveKeyState[1] = _action != GLFW_RELEASE;
+    }
+    if (_key == GLFW_KEY_W)
+    {
+        m_moveKeyState[2] = _action != GLFW_RELEASE;
+    }
+    if (_key == GLFW_KEY_S)
+    {
+        m_moveKeyState[3] = _action != GLFW_RELEASE;
+    }
+}
+
+void PlayerController::onMouseEvent(int _button, int _action, int _mods)
+{
+    if (_button == GLFW_MOUSE_BUTTON_LEFT)
+    {
+        m_mouseLeftState = _action != GLFW_RELEASE;
+    }
+}
+
+void PlayerController::onMousePosEvent(namica::Vec2 const& _pos)
+{
+    m_mousePos = _pos;
+}
+
+void PlayerController::onUpdate(namica::Float const _deltaTime)
+{
+    Transform& cameraTransform{m_camera.getTransform()};
+
+    // 计算旋转
+    if (m_mouseLeftState)
+    {
+        namica::Float const deltaX{m_mousePos.x() - m_mousePosOld.x()};
+        namica::Float const deltaY{m_mousePos.y() - m_mousePosOld.y()};
+
+        // deltaX 围绕着y轴转, 注意这里给予的值是逆时针方向
+        namica::Float const yAngle{-deltaX * m_sensitivity * _deltaTime};
+        namica::Quat yRot{namica::Quat::angleAxis(yAngle, namica::Vec3{0.0f, 1.0f, 0.0f})};
+
+        // deltaY 围绕着x轴转
+        namica::Float const xAngle{-deltaY * m_sensitivity * _deltaTime};
+        namica::Vec3 right{cameraTransform.rotation * namica::Vec3{1.0f, 0.0f, 0.0f}};
+        namica::Quat xRot{namica::Quat::angleAxis(xAngle, right)};
+
+        namica::Quat deltaRot{yRot * xRot};
+        cameraTransform.rotation = (deltaRot * cameraTransform.rotation).normalized();
+    }
+
+    // 计算平移
+
+    // 计算当前基于相机transform的right和front方向
+    // 右手坐标系, 拇指为x正轴
+    namica::Vec3 right{cameraTransform.rotation * namica::Vec3{1.0f, 0.0f, 0.0f}};
+    // 同理, 中指为z正轴, 相机是朝向负z轴的
+    namica::Vec3 front{cameraTransform.rotation * namica::Vec3{0.0f, 0.0f, -1.0f}};
+
+    if (m_moveKeyState[0])  // A
+    {
+        cameraTransform.position -= right * m_moveSpeed * _deltaTime;
+    }
+    if (m_moveKeyState[1])  // D
+    {
+        cameraTransform.position += right * m_moveSpeed * _deltaTime;
+    }
+    if (m_moveKeyState[2])  // W
+    {
+        cameraTransform.position += front * m_moveSpeed * _deltaTime;
+    }
+    if (m_moveKeyState[3])  // S
+    {
+        cameraTransform.position -= front * m_moveSpeed * _deltaTime;
+    }
+
+    // 更新历史鼠标位置
+    m_mousePosOld = m_mousePos;
 }

@@ -3,49 +3,17 @@
 #include <utility>
 #include <string_view>
 #include <string>
+#include <unordered_map>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <namica/Common.h>
+#include <namica/math/Vector.h>
+#include <namica/math/Quaternion.h>
+#include <namica/math/Matrix.h>
+#include <namica/math/Utils.h>
 
 struct GLFWwindow;
-
-struct Vec2
-{
-    float x, y;
-    Vec2() : x{0.0f}, y{0.0f}
-    {
-    }
-    Vec2(float _x, float _y) : x{_x}, y{_y}
-    {
-    }
-};
-
-struct Veci2
-{
-    int x, y;
-    Veci2() : x{0}, y{0}
-    {
-    }
-    Veci2(int _x, int _y) : x{_x}, y{_y}
-    {
-    }
-
-    bool operator==(Veci2 const& _other) const
-    {
-        return this->x == _other.x && this->y == _other.y;
-    }
-};
-
-struct Vec4
-{
-    float r, g, b, a;
-    Vec4() : r{0.0f}, g{0.0f}, b{0.0f}, a{0.0f}
-    {
-    }
-    Vec4(float _r, float _g, float _b, float _a) : r{_r}, g{_g}, b{_b}, a{_a}
-    {
-    }
-};
 
 namespace glfw_opengl
 {
@@ -85,3 +53,136 @@ void pollEvents();
 
 GLuint createShaderProgram(std::string const& _vertexShaderSrc,
                            std::string const& _fragmentShaderSrc);
+
+// 材质: shader program + uniform
+class Material
+{
+public:
+    void setShaderProgram(GLuint _shaderProgram);
+    GLuint getShaderProgram() const;
+    void setParam(std::string const& _id, namica::Float const& _value);
+    void setParam(std::string const& _id, namica::Vec2 const& _value);
+    void setParam(std::string const& _id, namica::Vec3 const& _value);
+    void setParam(std::string const& _id, namica::Vec4 const& _value);
+    void bind();
+
+private:
+    GLint getUniformLocation(std::string const& _id);
+
+private:
+    GLuint m_shaderProgram{};
+    std::unordered_map<std::string, GLint> m_uniformlocation{};
+    std::unordered_map<std::string, namica::Float> m_floatData{};
+    std::unordered_map<std::string, namica::Vec2> m_vec2Data{};
+    std::unordered_map<std::string, namica::Vec3> m_vec3Data{};
+    std::unordered_map<std::string, namica::Vec4> m_vec4Data{};
+};
+
+// mesh, VBO + EBO + VAO
+
+// 顶点元素
+struct VertexElement
+{
+    GLenum dataType{GL_FLOAT};
+    GLint dataSize{0};
+    GLboolean normalized{GL_FALSE};
+    GLsizei dataByte{};
+    namica::UInt offset{};
+
+    VertexElement(GLenum dataType, GLint _dataSize);
+};
+
+// 顶点布局
+class VertexLayout
+{
+public:
+    VertexLayout(std::initializer_list<VertexElement> const& _elements);
+
+    GLsizei getStride() const;
+
+    std::vector<VertexElement>::iterator begin();
+    std::vector<VertexElement>::iterator end();
+    std::vector<VertexElement>::const_iterator begin() const;
+    std::vector<VertexElement>::const_iterator end() const;
+
+private:
+    std::vector<VertexElement> m_elements{};  // 一个顶点的所有元素
+    GLsizei m_stride;                         // 两个顶点之间的偏移量
+};
+
+class Mesh
+{
+public:
+    Mesh(VertexLayout const& _vertexLayout,
+         std::vector<namica::Float> const& _vertices,
+         std::vector<namica::UInt> const& _indices);
+    // 禁止拷贝移动
+    Mesh(Mesh const&) = delete;
+    Mesh(Mesh&&) = delete;
+    Mesh& operator=(Mesh const&) = delete;
+
+    void draw();
+
+private:
+    VertexLayout m_vertexLayout{};
+    GLuint m_vao{};
+
+    namica::UInt64 m_indexCount{};
+};
+
+struct Transform
+{
+    namica::Vec3 position{};
+    // namica::Vec3 rotation{};
+    namica::Quat rotation{1.0f, 0.0f, 0.0f, 0.0f};
+    namica::Vec3 scale{1.0f};
+
+    namica::Mat4 getTransform() const;
+};
+
+struct CameraData
+{
+    namica::Float fov{namica::radians(60.0f)};
+    namica::Float aspect{};
+    namica::Float zNear{0.1f};
+    namica::Float zFar{1000.0f};
+};
+
+class Camera
+{
+public:
+    Transform& getTransform();
+    CameraData& getData();
+
+    namica::Mat4 getView() const;
+    namica::Mat4 getProject() const;
+
+private:
+    Transform m_trasf{};
+    CameraData m_data{};
+};
+
+// 挂载到相机上的
+class PlayerController
+{
+public:
+    PlayerController(Camera& camera);
+    void init(GLFWwindow* const _window);
+    void onUpdate(namica::Float const _deltaTime);
+
+private:
+    void onKeyEvent(int _key, int _scancode, int _action, int _mods);
+    void onMouseEvent(int _button, int _action, int _mods);
+    void onMousePosEvent(namica::Vec2 const& _pos);
+
+private:
+    Camera& m_camera;
+    namica::Bool m_moveKeyState[4]{
+        namica::False, namica::False, namica::False, namica::False};  // A, D, W, S
+    namica::Bool m_mouseLeftState{namica::False};
+    namica::Vec2 m_mousePosOld{};
+    namica::Vec2 m_mousePos{};
+
+    namica::Float m_sensitivity{0.5f};  // 相机旋转灵敏度
+    namica::Float m_moveSpeed{1.0f};    // 相机移动速度
+};

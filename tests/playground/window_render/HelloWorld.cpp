@@ -7,6 +7,48 @@ class TestWindowRender : public testing::Test
 {
 };
 
+namespace
+{
+struct Vec2
+{
+    float x, y;
+    Vec2() : x{0.0f}, y{0.0f}
+    {
+    }
+    Vec2(float _x, float _y) : x{_x}, y{_y}
+    {
+    }
+};
+
+struct Veci2
+{
+    int x, y;
+    Veci2() : x{0}, y{0}
+    {
+    }
+    Veci2(int _x, int _y) : x{_x}, y{_y}
+    {
+    }
+
+    bool operator==(Veci2 const& _other) const
+    {
+        return this->x == _other.x && this->y == _other.y;
+    }
+};
+
+struct Vec4
+{
+    float r, g, b, a;
+    Vec4() : r{0.0f}, g{0.0f}, b{0.0f}, a{0.0f}
+    {
+    }
+    Vec4(float _r, float _g, float _b, float _a) : r{_r}, g{_g}, b{_b}, a{_a}
+    {
+    }
+};
+
+}  // namespace
+
 TEST_F(TestWindowRender, windowRender_glfw_opengl_helloworld)
 {
     std::cout << "<< 这里是测试windowRender_glfw_opengl的helloworld >>" << std::endl;
