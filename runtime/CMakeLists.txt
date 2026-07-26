@@ -22,9 +22,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 # 三方依赖
 include(${CMAKE_SOURCE_DIR}/vendor/cmake/stb_image.cmake)
+include(${CMAKE_SOURCE_DIR}/vendor/cmake/json.cmake)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     stb_image
+    nlohmann_json
 )
 
 # 将所有警告视为错误

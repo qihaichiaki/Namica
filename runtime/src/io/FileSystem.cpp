@@ -4,8 +4,8 @@
 #include <Windows.h>
 #endif
 
-#include <stb_image.h>
 #include <fstream>
+#include <stb_image.h>
 
 namespace namica
 {

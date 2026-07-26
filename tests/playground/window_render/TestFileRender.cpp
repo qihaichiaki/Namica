@@ -17,41 +17,14 @@ namespace
 
 std::shared_ptr<Material> createCubMaterial()
 {
+    namica::FileSystem fileSystem{};
     // 顶点着色器
-    std::string vertexShaderSRC{R"(
-        #version 330 core
-
-        layout(location = 0) in vec3 position;
-        layout(location = 1) in vec2 uv;
-
-        out vec2 vUV;
-
-        uniform mat4 uModel;
-        uniform mat4 uView;
-        uniform mat4 uProject;
-
-        void main(){
-            gl_Position = uProject * uView * uModel * vec4(position, 1.0);
-            vUV = uv;
-        }
-    )"};
+    std::string vertexShaderSRC{
+        fileSystem.loadFileText(std::filesystem::path{NAMICA_ASSETS_DIR} / "shader/cub.vert")};
 
     // 片段着色器
-    std::string fragmentShaderSRC{R"(
-        #version 330 core
-
-        in vec2 vUV;
-
-        out vec4 color;
-
-        uniform vec4 uColor;
-        uniform sampler2D uTexture;
-
-        void main(){
-            vec4 texColor = texture(uTexture, vUV);
-            color = texColor * uColor;
-        }
-    )"};
+    std::string fragmentShaderSRC{
+        fileSystem.loadFileText(std::filesystem::path{NAMICA_ASSETS_DIR} / "shader/cub.frag")};
 
     std::shared_ptr<ShaderProgram> shaderProgram{
         std::make_shared<ShaderProgram>(vertexShaderSRC, fragmentShaderSRC)};
@@ -195,7 +168,6 @@ TEST_F(TestWindowRender, file_render)
     namica::Int textureChannels{};
     auto textureBuffer{
         fileSystem.loadAssetImage("image/木板.jpg", textureWidth, textureHeight, textureChannels)};
-    std::shared_ptr<Texture> texture{};
     if (!textureBuffer.empty())
     {
         std::cout << "已加载图片: 木板.jpg" << std::endl;
@@ -203,8 +175,9 @@ TEST_F(TestWindowRender, file_render)
         std::cout << "高度: " << textureHeight << std::endl;
         std::cout << "通道数: " << textureChannels << std::endl;
 
-        texture = std::make_shared<Texture>(textureWidth, textureHeight, textureBuffer.data());
-        cubObj.getMaterial().setParam("uTexture", texture);
+        cubObj.getMaterial().setParam(
+            "uTexture",
+            std::make_shared<Texture>(textureWidth, textureHeight, textureBuffer.data()));
     }
 
     std::chrono::steady_clock::time_point lastPoint{std::chrono::steady_clock::now()};
