@@ -4,10 +4,9 @@
  */
 
 #include <gtest/gtest.h>
-#include "playground/window_render/GlfwOpengl.h"
+#include "playground/window_render/TestRender.h"
 #include <chrono>
 #include <namica/io/FileSystem.h>
-#include <nlohmann/json.hpp>
 
 class TestWindowRender : public testing::Test
 {
@@ -142,97 +141,6 @@ private:
     std::shared_ptr<Mesh> m_mesh{};
 };
 
-std::shared_ptr<Material> loadMaterial(namica::FileSystem& _fileSystem,
-                                       std::filesystem::path const& _materialPath)
-{
-    using namespace nlohmann;
-    json const jsonRoot{json::parse(_fileSystem.loadAssetFileText(_materialPath))};
-
-    std::shared_ptr<Material> material{nullptr};
-
-    if (jsonRoot.contains("Shader"))
-    {
-        auto const shaderData{jsonRoot["Shader"]};
-        if (shaderData.contains("Vertex") && shaderData.contains("Fragment"))
-        {
-            std::string const vertexShaderSRC{
-                _fileSystem.loadAssetFileText(shaderData["Vertex"].get<std::string>())};
-            std::string const fragmentShaderSRC{
-                _fileSystem.loadAssetFileText(shaderData["Fragment"].get<std::string>())};
-            material = std::make_shared<Material>(
-                std::make_shared<ShaderProgram>(vertexShaderSRC, fragmentShaderSRC));
-
-            if (jsonRoot.contains("Data"))
-            {
-                auto const materialData{jsonRoot["Data"]};
-
-                if (materialData.contains("Float"))
-                {
-                    auto const floatData{materialData["Float"]};
-                    for (auto const& item : floatData)
-                    {
-                        std::string const& id{item["name"].get<std::string>()};
-                        namica::Float const value{item["value"].get<namica::Float>()};
-                        material->setParam(id, value);
-                    }
-                }
-
-                if (materialData.contains("Vec2"))
-                {
-                    auto const vec2Data{materialData["Vec2"]};
-                    for (auto const& item : vec2Data)
-                    {
-                        std::string const& id{item["name"].get<std::string>()};
-                        namica::Vec2 const value{item["value0"].get<namica::Float>(),
-                                                 item["value1"].get<namica::Float>()};
-                        material->setParam(id, value);
-                    }
-                }
-
-                if (materialData.contains("Vec3"))
-                {
-                    auto const vec3Data{materialData["Vec3"]};
-                    for (auto const& item : vec3Data)
-                    {
-                        std::string const& id{item["name"].get<std::string>()};
-                        namica::Vec3 const value{item["value0"].get<namica::Float>(),
-                                                 item["value1"].get<namica::Float>(),
-                                                 item["value2"].get<namica::Float>()};
-                        material->setParam(id, value);
-                    }
-                }
-
-                if (materialData.contains("Vec4"))
-                {
-                    auto const vec4Data{materialData["Vec4"]};
-                    for (auto const& item : vec4Data)
-                    {
-                        std::string const& id{item["name"].get<std::string>()};
-                        namica::Vec4 const value{item["value0"].get<namica::Float>(),
-                                                 item["value1"].get<namica::Float>(),
-                                                 item["value2"].get<namica::Float>(),
-                                                 item["value3"].get<namica::Float>()};
-                        material->setParam(id, value);
-                    }
-                }
-
-                if (materialData.contains("Texture"))
-                {
-                    auto const textureData{materialData["Texture"]};
-                    for (auto const& item : textureData)
-                    {
-                        std::string const& id{item["name"].get<std::string>()};
-                        std::filesystem::path const texturePath{item["path"].get<std::string>()};
-                        material->setParam(id, Texture::create(_fileSystem, texturePath));
-                    }
-                }
-            }
-        }
-    }
-
-    return material;
-}
-
 }  // namespace
 
 TEST_F(TestWindowRender, file_render)
@@ -252,7 +160,7 @@ TEST_F(TestWindowRender, file_render)
     namica::FileSystem fileSystem{};
     fileSystem.setAssetsFolder(NAMICA_ASSETS_DIR);
 
-    auto cubMaterial{loadMaterial(fileSystem, "material/cub_material.json")};
+    auto cubMaterial{Material::load(fileSystem, "material/cub_material.json")};
     Cub cubObj{cubMaterial, createCubMesh()};
 
     std::chrono::steady_clock::time_point lastPoint{std::chrono::steady_clock::now()};

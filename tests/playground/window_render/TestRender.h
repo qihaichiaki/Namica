@@ -65,8 +65,8 @@ public:
     ~Texture();
     void bind();
 
-    static std::shared_ptr<Texture> create(namica::FileSystem& _fileSystem,
-                                           std::filesystem::path const& _texturePath);
+    static std::shared_ptr<Texture> load(namica::FileSystem& _fileSystem,
+                                         std::filesystem::path const& _texturePath);
 
 private:
     GLuint m_textureObj{};
@@ -113,6 +113,9 @@ public:
 
     void bind();
 
+    static std::shared_ptr<Material> load(namica::FileSystem& _fileSystem,
+                                          std::filesystem::path const& _materialPath);
+
 private:
     std::shared_ptr<ShaderProgram> m_shaderProgram{};
     std::unordered_map<std::string, namica::Float> m_floatData{};
@@ -127,12 +130,14 @@ private:
 // 顶点元素
 struct VertexElement
 {
+    namica::UInt index{0};
     GLenum dataType{GL_FLOAT};
     GLint dataSize{0};
     GLboolean normalized{GL_FALSE};
     GLsizei dataByte{};
     namica::UInt offset{};
 
+    VertexElement() = default;
     VertexElement(GLenum dataType, GLint _dataSize);
 };
 
@@ -140,7 +145,10 @@ struct VertexElement
 class VertexLayout
 {
 public:
+    VertexLayout() = default;
     VertexLayout(std::initializer_list<VertexElement> const& _elements);
+
+    void push(VertexElement const& _element);
 
     GLsizei getStride() const;
 

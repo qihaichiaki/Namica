@@ -1,7 +1,7 @@
 #include <iostream>
 #include <gtest/gtest.h>
 
-#include "playground/window_render/GlfwOpengl.h"
+#include "playground/window_render/TestRender.h"
 
 class TestWindowRender : public testing::Test
 {

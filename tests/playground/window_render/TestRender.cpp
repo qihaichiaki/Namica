@@ -1,7 +1,8 @@
-#include "playground/window_render/GlfwOpengl.h"
+#include "playground/window_render/TestRender.h"
 
 #include <iostream>
 #include <namica/io/FileSystem.h>
+#include <nlohmann/json.hpp>
 
 namespace glfw_opengl
 {
@@ -204,8 +205,8 @@ void Texture::bind()
     glBindTexture(GL_TEXTURE_2D, m_textureObj);
 }
 
-std::shared_ptr<Texture> Texture::create(namica::FileSystem& _fileSystem,
-                                         std::filesystem::path const& _texturePath)
+std::shared_ptr<Texture> Texture::load(namica::FileSystem& _fileSystem,
+                                       std::filesystem::path const& _texturePath)
 {
     std::shared_ptr<Texture> texture{};
 
@@ -403,6 +404,97 @@ void Material::bind()
     }
 }
 
+std::shared_ptr<Material> Material::load(namica::FileSystem& _fileSystem,
+                                         std::filesystem::path const& _materialPath)
+{
+    using namespace nlohmann;
+    json const jsonRoot{json::parse(_fileSystem.loadAssetFileText(_materialPath))};
+
+    std::shared_ptr<Material> material{nullptr};
+
+    if (jsonRoot.contains("Shader"))
+    {
+        auto const shaderData{jsonRoot["Shader"]};
+        if (shaderData.contains("Vertex") && shaderData.contains("Fragment"))
+        {
+            std::string const vertexShaderSRC{
+                _fileSystem.loadAssetFileText(shaderData["Vertex"].get<std::string>())};
+            std::string const fragmentShaderSRC{
+                _fileSystem.loadAssetFileText(shaderData["Fragment"].get<std::string>())};
+            material = std::make_shared<Material>(
+                std::make_shared<ShaderProgram>(vertexShaderSRC, fragmentShaderSRC));
+
+            if (jsonRoot.contains("Data"))
+            {
+                auto const materialData{jsonRoot["Data"]};
+
+                if (materialData.contains("Float"))
+                {
+                    auto const floatData{materialData["Float"]};
+                    for (auto const& item : floatData)
+                    {
+                        std::string const& id{item["name"].get<std::string>()};
+                        namica::Float const value{item["value"].get<namica::Float>()};
+                        material->setParam(id, value);
+                    }
+                }
+
+                if (materialData.contains("Vec2"))
+                {
+                    auto const vec2Data{materialData["Vec2"]};
+                    for (auto const& item : vec2Data)
+                    {
+                        std::string const& id{item["name"].get<std::string>()};
+                        namica::Vec2 const value{item["value0"].get<namica::Float>(),
+                                                 item["value1"].get<namica::Float>()};
+                        material->setParam(id, value);
+                    }
+                }
+
+                if (materialData.contains("Vec3"))
+                {
+                    auto const vec3Data{materialData["Vec3"]};
+                    for (auto const& item : vec3Data)
+                    {
+                        std::string const& id{item["name"].get<std::string>()};
+                        namica::Vec3 const value{item["value0"].get<namica::Float>(),
+                                                 item["value1"].get<namica::Float>(),
+                                                 item["value2"].get<namica::Float>()};
+                        material->setParam(id, value);
+                    }
+                }
+
+                if (materialData.contains("Vec4"))
+                {
+                    auto const vec4Data{materialData["Vec4"]};
+                    for (auto const& item : vec4Data)
+                    {
+                        std::string const& id{item["name"].get<std::string>()};
+                        namica::Vec4 const value{item["value0"].get<namica::Float>(),
+                                                 item["value1"].get<namica::Float>(),
+                                                 item["value2"].get<namica::Float>(),
+                                                 item["value3"].get<namica::Float>()};
+                        material->setParam(id, value);
+                    }
+                }
+
+                if (materialData.contains("Texture"))
+                {
+                    auto const textureData{materialData["Texture"]};
+                    for (auto const& item : textureData)
+                    {
+                        std::string const& id{item["name"].get<std::string>()};
+                        std::filesystem::path const texturePath{item["path"].get<std::string>()};
+                        material->setParam(id, Texture::load(_fileSystem, texturePath));
+                    }
+                }
+            }
+        }
+    }
+
+    return material;
+}
+
 // VertexElement
 VertexElement::VertexElement(GLenum dataType, GLint _dataSize)
     : dataType{dataType}, dataSize{_dataSize}
@@ -424,28 +516,44 @@ VertexElement::VertexElement(GLenum dataType, GLint _dataSize)
 VertexLayout::VertexLayout(std::initializer_list<VertexElement> const& _elements)
     : m_elements{_elements}, m_stride{0}
 {
+    namica::UInt index{0};
     for (auto& element : m_elements)
     {
+        element.index = index++;
         element.offset = m_stride;
         m_stride += element.dataByte;
     }
 }
+
+void VertexLayout::push(VertexElement const& _element)
+{
+    VertexElement element{_element};
+    element.index = (namica::UInt)m_elements.size();
+    element.offset = m_stride;
+    m_stride += element.dataByte;
+    m_elements.push_back(element);
+}
+
 std::vector<VertexElement>::iterator VertexLayout::begin()
 {
     return m_elements.begin();
 }
+
 std::vector<VertexElement>::iterator VertexLayout::end()
 {
     return m_elements.end();
 }
+
 std::vector<VertexElement>::const_iterator VertexLayout::begin() const
 {
     return m_elements.begin();
 }
+
 std::vector<VertexElement>::const_iterator VertexLayout::end() const
 {
     return m_elements.end();
 }
+
 GLsizei VertexLayout::getStride() const
 {
     return m_stride;
@@ -471,16 +579,15 @@ Mesh::Mesh(VertexLayout const& _vertexLayout,
                  GL_STATIC_DRAW);
 
     // 设置顶点布局
-    GLuint index{};
     for (auto const& vertexElement : m_vertexLayout)
     {
-        glVertexAttribPointer(index,
+        glVertexAttribPointer(vertexElement.index,
                               vertexElement.dataSize,
                               vertexElement.dataType,
                               vertexElement.normalized,
                               m_vertexLayout.getStride(),
                               (void*)(uintptr_t)(vertexElement.offset));
-        glEnableVertexAttribArray(index++);
+        glEnableVertexAttribArray(vertexElement.index);
     }
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
