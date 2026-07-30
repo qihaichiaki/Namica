@@ -1,6 +1,7 @@
 #include "playground/window_render/GlfwOpengl.h"
 
 #include <iostream>
+#include <namica/io/FileSystem.h>
 
 namespace glfw_opengl
 {
@@ -201,6 +202,29 @@ Texture::~Texture()
 void Texture::bind()
 {
     glBindTexture(GL_TEXTURE_2D, m_textureObj);
+}
+
+std::shared_ptr<Texture> Texture::create(namica::FileSystem& _fileSystem,
+                                         std::filesystem::path const& _texturePath)
+{
+    std::shared_ptr<Texture> texture{};
+
+    namica::Int textureWidth{};
+    namica::Int textureHeight{};
+    namica::Int textureChannels{};
+    auto textureBuffer{
+        _fileSystem.loadAssetImage(_texturePath, textureWidth, textureHeight, textureChannels)};
+    if (!textureBuffer.empty())
+    {
+        std::cout << "已成功加载图片: " << _texturePath << std::endl;
+        std::cout << "宽度: " << textureWidth << std::endl;
+        std::cout << "高度: " << textureHeight << std::endl;
+        std::cout << "通道数: " << textureChannels << std::endl;
+
+        texture = std::make_shared<Texture>(textureWidth, textureHeight, textureBuffer.data());
+    }
+
+    return texture;
 }
 
 // ShaderProgram

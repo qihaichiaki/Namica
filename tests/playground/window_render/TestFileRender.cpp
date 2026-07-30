@@ -7,6 +7,7 @@
 #include "playground/window_render/GlfwOpengl.h"
 #include <chrono>
 #include <namica/io/FileSystem.h>
+#include <nlohmann/json.hpp>
 
 class TestWindowRender : public testing::Test
 {
@@ -15,22 +16,22 @@ class TestWindowRender : public testing::Test
 namespace
 {
 
-std::shared_ptr<Material> createCubMaterial()
-{
-    namica::FileSystem fileSystem{};
-    // 顶点着色器
-    std::string vertexShaderSRC{
-        fileSystem.loadFileText(std::filesystem::path{NAMICA_ASSETS_DIR} / "shader/cub.vert")};
+// std::shared_ptr<Material> createCubMaterial()
+// {
+//     namica::FileSystem fileSystem{};
+//     // 顶点着色器
+//     std::string vertexShaderSRC{
+//         fileSystem.loadFileText(std::filesystem::path{NAMICA_ASSETS_DIR} / "shader/cub.vert")};
 
-    // 片段着色器
-    std::string fragmentShaderSRC{
-        fileSystem.loadFileText(std::filesystem::path{NAMICA_ASSETS_DIR} / "shader/cub.frag")};
+//     // 片段着色器
+//     std::string fragmentShaderSRC{
+//         fileSystem.loadFileText(std::filesystem::path{NAMICA_ASSETS_DIR} / "shader/cub.frag")};
 
-    std::shared_ptr<ShaderProgram> shaderProgram{
-        std::make_shared<ShaderProgram>(vertexShaderSRC, fragmentShaderSRC)};
-    std::shared_ptr<Material> cubMaterial{std::make_shared<Material>(std::move(shaderProgram))};
-    return cubMaterial;
-}
+//     std::shared_ptr<ShaderProgram> shaderProgram{
+//         std::make_shared<ShaderProgram>(vertexShaderSRC, fragmentShaderSRC)};
+//     std::shared_ptr<Material> cubMaterial{std::make_shared<Material>(std::move(shaderProgram))};
+//     return cubMaterial;
+// }
 
 std::shared_ptr<Mesh> createCubMesh()
 {
@@ -108,8 +109,7 @@ std::shared_ptr<Mesh> createCubMesh()
 class Cub
 {
 public:
-    Cub(std::shared_ptr<Material> const& _material = createCubMaterial(),
-        std::shared_ptr<Mesh> const& _mesh = createCubMesh())
+    Cub(std::shared_ptr<Material> const& _material, std::shared_ptr<Mesh> const& _mesh)
         : m_material{_material}, m_mesh{_mesh}
     {
         m_material->setParam("uColor", namica::Vec4{1.0f, 1.0f, 1.0f, 1.0f});
@@ -142,6 +142,97 @@ private:
     std::shared_ptr<Mesh> m_mesh{};
 };
 
+std::shared_ptr<Material> loadMaterial(namica::FileSystem& _fileSystem,
+                                       std::filesystem::path const& _materialPath)
+{
+    using namespace nlohmann;
+    json const jsonRoot{json::parse(_fileSystem.loadAssetFileText(_materialPath))};
+
+    std::shared_ptr<Material> material{nullptr};
+
+    if (jsonRoot.contains("Shader"))
+    {
+        auto const shaderData{jsonRoot["Shader"]};
+        if (shaderData.contains("Vertex") && shaderData.contains("Fragment"))
+        {
+            std::string const vertexShaderSRC{
+                _fileSystem.loadAssetFileText(shaderData["Vertex"].get<std::string>())};
+            std::string const fragmentShaderSRC{
+                _fileSystem.loadAssetFileText(shaderData["Fragment"].get<std::string>())};
+            material = std::make_shared<Material>(
+                std::make_shared<ShaderProgram>(vertexShaderSRC, fragmentShaderSRC));
+
+            if (jsonRoot.contains("Data"))
+            {
+                auto const materialData{jsonRoot["Data"]};
+
+                if (materialData.contains("Float"))
+                {
+                    auto const floatData{materialData["Float"]};
+                    for (auto const& item : floatData)
+                    {
+                        std::string const& id{item["name"].get<std::string>()};
+                        namica::Float const value{item["value"].get<namica::Float>()};
+                        material->setParam(id, value);
+                    }
+                }
+
+                if (materialData.contains("Vec2"))
+                {
+                    auto const vec2Data{materialData["Vec2"]};
+                    for (auto const& item : vec2Data)
+                    {
+                        std::string const& id{item["name"].get<std::string>()};
+                        namica::Vec2 const value{item["value0"].get<namica::Float>(),
+                                                 item["value1"].get<namica::Float>()};
+                        material->setParam(id, value);
+                    }
+                }
+
+                if (materialData.contains("Vec3"))
+                {
+                    auto const vec3Data{materialData["Vec3"]};
+                    for (auto const& item : vec3Data)
+                    {
+                        std::string const& id{item["name"].get<std::string>()};
+                        namica::Vec3 const value{item["value0"].get<namica::Float>(),
+                                                 item["value1"].get<namica::Float>(),
+                                                 item["value2"].get<namica::Float>()};
+                        material->setParam(id, value);
+                    }
+                }
+
+                if (materialData.contains("Vec4"))
+                {
+                    auto const vec4Data{materialData["Vec4"]};
+                    for (auto const& item : vec4Data)
+                    {
+                        std::string const& id{item["name"].get<std::string>()};
+                        namica::Vec4 const value{item["value0"].get<namica::Float>(),
+                                                 item["value1"].get<namica::Float>(),
+                                                 item["value2"].get<namica::Float>(),
+                                                 item["value3"].get<namica::Float>()};
+                        material->setParam(id, value);
+                    }
+                }
+
+                if (materialData.contains("Texture"))
+                {
+                    auto const textureData{materialData["Texture"]};
+                    for (auto const& item : textureData)
+                    {
+                        std::string const& id{item["name"].get<std::string>()};
+                        std::filesystem::path const texturePath{item["path"].get<std::string>()};
+                        material->setParam(id, Texture::create(_fileSystem, texturePath));
+                    }
+                }
+            }
+        }
+    }
+
+    return material;
+}
+
 }  // namespace
 
 TEST_F(TestWindowRender, file_render)
@@ -158,27 +249,11 @@ TEST_F(TestWindowRender, file_render)
     PlayerController playerController{camera};
     playerController.init(window);
 
-    Cub cubObj{};
-
     namica::FileSystem fileSystem{};
     fileSystem.setAssetsFolder(NAMICA_ASSETS_DIR);
 
-    namica::Int textureWidth{};
-    namica::Int textureHeight{};
-    namica::Int textureChannels{};
-    auto textureBuffer{
-        fileSystem.loadAssetImage("image/木板.jpg", textureWidth, textureHeight, textureChannels)};
-    if (!textureBuffer.empty())
-    {
-        std::cout << "已加载图片: 木板.jpg" << std::endl;
-        std::cout << "宽度: " << textureWidth << std::endl;
-        std::cout << "高度: " << textureHeight << std::endl;
-        std::cout << "通道数: " << textureChannels << std::endl;
-
-        cubObj.getMaterial().setParam(
-            "uTexture",
-            std::make_shared<Texture>(textureWidth, textureHeight, textureBuffer.data()));
-    }
+    auto cubMaterial{loadMaterial(fileSystem, "material/cub_material.json")};
+    Cub cubObj{cubMaterial, createCubMesh()};
 
     std::chrono::steady_clock::time_point lastPoint{std::chrono::steady_clock::now()};
     while (!glfw_opengl::windowShouldClose(window))

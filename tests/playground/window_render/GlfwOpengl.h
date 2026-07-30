@@ -5,6 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <memory>
+#include <filesystem>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -52,12 +53,20 @@ void pollEvents();
 
 }  // namespace glfw_opengl
 
+namespace namica
+{
+class FileSystem;
+}
+
 class Texture
 {
 public:
     Texture(namica::Int const _width, namica::Int const _height, namica::UChar const* _data);
     ~Texture();
     void bind();
+
+    static std::shared_ptr<Texture> create(namica::FileSystem& _fileSystem,
+                                           std::filesystem::path const& _texturePath);
 
 private:
     GLuint m_textureObj{};
