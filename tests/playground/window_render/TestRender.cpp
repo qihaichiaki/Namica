@@ -348,9 +348,9 @@ Material::Material(std::shared_ptr<ShaderProgram> const& _shaderProgram)
 {
 }
 
-ShaderProgram& Material::getShaderProgram()
+std::shared_ptr<ShaderProgram> Material::getShaderProgram()
 {
-    return *m_shaderProgram;
+    return m_shaderProgram;
 }
 
 void Material::setParam(std::string const& _id, namica::Float const& _value)
@@ -560,260 +560,6 @@ GLsizei VertexLayout::getStride() const
     return m_stride;
 }
 
-// Mesh
-void Mesh::init(std::vector<namica::Float> const& _vertices,
-                std::vector<namica::UInt> const& _indices)
-{
-    glGenVertexArrays(1, &m_vao);
-    glBindVertexArray(m_vao);
-
-    GLuint vbo, ebo;
-    glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ebo);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER,
-                 sizeof(namica::Float) * _vertices.size(),
-                 _vertices.data(),
-                 GL_STATIC_DRAW);
-
-    // 设置顶点布局
-    for (auto const& vertexElement : m_vertexLayout)
-    {
-        glVertexAttribPointer(vertexElement.index,
-                              vertexElement.dataSize,
-                              vertexElement.dataType,
-                              vertexElement.normalized,
-                              m_vertexLayout.getStride(),
-                              (void*)(uintptr_t)(vertexElement.offset));
-        glEnableVertexAttribArray(vertexElement.index);
-    }
-
-    m_vertexCount = (_vertices.size() * sizeof(namica::Float)) / m_vertexLayout.getStride();
-    m_indexCount = _indices.size();
-
-    if (m_indexCount > 0)
-    {
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                     sizeof(namica::UInt) * m_indexCount,
-                     _indices.data(),
-                     GL_STATIC_DRAW);
-    }
-
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-}
-
-Mesh::Mesh(VertexLayout const& _vertexLayout,
-           std::vector<namica::Float> const& _vertices,
-           std::vector<namica::UInt> const& _indices)
-    : m_vertexLayout{_vertexLayout}
-{
-    this->init(_vertices, _indices);
-}
-
-Mesh::Mesh(VertexLayout const& _vertexLayout, std::vector<namica::Float> const& _vertices)
-    : m_vertexLayout{_vertexLayout}
-{
-    this->init(_vertices, {});
-}
-
-void Mesh::draw()
-{
-    glBindVertexArray(m_vao);
-
-    if (m_indexCount > 0)
-    {
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_indexCount), GL_UNSIGNED_INT, 0);
-    }
-    else
-    {
-        glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(m_vertexCount));
-    }
-}
-
-std::shared_ptr<Mesh> Mesh::load(namica::FileSystem& _fileSystem,
-                                 std::filesystem::path const& _meshAssetPath)
-{
-    auto contents{_fileSystem.loadAssetFileText(_meshAssetPath)};
-    if (contents.empty())
-    {
-        return nullptr;
-    }
-
-    // 读取顶点
-    auto readFloats{[](cgltf_accessor const* _acc,
-                       cgltf_size _index,
-                       namica::Float* _out,
-                       namica::Int _elementSize) {
-        std::fill(_out, _out + _elementSize, 0.0f);
-        return cgltf_accessor_read_float(_acc, _index, _out, _elementSize) == 1;
-    }};
-
-    // 读取索引
-    auto readIndex{[](cgltf_accessor const* _acc, cgltf_size _index) {
-        cgltf_uint out{0};
-        cgltf_bool ok{cgltf_accessor_read_uint(_acc, _index, &out, 1)};
-        return ok ? out : 0;
-    }};
-
-    cgltf_options options{};
-    cgltf_data* data{nullptr};
-
-    cgltf_result res{cgltf_parse(&options, contents.data(), contents.size(), &data)};
-    if (res != cgltf_result_success)
-    {
-        return nullptr;
-    }
-
-    auto fullPath{_fileSystem.getAssetsFolder() / _meshAssetPath};
-    res = cgltf_load_buffers(&options, data, fullPath.remove_filename().generic_string().c_str());
-    if (res != cgltf_result_success)
-    {
-        cgltf_free(data);
-        return nullptr;
-    }
-
-    std::shared_ptr<Mesh> result{nullptr};
-
-    // 遍历每一个mesh
-    for (cgltf_size mi{0}; mi < data->meshes_count; ++mi)
-    {
-        auto& mesh{data->meshes[mi]};
-        // 遍历mesh的每个图元, 处理三角形图元
-        for (cgltf_size pi{0}; pi < mesh.primitives_count; ++pi)
-        {
-            auto& primitive{mesh.primitives[pi]};
-            if (primitive.type != cgltf_primitive_type_triangles)
-            {
-                continue;
-            }
-
-            VertexLayout vertexLayout{};
-            // positionIndex -> 0, colorIndex -> 1, uvIndex -> 2
-            constexpr namica::Int positionIndex{0};
-            constexpr namica::Int colorIndex{1};
-            constexpr namica::Int uvIndex{2};
-            cgltf_accessor* accessors[3]{nullptr, nullptr, nullptr};
-
-            // 遍历图元中的属性 -> 顶点中的某个元素
-            for (cgltf_size ai{0}; ai < primitive.attributes_count; ++ai)
-            {
-                auto& attr{primitive.attributes[ai]};
-                auto acc{attr.data};
-                if (!acc)
-                {
-                    continue;
-                }
-
-                VertexElement element;
-
-                switch (attr.type)
-                {
-                    case cgltf_attribute_type_position:
-                    {
-                        accessors[positionIndex] = acc;
-                        element = VertexElement{GL_FLOAT, 3};
-                    }
-                    break;
-                    case cgltf_attribute_type_color:
-                    {
-                        // 简化写法, 期望只使用第一个通道
-                        if (attr.index != 0)
-                        {
-                            continue;
-                        }
-                        accessors[colorIndex] = acc;
-                        element = VertexElement{GL_FLOAT, 3};
-                    }
-                    break;
-                    case cgltf_attribute_type_texcoord:
-                    {
-                        if (attr.index != 0)
-                        {
-                            continue;
-                        }
-                        accessors[uvIndex] = acc;
-                        element = VertexElement{GL_FLOAT, 2};
-                    }
-                    break;
-                    default:
-                        break;
-                }
-
-                if (element.dataSize > 0)
-                {
-                    vertexLayout.push(element);
-                }
-            }
-
-            if (!accessors[positionIndex])
-            {
-                // 当前mesh中三角图元内没有任何位置信息
-                continue;
-            }
-
-            // 顶点个数
-            auto const vertexCount{accessors[positionIndex]->count};
-
-            std::vector<namica::Float> vertices{};
-            // float个数
-            vertices.resize((vertexLayout.getStride() / sizeof(namica::Float)) * vertexCount);
-
-            // 遍历访问器中的每个顶点
-            for (cgltf_size vi{0}; vi < vertexCount; ++vi)
-            {
-                for (auto const& el : vertexLayout)
-                {
-                    if (!accessors[el.index])
-                    {
-                        continue;
-                    }
-
-                    // 当前元素在顶点数组中的实际起始index
-                    auto const elStartIndex{(vi * vertexLayout.getStride() + el.offset) /
-                                            sizeof(namica::Float)};
-                    namica::Float* outData{&vertices[elStartIndex]};
-                    readFloats(accessors[el.index], vi, outData, el.dataSize);
-                }
-            }
-
-            // 如果图元存在索引
-            if (primitive.indices)
-            {
-                auto indexCount{primitive.indices->count};
-                std::vector<namica::UInt> indices(indexCount);
-
-                for (cgltf_size i{0}; i < indexCount; ++i)
-                {
-                    indices[i] = readIndex(primitive.indices, i);
-                }
-                result = std::make_shared<Mesh>(vertexLayout, vertices, indices);
-            }
-            else
-            {
-                result = std::make_shared<Mesh>(vertexLayout, vertices);
-            }
-
-            if (result)
-            {
-                break;
-            }
-        }
-
-        if (result)
-        {
-            break;
-        }
-    }
-
-    cgltf_free(data);
-
-    return result;
-}
-
 // Transform
 namica::Mat4 Transform::getTransform() const
 {
@@ -973,4 +719,360 @@ void PlayerController::onUpdate(namica::Float const _deltaTime)
 
     // 更新历史鼠标位置
     m_mousePosOld = m_mousePos;
+}
+
+// MeshPrimitive
+void MeshPrimitive::init(VertexLayout const& _vertexLayout,
+                         std::vector<namica::Float> const& _vertices,
+                         std::vector<namica::UInt> const& _indices)
+{
+    glGenVertexArrays(1, &m_vao);
+    glBindVertexArray(m_vao);
+
+    GLuint vbo, ebo;
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER,
+                 sizeof(namica::Float) * _vertices.size(),
+                 _vertices.data(),
+                 GL_STATIC_DRAW);
+
+    // 设置顶点布局
+    for (auto const& vertexElement : _vertexLayout)
+    {
+        glVertexAttribPointer(vertexElement.index,
+                              vertexElement.dataSize,
+                              vertexElement.dataType,
+                              vertexElement.normalized,
+                              _vertexLayout.getStride(),
+                              (void*)(uintptr_t)(vertexElement.offset));
+        glEnableVertexAttribArray(vertexElement.index);
+    }
+
+    m_vertexCount = (_vertices.size() * sizeof(namica::Float)) / _vertexLayout.getStride();
+    m_indexCount = _indices.size();
+
+    if (m_indexCount > 0)
+    {
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                     sizeof(namica::UInt) * m_indexCount,
+                     _indices.data(),
+                     GL_STATIC_DRAW);
+    }
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+MeshPrimitive::MeshPrimitive(VertexLayout const& _vertexLayout,
+                             std::vector<namica::Float> const& _vertices,
+                             std::vector<namica::UInt> const& _indices)
+{
+    this->init(_vertexLayout, _vertices, _indices);
+}
+
+MeshPrimitive::MeshPrimitive(VertexLayout const& _vertexLayout,
+                             std::vector<namica::Float> const& _vertices)
+{
+    this->init(_vertexLayout, _vertices, {});
+}
+
+void MeshPrimitive::setMaterial(std::shared_ptr<Material> const& _material)
+{
+    m_material = _material;
+}
+
+std::shared_ptr<Material> MeshPrimitive::getMaterial()
+{
+    return m_material;
+}
+
+void MeshPrimitive::draw() const
+{
+    m_material->bind();
+
+    glBindVertexArray(m_vao);
+
+    if (m_indexCount > 0)
+    {
+        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_indexCount), GL_UNSIGNED_INT, 0);
+    }
+    else
+    {
+        glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(m_vertexCount));
+    }
+}
+
+// Mesh
+
+Mesh::Mesh(std::initializer_list<MeshPrimitive> const& _meshPrimitives)
+    : m_meshPrimitives{_meshPrimitives}
+{
+}
+
+std::vector<MeshPrimitive>::iterator Mesh::begin()
+{
+    return m_meshPrimitives.begin();
+}
+
+std::vector<MeshPrimitive>::iterator Mesh::end()
+{
+    return m_meshPrimitives.end();
+}
+
+std::vector<MeshPrimitive>::const_iterator Mesh::begin() const
+{
+    return m_meshPrimitives.begin();
+}
+
+std::vector<MeshPrimitive>::const_iterator Mesh::end() const
+{
+    return m_meshPrimitives.end();
+}
+
+void Mesh::pushPrimitive(MeshPrimitive const& _meshPrimitive)
+{
+    m_meshPrimitives.emplace_back(_meshPrimitive);
+}
+
+void Mesh::draw() const
+{
+    for (auto const& meshPrimitive : m_meshPrimitives)
+    {
+        meshPrimitive.draw();
+    }
+}
+
+std::shared_ptr<Mesh> Mesh::load(namica::FileSystem& _fileSystem,
+                                 std::filesystem::path const& _meshAssetPath)
+{
+    auto contents{_fileSystem.loadAssetFileText(_meshAssetPath)};
+    if (contents.empty())
+    {
+        return nullptr;
+    }
+
+    // 读取顶点
+    auto readFloats{[](cgltf_accessor const* _acc,
+                       cgltf_size _index,
+                       namica::Float* _out,
+                       namica::Int _elementSize) {
+        std::fill(_out, _out + _elementSize, 0.0f);
+        return cgltf_accessor_read_float(_acc, _index, _out, _elementSize) == 1;
+    }};
+
+    // 读取索引
+    auto readIndex{[](cgltf_accessor const* _acc, cgltf_size _index) {
+        cgltf_uint out{0};
+        cgltf_bool ok{cgltf_accessor_read_uint(_acc, _index, &out, 1)};
+        return ok ? out : 0;
+    }};
+
+    cgltf_options options{};
+    cgltf_data* data{nullptr};
+
+    cgltf_result res{cgltf_parse(&options, contents.data(), contents.size(), &data)};
+    if (res != cgltf_result_success)
+    {
+        return nullptr;
+    }
+
+    auto fullPath{_fileSystem.getAssetsFolder() / _meshAssetPath};
+    res = cgltf_load_buffers(&options, data, fullPath.remove_filename().generic_string().c_str());
+    if (res != cgltf_result_success)
+    {
+        cgltf_free(data);
+        return nullptr;
+    }
+
+    std::shared_ptr<Mesh> result{std::make_shared<Mesh>()};
+    auto baseVertexSrc{
+        _fileSystem.loadFileText(std::filesystem::path{NAMICA_ASSETS_DIR} / "shader/base.vert")};
+    auto baseFragmentSrc{
+        _fileSystem.loadFileText(std::filesystem::path{NAMICA_ASSETS_DIR} / "shader/base.frag")};
+
+    // 遍历每一个mesh
+    for (cgltf_size mi{0}; mi < data->meshes_count; ++mi)
+    {
+        auto& mesh{data->meshes[mi]};
+        // 遍历mesh的每个图元, 处理三角形图元
+        for (cgltf_size pi{0}; pi < mesh.primitives_count; ++pi)
+        {
+            auto& primitive{mesh.primitives[pi]};
+            if (primitive.type != cgltf_primitive_type_triangles)
+            {
+                continue;
+            }
+
+            VertexLayout vertexLayout{};
+            // positionIndex -> 0, colorIndex -> 1, uvIndex -> 2
+            constexpr namica::Int positionIndex{0};
+            constexpr namica::Int colorIndex{1};
+            constexpr namica::Int uvIndex{2};
+            cgltf_accessor* accessors[3]{nullptr, nullptr, nullptr};
+
+            // 遍历图元中的属性 -> 顶点中的某个元素
+            for (cgltf_size ai{0}; ai < primitive.attributes_count; ++ai)
+            {
+                auto& attr{primitive.attributes[ai]};
+                auto acc{attr.data};
+                if (!acc)
+                {
+                    continue;
+                }
+
+                VertexElement element;
+
+                switch (attr.type)
+                {
+                    case cgltf_attribute_type_position:
+                    {
+                        accessors[positionIndex] = acc;
+                        element = VertexElement{GL_FLOAT, 3};
+                    }
+                    break;
+                    case cgltf_attribute_type_color:
+                    {
+                        // 简化写法, 期望只使用第一个通道
+                        if (attr.index != 0)
+                        {
+                            continue;
+                        }
+                        accessors[colorIndex] = acc;
+                        element = VertexElement{GL_FLOAT, 3};
+                    }
+                    break;
+                    case cgltf_attribute_type_texcoord:
+                    {
+                        if (attr.index != 0)
+                        {
+                            continue;
+                        }
+                        accessors[uvIndex] = acc;
+                        element = VertexElement{GL_FLOAT, 2};
+                    }
+                    break;
+                    default:
+                        break;
+                }
+
+                if (element.dataSize > 0)
+                {
+                    vertexLayout.push(element);
+                }
+            }
+
+            if (!accessors[positionIndex])
+            {
+                // 当前mesh中三角图元内没有任何位置信息
+                continue;
+            }
+
+            // 顶点个数
+            auto const vertexCount{accessors[positionIndex]->count};
+
+            std::vector<namica::Float> vertices{};
+            // float个数
+            vertices.resize((vertexLayout.getStride() / sizeof(namica::Float)) * vertexCount);
+
+            // 遍历访问器中的每个顶点
+            for (cgltf_size vi{0}; vi < vertexCount; ++vi)
+            {
+                for (auto const& el : vertexLayout)
+                {
+                    if (!accessors[el.index])
+                    {
+                        continue;
+                    }
+
+                    // 当前元素在顶点数组中的实际起始index
+                    auto const elStartIndex{(vi * vertexLayout.getStride() + el.offset) /
+                                            sizeof(namica::Float)};
+                    namica::Float* outData{&vertices[elStartIndex]};
+                    readFloats(accessors[el.index], vi, outData, el.dataSize);
+                }
+            }
+
+            MeshPrimitive meshPrimitive{};
+            // 如果图元存在索引
+            if (primitive.indices)
+            {
+                auto indexCount{primitive.indices->count};
+                std::vector<namica::UInt> indices(indexCount);
+
+                for (cgltf_size i{0}; i < indexCount; ++i)
+                {
+                    indices[i] = readIndex(primitive.indices, i);
+                }
+
+                meshPrimitive = MeshPrimitive{vertexLayout, vertices, indices};
+            }
+            else
+            {
+                meshPrimitive = MeshPrimitive{vertexLayout, vertices};
+            }
+
+            auto material{std::make_shared<Material>(
+                std::make_shared<ShaderProgram>(baseVertexSrc, baseFragmentSrc))};
+
+            if (primitive.material)
+            {
+                if (primitive.material->has_pbr_metallic_roughness)
+                {
+                    auto texture{
+                        primitive.material->pbr_metallic_roughness.base_color_texture.texture};
+
+                    if (texture)
+                    {
+                        material->setParam(
+                            "uTexture",
+                            Texture::load(_fileSystem, fullPath / texture->image->name));
+                    }
+                }
+            }
+
+            meshPrimitive.setMaterial(material);
+            result->pushPrimitive(meshPrimitive);
+        }
+    }
+
+    cgltf_free(data);
+
+    return result;
+}
+
+Object::Object(std::shared_ptr<Mesh> const& _mesh) : m_mesh{_mesh}
+{
+    for (auto& mp : *m_mesh)
+    {
+        m_ShaderPrograms.insert(mp.getMaterial()->getShaderProgram().get());
+    }
+}
+
+void Object::onRender(Camera& _camera)
+{
+    // shaderProgram上传mvp数据
+    for (auto& shaderProgram : m_ShaderPrograms)
+    {
+        shaderProgram->bind();
+        shaderProgram->setParam("uModel", m_transf.getTransform());
+        shaderProgram->setParam("uView", _camera.getView());
+        shaderProgram->setParam("uProject", _camera.getProject());
+    }
+
+    m_mesh->draw();
+}
+
+std::shared_ptr<Mesh> Object::getMesh()
+{
+    return m_mesh;
+}
+
+Transform& Object::getTransform()
+{
+    return m_transf;
 }

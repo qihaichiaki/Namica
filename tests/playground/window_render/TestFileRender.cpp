@@ -7,6 +7,7 @@
 #include "playground/window_render/TestRender.h"
 #include <chrono>
 #include <namica/io/FileSystem.h>
+#include <namica/math/Utils.h>
 
 class TestWindowRender : public testing::Test
 {
@@ -32,7 +33,7 @@ namespace
 //     return cubMaterial;
 // }
 
-std::shared_ptr<Mesh> createCubMesh()
+std::shared_ptr<Mesh> createCubMesh(namica::FileSystem& _fileSystem)
 {
     // 3d 立方体
     //       6 ---- 5
@@ -101,52 +102,18 @@ std::shared_ptr<Mesh> createCubMesh()
     // clang-format on
     VertexLayout vertexLayout{VertexElement{GL_FLOAT, 3}, VertexElement{GL_FLOAT, 2}};
 
-    std::shared_ptr<Mesh> cubMesh{std::make_shared<Mesh>(vertexLayout, vertices, indices)};
+    MeshPrimitive meshPrimitive{vertexLayout, vertices, indices};
+    meshPrimitive.setMaterial(Material::load(_fileSystem, "material/cub_material.json"));
+    std::shared_ptr<Mesh> cubMesh{new Mesh{meshPrimitive}};
     return cubMesh;
 }
-
-class Cub
-{
-public:
-    Cub(std::shared_ptr<Material> const& _material, std::shared_ptr<Mesh> const& _mesh)
-        : m_material{_material}, m_mesh{_mesh}
-    {
-        m_material->setParam("uColor", namica::Vec4{1.0f, 1.0f, 1.0f, 1.0f});
-    }
-
-    void render(Camera& _camera)
-    {
-        m_material->bind();
-        ShaderProgram& shaderProgram{m_material->getShaderProgram()};
-        shaderProgram.setParam("uModel", m_transf.getTransform());
-        shaderProgram.setParam("uView", _camera.getView());
-        shaderProgram.setParam("uProject", _camera.getProject());
-
-        m_mesh->draw();
-    }
-
-    void setColor(namica::Vec4 const _color)
-    {
-        m_material->setParam("uColor", _color);
-    }
-
-    Material& getMaterial()
-    {
-        return *m_material;
-    }
-
-private:
-    Transform m_transf{};
-    std::shared_ptr<Material> m_material{};
-    std::shared_ptr<Mesh> m_mesh{};
-};
 
 }  // namespace
 
 TEST_F(TestWindowRender, file_render)
 {
     glfw_opengl::windowRenderInit();
-    GLFWwindow* window{glfw_opengl::createWindow("FileRender", 2.0f / 3.0f, 2.0f / 3.0f)};
+    GLFWwindow* window{glfw_opengl::createWindow("FileRender", 1.0f / 3.0f, 1.0f / 3.0f)};
     glfw_opengl::renderContextInit(window, true);
 
     namica::Vec4 backgroundColor{0.0f, 0.0f, 0.0f, 1.0f};
@@ -160,8 +127,14 @@ TEST_F(TestWindowRender, file_render)
     namica::FileSystem fileSystem{};
     fileSystem.setAssetsFolder(NAMICA_ASSETS_DIR);
 
-    auto cubMaterial{Material::load(fileSystem, "material/cub_material.json")};
-    Cub cubObj{cubMaterial, createCubMesh()};
+    Object cubObj{createCubMesh(fileSystem)};
+
+    auto littlePrincessMesh{Mesh::load(fileSystem, "models/守护者传说_小公主/小公主.gltf")};
+    Object littlePrincessObj{littlePrincessMesh};
+    littlePrincessObj.getTransform().position -= namica::Vec3{0.0f, 0.0f, 5.0f};
+    littlePrincessObj.getTransform().scale *= 0.005f;
+    littlePrincessObj.getTransform().rotation =
+        namica::Quat::angleAxis(namica::radians(-90.0f), namica::Vec3{1.0f, 0.0f, 0.0f});
 
     std::chrono::steady_clock::time_point lastPoint{std::chrono::steady_clock::now()};
     while (!glfw_opengl::windowShouldClose(window))
@@ -180,7 +153,8 @@ TEST_F(TestWindowRender, file_render)
             backgroundColor.r(), backgroundColor.g(), backgroundColor.b(), backgroundColor.a());
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        cubObj.render(camera);
+        cubObj.onRender(camera);
+        littlePrincessObj.onRender(camera);
 
         glfw_opengl::swapBuffers(window);
     }

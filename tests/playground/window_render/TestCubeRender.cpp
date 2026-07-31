@@ -71,7 +71,7 @@ TEST_F(TestWindowRender, cube_render)
     )"};
 
     Material material{std::make_shared<ShaderProgram>(vertexShaderSrc, fragmentShaderSrc)};
-    ShaderProgram& shaderProgram{material.getShaderProgram()};
+    auto shaderProgram{material.getShaderProgram()};
     material.setParam("uColor", namica::Vec4{1.0f, 1.0f, 1.0f, 1.0f});
 
     // 3d 立方体
@@ -124,7 +124,7 @@ TEST_F(TestWindowRender, cube_render)
     // };
     // std::vector<namica::UInt> indices{0, 1, 2, 2, 1, 3};
 
-    Mesh mesh{vertexLayout, vertices, indices};
+    Mesh mesh{MeshPrimitive{vertexLayout, vertices, indices}};
     Transform cubTransform{};
 
     Camera camera{};
@@ -174,15 +174,15 @@ TEST_F(TestWindowRender, cube_render)
 
         material.bind();
         // 上传其他uniform
-        shaderProgram.setParam("uModel", cubTransform.getTransform());
+        shaderProgram->setParam("uModel", cubTransform.getTransform());
 
         // view
         namica::Mat4 viewMat{camera.getView()};
-        shaderProgram.setParam("uView", viewMat);
+        shaderProgram->setParam("uView", viewMat);
 
         // project
         namica::Mat4 const perspective{camera.getProject()};
-        shaderProgram.setParam("uProjection", perspective);
+        shaderProgram->setParam("uProjection", perspective);
 
         mesh.draw();
 

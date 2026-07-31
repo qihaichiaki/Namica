@@ -1,21 +1,13 @@
 {
     "Shader": {
-        "Vertex": "shader/cub.vert",
-        "Fragment": "shader/cub.frag"
+        "Vertex": "shader/base.vert",
+        "Fragment": "shader/base.frag"
     },
     "Data": {
         "Float": [],
         "Vec2": [],
         "Vec3": [],
-        "Vec4": [
-            {
-                "name": "uColor",
-                "value0": 1.0,
-                "value1": 1.0,
-                "value2": 1.0,
-                "value3": 1.0
-            }
-        ],
+        "Vec4": [],
         "Texture": [
             {
                 "name": "uTexture",

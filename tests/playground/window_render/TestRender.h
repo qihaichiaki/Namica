@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <memory>
 #include <filesystem>
+#include <unordered_set>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -103,7 +104,7 @@ class Material
 {
 public:
     Material(std::shared_ptr<ShaderProgram> const& _shaderProgram);
-    ShaderProgram& getShaderProgram();
+    std::shared_ptr<ShaderProgram> getShaderProgram();
 
     void setParam(std::string const& _id, namica::Float const& _value);
     void setParam(std::string const& _id, namica::Vec2 const& _value);
@@ -162,37 +163,6 @@ private:
     GLsizei m_stride;                         // 两个顶点之间的偏移量
 };
 
-class Mesh
-{
-public:
-    Mesh(VertexLayout const& _vertexLayout,
-         std::vector<namica::Float> const& _vertices,
-         std::vector<namica::UInt> const& _indices);
-
-    Mesh(VertexLayout const& _vertexLayout, std::vector<namica::Float> const& _vertices);
-
-    // 禁止拷贝移动
-    Mesh(Mesh const&) = delete;
-    Mesh(Mesh&&) = delete;
-    Mesh& operator=(Mesh const&) = delete;
-
-    void draw();
-
-    static std::shared_ptr<Mesh> load(namica::FileSystem& _fileSystem,
-                                      std::filesystem::path const& _meshAssetPath);
-
-private:
-    void init(std::vector<namica::Float> const& _vertices,
-              std::vector<namica::UInt> const& _indices);
-
-private:
-    VertexLayout m_vertexLayout{};
-    GLuint m_vao{};
-
-    namica::UInt64 m_indexCount{};
-    namica::UInt64 m_vertexCount{};
-};
-
 struct Transform
 {
     namica::Vec3 position{};
@@ -248,4 +218,76 @@ private:
 
     namica::Float m_sensitivity{0.5f};  // 相机旋转灵敏度
     namica::Float m_moveSpeed{1.0f};    // 相机移动速度
+};
+
+// mesh中的最小渲染单元 -> VAO + material
+class MeshPrimitive
+{
+public:
+    MeshPrimitive() = default;
+    MeshPrimitive(VertexLayout const& _vertexLayout,
+                  std::vector<namica::Float> const& _vertices,
+                  std::vector<namica::UInt> const& _indices);
+
+    MeshPrimitive(VertexLayout const& _vertexLayout, std::vector<namica::Float> const& _vertices);
+
+    void setMaterial(std::shared_ptr<Material> const& _material);
+    std::shared_ptr<Material> getMaterial();
+
+    void draw() const;
+
+private:
+    void init(VertexLayout const& _vertexLayout,
+              std::vector<namica::Float> const& _vertices,
+              std::vector<namica::UInt> const& _indices);
+
+private:
+    GLuint m_vao{};
+    std::shared_ptr<Material> m_material{nullptr};
+
+    namica::UInt64 m_indexCount{};
+    namica::UInt64 m_vertexCount{};
+};
+
+class Mesh
+{
+public:
+    Mesh() = default;
+    Mesh(std::initializer_list<MeshPrimitive> const& _meshPrimitives);
+
+    // 禁止拷贝移动
+    Mesh(Mesh const&) = delete;
+    Mesh(Mesh&&) = delete;
+    Mesh& operator=(Mesh const&) = delete;
+
+    std::vector<MeshPrimitive>::iterator begin();
+    std::vector<MeshPrimitive>::iterator end();
+    std::vector<MeshPrimitive>::const_iterator begin() const;
+    std::vector<MeshPrimitive>::const_iterator end() const;
+
+    void pushPrimitive(MeshPrimitive const& _meshPrimitive);
+
+    void draw() const;
+
+    static std::shared_ptr<Mesh> load(namica::FileSystem& _fileSystem,
+                                      std::filesystem::path const& _meshAssetPath);
+
+private:
+    std::vector<MeshPrimitive> m_meshPrimitives{};
+};
+
+class Object
+{
+public:
+    Object(std::shared_ptr<Mesh> const& _mesh);
+
+    std::shared_ptr<Mesh> getMesh();
+    Transform& getTransform();
+
+    void onRender(Camera& _camera);
+
+private:
+    Transform m_transf{};
+    std::shared_ptr<Mesh> m_mesh{};
+    std::unordered_set<ShaderProgram*> m_ShaderPrograms{};
 };
