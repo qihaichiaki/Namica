@@ -793,7 +793,10 @@ std::shared_ptr<Material> MeshPrimitive::getMaterial()
 
 void MeshPrimitive::draw() const
 {
-    m_material->bind();
+    if (m_material)
+    {
+        m_material->bind();
+    }
 
     glBindVertexArray(m_vao);
 
