@@ -66,7 +66,7 @@ public:
     void bind();
 
     static std::shared_ptr<Texture> load(namica::FileSystem& _fileSystem,
-                                         std::filesystem::path const& _texturePath);
+                                         std::filesystem::path const& _textureAssetPath);
 
 private:
     GLuint m_textureObj{};
@@ -114,7 +114,7 @@ public:
     void bind();
 
     static std::shared_ptr<Material> load(namica::FileSystem& _fileSystem,
-                                          std::filesystem::path const& _materialPath);
+                                          std::filesystem::path const& _materialAssetPath);
 
 private:
     std::shared_ptr<ShaderProgram> m_shaderProgram{};
@@ -168,6 +168,9 @@ public:
     Mesh(VertexLayout const& _vertexLayout,
          std::vector<namica::Float> const& _vertices,
          std::vector<namica::UInt> const& _indices);
+
+    Mesh(VertexLayout const& _vertexLayout, std::vector<namica::Float> const& _vertices);
+
     // 禁止拷贝移动
     Mesh(Mesh const&) = delete;
     Mesh(Mesh&&) = delete;
@@ -175,11 +178,19 @@ public:
 
     void draw();
 
+    static std::shared_ptr<Mesh> load(namica::FileSystem& _fileSystem,
+                                      std::filesystem::path const& _meshAssetPath);
+
+private:
+    void init(std::vector<namica::Float> const& _vertices,
+              std::vector<namica::UInt> const& _indices);
+
 private:
     VertexLayout m_vertexLayout{};
     GLuint m_vao{};
 
     namica::UInt64 m_indexCount{};
+    namica::UInt64 m_vertexCount{};
 };
 
 struct Transform
