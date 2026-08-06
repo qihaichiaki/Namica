@@ -180,11 +180,63 @@ void pollEvents()
 }  // namespace glfw_opengl
 
 // Texture
-Texture::Texture(namica::Int const _width, namica::Int const _height, namica::UChar const* _data)
+Texture::Texture(namica::Int const _width,
+                 namica::Int const _height,
+                 namica::Int const _channels,
+                 namica::UChar const* _data)
 {
-    glGenTextures(1, &m_textureObj);
-    glBindTexture(GL_TEXTURE_2D, m_textureObj);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, _width, _height, 0, GL_RGB, GL_UNSIGNED_BYTE, _data);
+    GLenum sourceFormat{};
+    GLint internalFormat{};
+    switch (_channels)
+    {
+        case 1:
+            sourceFormat = GL_RED;
+            internalFormat = GL_R8;
+            break;
+        case 2:
+            sourceFormat = GL_RG;
+            internalFormat = GL_RG8;
+            break;
+        case 3:
+            sourceFormat = GL_RGB;
+            internalFormat = GL_RGB8;
+            break;
+        case 4:
+            sourceFormat = GL_RGBA;
+            internalFormat = GL_RGBA8;
+            break;
+        default:
+            std::cerr << "不支持的图片通道数: " << _channels << std::endl;
+            return;
+    }
+
+    glGenTextures(1, &this->m_textureObj);
+    glBindTexture(GL_TEXTURE_2D, this->m_textureObj);
+
+    GLint unpackAlignment{};
+    glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpackAlignment);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D,
+                 0,
+                 internalFormat,
+                 _width,
+                 _height,
+                 0,
+                 sourceFormat,
+                 GL_UNSIGNED_BYTE,
+                 _data);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, unpackAlignment);
+
+    if (_channels == 1)
+    {
+        GLint const swizzleMask[4]{GL_RED, GL_RED, GL_RED, GL_ONE};
+        glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+    }
+    else if (_channels == 2)
+    {
+        GLint const swizzleMask[4]{GL_RED, GL_RED, GL_RED, GL_GREEN};
+        glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+    }
 
     glGenerateMipmap(GL_TEXTURE_2D);
 
@@ -223,7 +275,12 @@ std::shared_ptr<Texture> Texture::load(namica::FileSystem& _fileSystem,
         std::cout << "高度: " << textureHeight << std::endl;
         std::cout << "通道数: " << textureChannels << std::endl;
 
-        texture = std::make_shared<Texture>(textureWidth, textureHeight, textureBuffer.data());
+        texture = std::make_shared<Texture>(
+            textureWidth, textureHeight, textureChannels, textureBuffer.data());
+    }
+    else
+    {
+        std::cerr << "图片加载失败: " << _textureAssetPath << std::endl;
     }
 
     return texture;
@@ -336,6 +393,12 @@ void ShaderProgram::setParam(std::string const& _id, namica::Mat4 const& _value)
 
 void ShaderProgram::setParam(std::string const& _id, Texture* _value)
 {
+    if (_value == nullptr)
+    {
+        std::cerr << "设置Shader纹理参数失败, Texture为空: " << _id << std::endl;
+        return;
+    }
+
     glActiveTexture(GL_TEXTURE0 + m_curTextureIndex);
     _value->bind();
     glUniform1i(this->getUniformLocation(_id), m_curTextureIndex);
@@ -378,8 +441,23 @@ void Material::setParam(std::string const& _id, std::shared_ptr<Texture> const& 
     m_textureData[_id] = _value;
 }
 
+void Material::setDoubleSided(namica::Bool const _doubleSided)
+{
+    this->m_doubleSided = _doubleSided;
+}
+
 void Material::bind()
 {
+    if (this->m_doubleSided)
+    {
+        glDisable(GL_CULL_FACE);
+    }
+    else
+    {
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+    }
+
     m_shaderProgram->bind();
 
     // 遍历data, 依次设置值
@@ -401,7 +479,10 @@ void Material::bind()
     }
     for (auto& [id, value] : m_textureData)
     {
-        m_shaderProgram->setParam(id, value.get());
+        if (value != nullptr)
+        {
+            m_shaderProgram->setParam(id, value.get());
+        }
     }
 }
 
@@ -842,11 +923,20 @@ void Mesh::pushPrimitive(MeshPrimitive const& _meshPrimitive)
     m_meshPrimitives.emplace_back(_meshPrimitive);
 }
 
+void Mesh::setDisableDrawIndex(namica::Int _index)
+{
+    m_disableDrawIndex.insert(_index);
+}
+
 void Mesh::draw() const
 {
+    namica::Int index{0};
     for (auto const& meshPrimitive : m_meshPrimitives)
     {
-        meshPrimitive.draw();
+        if (!m_disableDrawIndex.contains(index++))
+        {
+            meshPrimitive.draw();
+        }
     }
 }
 
@@ -856,24 +946,9 @@ std::shared_ptr<Mesh> Mesh::load(namica::FileSystem& _fileSystem,
     auto contents{_fileSystem.loadAssetFileText(_meshAssetPath)};
     if (contents.empty())
     {
+        std::cerr << "glTF文件读取失败: " << _meshAssetPath << std::endl;
         return nullptr;
     }
-
-    // 读取顶点
-    auto readFloats{[](cgltf_accessor const* _acc,
-                       cgltf_size _index,
-                       namica::Float* _out,
-                       namica::Int _elementSize) {
-        std::fill(_out, _out + _elementSize, 0.0f);
-        return cgltf_accessor_read_float(_acc, _index, _out, _elementSize) == 1;
-    }};
-
-    // 读取索引
-    auto readIndex{[](cgltf_accessor const* _acc, cgltf_size _index) {
-        cgltf_uint out{0};
-        cgltf_bool ok{cgltf_accessor_read_uint(_acc, _index, &out, 1)};
-        return ok ? out : 0;
-    }};
 
     cgltf_options options{};
     cgltf_data* data{nullptr};
@@ -881,185 +956,283 @@ std::shared_ptr<Mesh> Mesh::load(namica::FileSystem& _fileSystem,
     cgltf_result res{cgltf_parse(&options, contents.data(), contents.size(), &data)};
     if (res != cgltf_result_success)
     {
+        std::cerr << "glTF解析失败: " << _meshAssetPath
+                  << ", cgltf_result=" << static_cast<int>(res) << std::endl;
         return nullptr;
     }
 
-    auto fullPath{_fileSystem.getAssetsFolder() / _meshAssetPath};
-    res = cgltf_load_buffers(&options, data, fullPath.remove_filename().generic_string().c_str());
+    std::filesystem::path const meshFullPath{_fileSystem.getAssetsFolder() / _meshAssetPath};
+    std::string const meshFullPathString{meshFullPath.generic_string()};
+    res = cgltf_load_buffers(&options, data, meshFullPathString.c_str());
     if (res != cgltf_result_success)
     {
+        std::cerr << "glTF Buffer加载失败: " << _meshAssetPath
+                  << ", cgltf_result=" << static_cast<int>(res) << std::endl;
+        cgltf_free(data);
+        return nullptr;
+    }
+
+    res = cgltf_validate(data);
+    if (res != cgltf_result_success)
+    {
+        std::cerr << "glTF数据校验失败: " << _meshAssetPath
+                  << ", cgltf_result=" << static_cast<int>(res) << std::endl;
         cgltf_free(data);
         return nullptr;
     }
 
     std::shared_ptr<Mesh> result{std::make_shared<Mesh>()};
-    auto baseVertexSrc{
-        _fileSystem.loadFileText(std::filesystem::path{NAMICA_ASSETS_DIR} / "shader/base.vert")};
-    auto baseFragmentSrc{
-        _fileSystem.loadFileText(std::filesystem::path{NAMICA_ASSETS_DIR} / "shader/base.frag")};
-
-    // 遍历每一个mesh
-    for (cgltf_size mi{0}; mi < data->meshes_count; ++mi)
+    std::string const baseVertexSrc{_fileSystem.loadAssetFileText("shader/base.vert")};
+    std::string const baseFragmentSrc{_fileSystem.loadAssetFileText("shader/base.frag")};
+    if (baseVertexSrc.empty() || baseFragmentSrc.empty())
     {
-        auto& mesh{data->meshes[mi]};
+        std::cerr << "glTF基础Shader读取失败" << std::endl;
+        cgltf_free(data);
+        return nullptr;
+    }
+
+    std::shared_ptr<ShaderProgram> const shaderProgram{
+        std::make_shared<ShaderProgram>(baseVertexSrc, baseFragmentSrc)};
+    namica::UChar const fallbackTexturePixel[4]{255, 255, 255, 255};
+    std::shared_ptr<Texture> const fallbackTexture{
+        std::make_shared<Texture>(1, 1, 4, fallbackTexturePixel)};
+    namica::UInt loadedPrimitiveCount{};
+
+    // 当前Mesh结构不保存node层级，因此将node的世界变换烘焙到POSITION中。
+    // 按node遍历也可以正确处理同一个mesh被多个node实例化的情况。
+    for (cgltf_size ni{0}; ni < data->nodes_count; ++ni)
+    {
+        cgltf_node const& node{data->nodes[ni]};
+        if (node.mesh == nullptr)
+        {
+            continue;
+        }
+
+        cgltf_float nodeWorldTransform[16]{};
+        cgltf_node_transform_world(&node, nodeWorldTransform);
+        cgltf_mesh& mesh{*node.mesh};
+        cgltf_size const mi{cgltf_mesh_index(data, &mesh)};
+
         // 遍历mesh的每个图元, 处理三角形图元
         for (cgltf_size pi{0}; pi < mesh.primitives_count; ++pi)
         {
             auto& primitive{mesh.primitives[pi]};
             if (primitive.type != cgltf_primitive_type_triangles)
             {
+                std::cerr << "跳过非三角形glTF图元: mesh=" << mi << ", primitive=" << pi
+                          << std::endl;
                 continue;
             }
 
-            VertexLayout vertexLayout{};
-            // positionIndex -> 0, colorIndex -> 1, uvIndex -> 2
-            constexpr namica::Int positionIndex{0};
-            constexpr namica::Int colorIndex{1};
-            constexpr namica::Int uvIndex{2};
-            cgltf_accessor* accessors[3]{nullptr, nullptr, nullptr};
+            cgltf_accessor const* const positionAccessor{
+                cgltf_find_accessor(&primitive, cgltf_attribute_type_position, 0)};
+            cgltf_accessor const* const uvAccessor{
+                cgltf_find_accessor(&primitive, cgltf_attribute_type_texcoord, 0)};
 
-            // 遍历图元中的属性 -> 顶点中的某个元素
-            for (cgltf_size ai{0}; ai < primitive.attributes_count; ++ai)
+            if (positionAccessor == nullptr || positionAccessor->type != cgltf_type_vec3 ||
+                positionAccessor->component_type != cgltf_component_type_r_32f ||
+                positionAccessor->count == 0)
             {
-                auto& attr{primitive.attributes[ai]};
-                auto acc{attr.data};
-                if (!acc)
-                {
-                    continue;
-                }
-
-                VertexElement element;
-
-                switch (attr.type)
-                {
-                    case cgltf_attribute_type_position:
-                    {
-                        accessors[positionIndex] = acc;
-                        element = VertexElement{GL_FLOAT, 3};
-                    }
-                    break;
-                    case cgltf_attribute_type_color:
-                    {
-                        // 简化写法, 期望只使用第一个通道
-                        if (attr.index != 0)
-                        {
-                            continue;
-                        }
-                        accessors[colorIndex] = acc;
-                        element = VertexElement{GL_FLOAT, 3};
-                    }
-                    break;
-                    case cgltf_attribute_type_texcoord:
-                    {
-                        if (attr.index != 0)
-                        {
-                            continue;
-                        }
-                        accessors[uvIndex] = acc;
-                        element = VertexElement{GL_FLOAT, 2};
-                    }
-                    break;
-                    default:
-                        break;
-                }
-
-                if (element.dataSize > 0)
-                {
-                    vertexLayout.push(element);
-                }
-            }
-
-            if (!accessors[positionIndex])
-            {
-                // 当前mesh中三角图元内没有任何位置信息
+                std::cerr << "glTF图元缺少有效POSITION: mesh=" << mi << ", primitive=" << pi
+                          << std::endl;
                 continue;
             }
 
-            // 顶点个数
-            auto const vertexCount{accessors[positionIndex]->count};
+            if (uvAccessor != nullptr &&
+                (uvAccessor->type != cgltf_type_vec2 ||
+                 uvAccessor->count != positionAccessor->count))
+            {
+                std::cerr << "glTF图元的TEXCOORD_0格式或数量无效: mesh=" << mi
+                          << ", primitive=" << pi << std::endl;
+                continue;
+            }
 
-            std::vector<namica::Float> vertices{};
-            // float个数
-            vertices.resize((vertexLayout.getStride() / sizeof(namica::Float)) * vertexCount);
+            if (uvAccessor == nullptr)
+            {
+                std::cerr << "glTF图元缺少TEXCOORD_0，将使用零UV: mesh=" << mi
+                          << ", primitive=" << pi << std::endl;
+            }
+
+            constexpr cgltf_size positionElementSize{3};
+            constexpr cgltf_size uvElementSize{2};
+            constexpr cgltf_size vertexElementSize{positionElementSize + uvElementSize};
+            cgltf_size const vertexCount{positionAccessor->count};
+            VertexLayout const vertexLayout{
+                VertexElement{GL_FLOAT, static_cast<GLint>(positionElementSize)},
+                VertexElement{GL_FLOAT, static_cast<GLint>(uvElementSize)}};
+            std::vector<namica::Float> vertices(vertexCount * vertexElementSize, 0.0f);
+            bool vertexReadSuccess{true};
 
             // 遍历访问器中的每个顶点
             for (cgltf_size vi{0}; vi < vertexCount; ++vi)
             {
-                for (auto const& el : vertexLayout)
+                namica::Float* const vertexData{vertices.data() + vi * vertexElementSize};
+                if (cgltf_accessor_read_float(
+                        positionAccessor, vi, vertexData, positionElementSize) == 0)
                 {
-                    if (!accessors[el.index])
-                    {
-                        continue;
-                    }
+                    vertexReadSuccess = false;
+                    break;
+                }
 
-                    // 当前元素在顶点数组中的实际起始index
-                    auto const elStartIndex{(vi * vertexLayout.getStride() + el.offset) /
-                                            sizeof(namica::Float)};
-                    namica::Float* outData{&vertices[elStartIndex]};
-                    readFloats(accessors[el.index], vi, outData, el.dataSize);
+                namica::Float const localX{vertexData[0]};
+                namica::Float const localY{vertexData[1]};
+                namica::Float const localZ{vertexData[2]};
+                vertexData[0] = nodeWorldTransform[0] * localX + nodeWorldTransform[4] * localY +
+                    nodeWorldTransform[8] * localZ + nodeWorldTransform[12];
+                vertexData[1] = nodeWorldTransform[1] * localX + nodeWorldTransform[5] * localY +
+                    nodeWorldTransform[9] * localZ + nodeWorldTransform[13];
+                vertexData[2] = nodeWorldTransform[2] * localX + nodeWorldTransform[6] * localY +
+                    nodeWorldTransform[10] * localZ + nodeWorldTransform[14];
+
+                if (uvAccessor != nullptr &&
+                    cgltf_accessor_read_float(
+                        uvAccessor, vi, vertexData + positionElementSize, uvElementSize) == 0)
+                {
+                    vertexReadSuccess = false;
+                    break;
                 }
             }
 
-            MeshPrimitive meshPrimitive{};
-            // 如果图元存在索引
-            if (primitive.indices)
+            if (!vertexReadSuccess)
             {
-                auto indexCount{primitive.indices->count};
-                std::vector<namica::UInt> indices(indexCount);
+                std::cerr << "glTF顶点数据读取失败: mesh=" << mi << ", primitive=" << pi
+                          << std::endl;
+                continue;
+            }
 
+            std::vector<namica::UInt> indices{};
+            bool indexReadSuccess{true};
+            // 如果图元存在索引
+            if (primitive.indices != nullptr)
+            {
+                bool const validIndexComponent{
+                    primitive.indices->component_type == cgltf_component_type_r_8u ||
+                    primitive.indices->component_type == cgltf_component_type_r_16u ||
+                    primitive.indices->component_type == cgltf_component_type_r_32u};
+                if (primitive.indices->type != cgltf_type_scalar || !validIndexComponent)
+                {
+                    std::cerr << "glTF索引Accessor格式无效: mesh=" << mi << ", primitive=" << pi
+                              << std::endl;
+                    continue;
+                }
+
+                cgltf_size const indexCount{primitive.indices->count};
+                indices.resize(indexCount);
                 for (cgltf_size i{0}; i < indexCount; ++i)
                 {
-                    indices[i] = readIndex(primitive.indices, i);
-                }
-
-                meshPrimitive = MeshPrimitive{vertexLayout, vertices, indices};
-            }
-            else
-            {
-                meshPrimitive = MeshPrimitive{vertexLayout, vertices};
-            }
-
-            auto material{std::make_shared<Material>(
-                std::make_shared<ShaderProgram>(baseVertexSrc, baseFragmentSrc))};
-
-            if (primitive.material)
-            {
-                if (primitive.material->has_pbr_metallic_roughness)
-                {
-                    auto texture{
-                        primitive.material->pbr_metallic_roughness.base_color_texture.texture};
-
-                    if (texture)
+                    cgltf_size const index{cgltf_accessor_read_index(primitive.indices, i)};
+                    if (index >= vertexCount)
                     {
-                        material->setParam(
-                            "uTexture",
-                            Texture::load(_fileSystem, fullPath / texture->image->name));
+                        indexReadSuccess = false;
+                        break;
                     }
+                    indices[i] = static_cast<namica::UInt>(index);
+                }
+            }
+
+            if (!indexReadSuccess)
+            {
+                std::cerr << "glTF索引超出顶点范围: mesh=" << mi << ", primitive=" << pi
+                          << std::endl;
+                continue;
+            }
+
+            MeshPrimitive meshPrimitive{vertexLayout, vertices, indices};
+            auto material{std::make_shared<Material>(shaderProgram)};
+            if (primitive.material != nullptr)
+            {
+                material->setDoubleSided(primitive.material->double_sided != 0);
+            }
+            material->setParam("uTexture", fallbackTexture);
+            material->setParam("uBaseColorFactor", namica::Vec4{1.0f});
+
+            if (primitive.material != nullptr && primitive.material->has_pbr_metallic_roughness)
+            {
+                cgltf_pbr_metallic_roughness const& pbr{primitive.material->pbr_metallic_roughness};
+                material->setParam("uBaseColorFactor",
+                                   namica::Vec4{pbr.base_color_factor[0],
+                                                pbr.base_color_factor[1],
+                                                pbr.base_color_factor[2],
+                                                pbr.base_color_factor[3]});
+
+                cgltf_texture const* const texture{pbr.base_color_texture.texture};
+                cgltf_image const* const image{texture != nullptr ? texture->image : nullptr};
+                if (image != nullptr && image->uri != nullptr)
+                {
+                    std::string decodedUri{image->uri};
+                    bool const isDataUri{decodedUri.rfind("data:", 0) == 0};
+                    bool const isRemoteUri{decodedUri.find("://") != std::string::npos};
+                    if (!isDataUri && !isRemoteUri)
+                    {
+                        cgltf_decode_uri(decodedUri.data());
+                        std::filesystem::path const textureAssetPath{
+                            _meshAssetPath.parent_path() / std::filesystem::u8path(decodedUri)};
+                        std::shared_ptr<Texture> const loadedTexture{
+                            Texture::load(_fileSystem, textureAssetPath)};
+                        if (loadedTexture != nullptr)
+                        {
+                            material->setParam("uTexture", loadedTexture);
+                        }
+                    }
+                    else
+                    {
+                        std::cerr << "暂不支持内嵌或远程glTF图片URI: mesh=" << mi
+                                  << ", primitive=" << pi << std::endl;
+                    }
+                }
+                else if (image != nullptr && image->buffer_view != nullptr)
+                {
+                    std::cerr << "暂不支持bufferView内嵌glTF图片: mesh=" << mi
+                              << ", primitive=" << pi << std::endl;
                 }
             }
 
             meshPrimitive.setMaterial(material);
             result->pushPrimitive(meshPrimitive);
+            loadedPrimitiveCount++;
         }
     }
 
     cgltf_free(data);
+
+    if (loadedPrimitiveCount == 0)
+    {
+        std::cerr << "glTF中没有可加载的三角形图元: " << _meshAssetPath << std::endl;
+        return nullptr;
+    }
+
+    std::cout << "glTF加载成功: " << _meshAssetPath << ", 图元数量: " << loadedPrimitiveCount
+              << std::endl;
 
     return result;
 }
 
 Object::Object(std::shared_ptr<Mesh> const& _mesh) : m_mesh{_mesh}
 {
-    for (auto& mp : *m_mesh)
+    if (this->m_mesh == nullptr)
     {
-        m_ShaderPrograms.insert(mp.getMaterial()->getShaderProgram().get());
+        std::cerr << "Object创建失败，Mesh为空" << std::endl;
+        return;
+    }
+
+    for (auto& mp : *this->m_mesh)
+    {
+        if (mp.getMaterial() != nullptr && mp.getMaterial()->getShaderProgram() != nullptr)
+        {
+            this->m_ShaderPrograms.insert(mp.getMaterial()->getShaderProgram().get());
+        }
     }
 }
 
 void Object::onRender(Camera& _camera)
 {
+    if (this->m_mesh == nullptr)
+    {
+        return;
+    }
+
     // shaderProgram上传mvp数据
-    for (auto& shaderProgram : m_ShaderPrograms)
+    for (auto& shaderProgram : this->m_ShaderPrograms)
     {
         shaderProgram->bind();
         shaderProgram->setParam("uModel", m_transf.getTransform());
@@ -1067,7 +1240,7 @@ void Object::onRender(Camera& _camera)
         shaderProgram->setParam("uProject", _camera.getProject());
     }
 
-    m_mesh->draw();
+    this->m_mesh->draw();
 }
 
 std::shared_ptr<Mesh> Object::getMesh()

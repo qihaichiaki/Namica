@@ -7,7 +7,15 @@
         "Float": [],
         "Vec2": [],
         "Vec3": [],
-        "Vec4": [],
+        "Vec4": [
+            {
+                "name": "uBaseColorFactor",
+                "value0": 1.0,
+                "value1": 1.0,
+                "value2": 1.0,
+                "value3": 1.0
+            }
+        ],
         "Texture": [
             {
                 "name": "uTexture",

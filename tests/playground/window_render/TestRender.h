@@ -62,7 +62,10 @@ class FileSystem;
 class Texture
 {
 public:
-    Texture(namica::Int const _width, namica::Int const _height, namica::UChar const* _data);
+    Texture(namica::Int const _width,
+            namica::Int const _height,
+            namica::Int const _channels,
+            namica::UChar const* _data);
     ~Texture();
     void bind();
 
@@ -111,6 +114,7 @@ public:
     void setParam(std::string const& _id, namica::Vec3 const& _value);
     void setParam(std::string const& _id, namica::Vec4 const& _value);
     void setParam(std::string const& _id, std::shared_ptr<Texture> const& _value);
+    void setDoubleSided(namica::Bool const _doubleSided);
 
     void bind();
 
@@ -124,6 +128,7 @@ private:
     std::unordered_map<std::string, namica::Vec3> m_vec3Data{};
     std::unordered_map<std::string, namica::Vec4> m_vec4Data{};
     std::unordered_map<std::string, std::shared_ptr<Texture>> m_textureData{};
+    namica::Bool m_doubleSided{namica::True};
 };
 
 // mesh, VBO + EBO + VAO
@@ -267,6 +272,9 @@ public:
 
     void pushPrimitive(MeshPrimitive const& _meshPrimitive);
 
+    // test
+    void setDisableDrawIndex(namica::Int _index);
+
     void draw() const;
 
     static std::shared_ptr<Mesh> load(namica::FileSystem& _fileSystem,
@@ -274,6 +282,7 @@ public:
 
 private:
     std::vector<MeshPrimitive> m_meshPrimitives{};
+    std::unordered_set<namica::Int> m_disableDrawIndex{};
 };
 
 class Object

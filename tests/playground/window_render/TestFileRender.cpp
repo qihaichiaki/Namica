@@ -128,13 +128,12 @@ TEST_F(TestWindowRender, file_render)
     fileSystem.setAssetsFolder(NAMICA_ASSETS_DIR);
 
     Object cubObj{createCubMesh(fileSystem)};
+    // cubObj.getMesh()->begin()->getMaterial()->setDoubleSided(namica::False);
 
     auto littlePrincessMesh{Mesh::load(fileSystem, "models/守护者传说_小公主/小公主.gltf")};
     Object littlePrincessObj{littlePrincessMesh};
-    littlePrincessObj.getTransform().position -= namica::Vec3{0.0f, 0.0f, 5.0f};
-    littlePrincessObj.getTransform().scale *= 0.005f;
-    littlePrincessObj.getTransform().rotation =
-        namica::Quat::angleAxis(namica::radians(-90.0f), namica::Vec3{1.0f, 0.0f, 0.0f});
+    littlePrincessObj.getTransform().position = namica::Vec3{0.0f, -3.9f, -5.0f};
+    littlePrincessObj.getTransform().scale *= 0.4f;
 
     std::chrono::steady_clock::time_point lastPoint{std::chrono::steady_clock::now()};
     while (!glfw_opengl::windowShouldClose(window))
