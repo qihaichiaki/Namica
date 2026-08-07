@@ -1143,7 +1143,7 @@ std::shared_ptr<Mesh> Mesh::load(namica::FileSystem& _fileSystem,
             {
                 material->setDoubleSided(primitive.material->double_sided != 0);
             }
-            material->setParam("uTexture", fallbackTexture);
+            material->setParam("uBaseTexture", fallbackTexture);
             material->setParam("uBaseColorFactor", namica::Vec4{1.0f});
 
             if (primitive.material != nullptr && primitive.material->has_pbr_metallic_roughness)
@@ -1171,7 +1171,7 @@ std::shared_ptr<Mesh> Mesh::load(namica::FileSystem& _fileSystem,
                             Texture::load(_fileSystem, textureAssetPath)};
                         if (loadedTexture != nullptr)
                         {
-                            material->setParam("uTexture", loadedTexture);
+                            material->setParam("uBaseTexture", loadedTexture);
                         }
                     }
                     else

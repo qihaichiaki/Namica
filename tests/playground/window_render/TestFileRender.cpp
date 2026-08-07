@@ -113,7 +113,7 @@ std::shared_ptr<Mesh> createCubMesh(namica::FileSystem& _fileSystem)
 TEST_F(TestWindowRender, file_render)
 {
     glfw_opengl::windowRenderInit();
-    GLFWwindow* window{glfw_opengl::createWindow("FileRender", 2.0f / 3.0f, 2.0f / 3.0f)};
+    GLFWwindow* window{glfw_opengl::createWindow("FileRender", 1.0f / 3.0f, 1.0f / 3.0f)};
     glfw_opengl::renderContextInit(window, true);
 
     namica::Vec4 backgroundColor{0.0f, 0.0f, 0.0f, 1.0f};
@@ -140,8 +140,8 @@ TEST_F(TestWindowRender, file_render)
 
     auto baizhouziMesh{Mesh::load(fileSystem, "models/蔚蓝档案_白洲梓/白洲梓.gltf")};
     Object baizhouziObj{baizhouziMesh};
-    baizhouziObj.getTransform().position = namica::Vec3{0.0f, 0.0f, -5.0f};
-    baizhouziObj.getTransform().scale *= 1.0f;
+    baizhouziObj.getTransform().position = namica::Vec3{-5.0f, -3.9f, -5.0f};
+    baizhouziObj.getTransform().scale *= 0.000135f;
 
     std::chrono::steady_clock::time_point lastPoint{std::chrono::steady_clock::now()};
     while (!glfw_opengl::windowShouldClose(window))
