@@ -12,12 +12,6 @@ if(MSVC)
     set(gtest_force_shared_crt ON)
 endif()
 
-# 设置生成路径
-set(BUILD_DIR "${CMAKE_BINARY_DIR}/bin/vendor/${CMAKE_BUILD_TYPE}")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BUILD_DIR})
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${BUILD_DIR})
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${BUILD_DIR})
-
 add_subdirectory(
     "${CMAKE_SOURCE_DIR}/vendor/googletest"
     "${CMAKE_BINARY_DIR}/vendor/googletest/${CMAKE_BUILD_TYPE}"

@@ -1,11 +1,112 @@
 #include <iostream>
 #include <gtest/gtest.h>
 
-#include "playground/window_render/GlfwOpengl.h"
+#include "playground/window_render/TestRender.h"
 
 class TestWindowRender : public testing::Test
 {
 };
+
+namespace
+{
+struct Vec2
+{
+    float x, y;
+    Vec2() : x{0.0f}, y{0.0f}
+    {
+    }
+    Vec2(float _x, float _y) : x{_x}, y{_y}
+    {
+    }
+};
+
+struct Veci2
+{
+    int x, y;
+    Veci2() : x{0}, y{0}
+    {
+    }
+    Veci2(int _x, int _y) : x{_x}, y{_y}
+    {
+    }
+
+    bool operator==(Veci2 const& _other) const
+    {
+        return this->x == _other.x && this->y == _other.y;
+    }
+};
+
+struct Vec4
+{
+    float r, g, b, a;
+    Vec4() : r{0.0f}, g{0.0f}, b{0.0f}, a{0.0f}
+    {
+    }
+    Vec4(float _r, float _g, float _b, float _a) : r{_r}, g{_g}, b{_b}, a{_a}
+    {
+    }
+};
+
+GLuint createShaderProgram(std::string const& _vertexShaderSrc,
+                           std::string const& _fragmentShaderSrc)
+{
+    GLuint shaderProgram{};
+    GLuint vertexShader{glCreateShader(GL_VERTEX_SHADER)};
+    GLuint fragmentShader{glCreateShader(GL_FRAGMENT_SHADER)};
+
+    char const* vertexShaderSourceCStr{_vertexShaderSrc.c_str()};
+    glShaderSource(vertexShader, 1, &vertexShaderSourceCStr, nullptr);
+    char const* fragmentShaderSourceCStr{_fragmentShaderSrc.c_str()};
+    glShaderSource(fragmentShader, 1, &fragmentShaderSourceCStr, nullptr);
+
+    // Compile
+    glCompileShader(vertexShader);
+    GLint isCompileSuccess{};
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &isCompileSuccess);
+    if (isCompileSuccess == GL_FALSE)
+    {
+        char buffer[512]{};
+        glGetShaderInfoLog(vertexShader, 512, nullptr, buffer);
+        std::cerr << "shader编译失败: " << buffer << std::endl;
+
+        return 0;
+    }
+    glCompileShader(fragmentShader);
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &isCompileSuccess);
+    if (isCompileSuccess == GL_FALSE)
+    {
+        char buffer[512]{};
+        glGetShaderInfoLog(fragmentShader, 512, nullptr, buffer);
+        std::cerr << "shader编译失败: " << buffer << std::endl;
+
+        return 0;
+    }
+
+    // shaderProgram
+    shaderProgram = glCreateProgram();
+    // attach
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    // link
+    glLinkProgram(shaderProgram);
+    GLint isLinkSuccess{};
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &isLinkSuccess);
+    if (isLinkSuccess == GL_FALSE)
+    {
+        char buffer[512]{};
+        glGetProgramInfoLog(shaderProgram, 512, nullptr, buffer);
+        std::cerr << "shaderProgram链接失败: " << buffer << std::endl;
+
+        return 0;
+    }
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    return shaderProgram;
+}
+
+}  // namespace
 
 TEST_F(TestWindowRender, windowRender_glfw_opengl_helloworld)
 {
