@@ -60,35 +60,35 @@ std::shared_ptr<Mesh> createCubMesh(namica::FileSystem& _fileSystem)
 
     // clang-format off
     std::vector<namica::Float> vertices{
-        -0.5f, -0.5f, 0.5f, 0.0f, 1.0f,           // vertex0(0)
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,         // vertex1(1)
-        0.5f,  -0.5f, 0.5f, 1.0f, 1.0f,      // vertex2(2)
-        0.5f,  -0.5f, -0.5f, 1.0f, 0.0f,     // vertex3(3)
+        -0.5f, -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,                  // vertex0(0)
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, 0.0f, 0.0f, 1.0f,          // vertex1(1)
+        0.5f,  -0.5f, 0.5f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,          // vertex2(2)
+        0.5f,  -0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,         // vertex3(3)
 
-        0.5f,  -0.5f, 0.5f, 0.0f, 1.0f,      // vertex4(2)
-        0.5f,  -0.5f, -0.5f, 0.0f, 0.0f,     // vertex5(3)
-        0.5f,  0.5f,  0.5f, 1.0f, 1.0f,      // vertex6(5)
-        0.5f,  0.5f,  -0.5f, 1.0f, 0.0f,     // vertex7(4)
+        0.5f,  -0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f,          // vertex4(2)
+        0.5f,  -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,         // vertex5(3)
+        0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,          // vertex6(5)
+        0.5f,  0.5f,  -0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,         // vertex7(4)
 
-        0.5f,  0.5f,  0.5f, 0.0f, 1.0f,      // vertex8(5)
-        0.5f,  0.5f,  -0.5f, 0.0f, 0.0f,     // vertex9(4)
-        -0.5f, 0.5f,  0.5f, 1.0f, 1.0f,      // vertex10(6)
-        -0.5f, 0.5f,  -0.5f, 1.0f, 0.0f,     // vertex11(7)
+        0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, -1.0f,         // vertex8(5)
+        0.5f,  0.5f,  -0.5f, 0.0f, 0.0f,0.0f, 0.0f, -1.0f,         // vertex9(4)
+        -0.5f, 0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 0.0f, -1.0f,         // vertex10(6)
+        -0.5f, 0.5f,  -0.5f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f,        // vertex11(7)
 
-        -0.5f, 0.5f,  0.5f, 0.0f, 1.0f,      // vertex12(6)
-        -0.5f, 0.5f,  -0.5f, 0.0f, 0.0f,     // vertex13(7)
-        -0.5f, -0.5f, 0.5f, 1.0f, 1.0f,      // vertex14(0)
-        -0.5f, -0.5f, -0.5f, 1.0f, 0.0f,     // vertex15(1)
+        -0.5f, 0.5f,  0.5f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f,     // vertex12(6)
+        -0.5f, 0.5f,  -0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f,    // vertex13(7)
+        -0.5f, -0.5f, 0.5f, 1.0f, 1.0f,-1.0f, 0.0f, 0.0f,      // vertex14(0)
+        -0.5f, -0.5f, -0.5f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f,    // vertex15(1)
 
-        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,     // vertex16(1)
-        -0.5f, 0.5f, -0.5f, 0.0f, 0.0f,      // vertex17(7)
-        0.5f,  -0.5f, -0.5f, 1.0f, 1.0f,     // vertex18(3)
-        0.5f,  0.5f,  -0.5f, 1.0f, 0.0f,     // vertex19(4)
+        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f,    // vertex16(1)
+        -0.5f, 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,     // vertex17(7)
+        0.5f,  -0.5f, -0.5f, 1.0f, 1.0f, 0.0f, -1.0f, 0.0f,    // vertex18(3)
+        0.5f,  0.5f,  -0.5f, 1.0f, 0.0f, 0.0f, -1.0f, 0.0f,    // vertex19(4)
 
-        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f,  // vertex20(6)
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, // vertex21(0)
-        0.5f,  0.5f,  0.5f, 1.0f, 1.0f, // vertex22(5)
-        0.5f,  -0.5f, 0.5f, 1.0f, 0.0f, // vertex23(2)
+        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,       // vertex20(6)
+        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,      // vertex21(0)
+        0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f,      // vertex22(5)
+        0.5f,  -0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,      // vertex23(2)
     };
 
     std::vector<namica::UInt> indices{
@@ -99,8 +99,13 @@ std::shared_ptr<Mesh> createCubMesh(namica::FileSystem& _fileSystem)
         16, 17, 18, 18, 17, 19, // face4 bottom (1, 7, 3, 3, 7, 4)
         20, 21, 22, 22, 21, 23, // face5 top (6, 0, 5, 5, 0, 2)
     };
+
+    VertexLayout vertexLayout{
+    VertexElement{GL_FLOAT, 3}, 
+    VertexElement{GL_FLOAT, 2},
+    VertexElement{GL_FLOAT, 3}
+    };
     // clang-format on
-    VertexLayout vertexLayout{VertexElement{GL_FLOAT, 3}, VertexElement{GL_FLOAT, 2}};
 
     MeshPrimitive meshPrimitive{vertexLayout, vertices, indices};
     meshPrimitive.setMaterial(Material::load(_fileSystem, "material/cub_material.json"));
@@ -143,6 +148,10 @@ TEST_F(TestWindowRender, file_render)
     baizhouziObj.getTransform().position = namica::Vec3{-5.0f, -3.9f, -5.0f};
     baizhouziObj.getTransform().scale *= 0.000135f;
 
+    // 漫反射光源
+    Light light{};
+    light.position = namica::Vec3{0.0f, 1000.0f, 0.0f};
+
     std::chrono::steady_clock::time_point lastPoint{std::chrono::steady_clock::now()};
     while (!glfw_opengl::windowShouldClose(window))
     {
@@ -160,9 +169,9 @@ TEST_F(TestWindowRender, file_render)
             backgroundColor.r(), backgroundColor.g(), backgroundColor.b(), backgroundColor.a());
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        cubObj.onRender(camera);
-        littlePrincessObj.onRender(camera);
-        baizhouziObj.onRender(camera);
+        cubObj.onRender(camera, light);
+        littlePrincessObj.onRender(camera, light);
+        baizhouziObj.onRender(camera, light);
 
         glfw_opengl::swapBuffers(window);
     }
