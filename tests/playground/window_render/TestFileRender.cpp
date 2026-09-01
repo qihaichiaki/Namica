@@ -60,35 +60,35 @@ std::shared_ptr<Mesh> createCubMesh(namica::FileSystem& _fileSystem)
 
     // clang-format off
     std::vector<namica::Float> vertices{
-        -0.5f, -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,                  // vertex0(0)
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, 0.0f, 0.0f, 1.0f,          // vertex1(1)
-        0.5f,  -0.5f, 0.5f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,          // vertex2(2)
-        0.5f,  -0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,         // vertex3(3)
+        -0.5f, -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f,                  // vertex0(0)
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, 0.0f, -1.0f, 0.0f,          // vertex1(1)
+        0.5f,  -0.5f, 0.5f, 1.0f, 1.0f, 0.0f, -1.0f, 0.0f,          // vertex2(2)
+        0.5f,  -0.5f, -0.5f, 1.0f, 0.0f, 0.0f, -1.0f, 0.0f,         // vertex3(3)
 
         0.5f,  -0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f,          // vertex4(2)
         0.5f,  -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,         // vertex5(3)
         0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,          // vertex6(5)
         0.5f,  0.5f,  -0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,         // vertex7(4)
 
-        0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, -1.0f,         // vertex8(5)
-        0.5f,  0.5f,  -0.5f, 0.0f, 0.0f,0.0f, 0.0f, -1.0f,         // vertex9(4)
-        -0.5f, 0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 0.0f, -1.0f,         // vertex10(6)
-        -0.5f, 0.5f,  -0.5f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f,        // vertex11(7)
+        0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,         // vertex8(5)
+        0.5f,  0.5f,  -0.5f, 0.0f, 0.0f,0.0f, 1.0f, 0.0f,         // vertex9(4)
+        -0.5f, 0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f,         // vertex10(6)
+        -0.5f, 0.5f,  -0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,        // vertex11(7)
 
         -0.5f, 0.5f,  0.5f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f,     // vertex12(6)
         -0.5f, 0.5f,  -0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f,    // vertex13(7)
         -0.5f, -0.5f, 0.5f, 1.0f, 1.0f,-1.0f, 0.0f, 0.0f,      // vertex14(0)
         -0.5f, -0.5f, -0.5f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f,    // vertex15(1)
 
-        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f,    // vertex16(1)
-        -0.5f, 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,     // vertex17(7)
-        0.5f,  -0.5f, -0.5f, 1.0f, 1.0f, 0.0f, -1.0f, 0.0f,    // vertex18(3)
-        0.5f,  0.5f,  -0.5f, 1.0f, 0.0f, 0.0f, -1.0f, 0.0f,    // vertex19(4)
+        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, -1.0f,    // vertex16(1)
+        -0.5f, 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f,     // vertex17(7)
+        0.5f,  -0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 0.0f, -1.0f,    // vertex18(3)
+        0.5f,  0.5f,  -0.5f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f,    // vertex19(4)
 
-        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,       // vertex20(6)
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,      // vertex21(0)
-        0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f,      // vertex22(5)
-        0.5f,  -0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,      // vertex23(2)
+        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,       // vertex20(6)
+        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,      // vertex21(0)
+        0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,      // vertex22(5)
+        0.5f,  -0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,      // vertex23(2)
     };
 
     std::vector<namica::UInt> indices{
@@ -121,7 +121,7 @@ TEST_F(TestWindowRender, file_render)
     GLFWwindow* window{glfw_opengl::createWindow("FileRender", 1.0f / 3.0f, 1.0f / 3.0f)};
     glfw_opengl::renderContextInit(window, true);
 
-    namica::Vec4 backgroundColor{0.0f, 0.0f, 0.0f, 1.0f};
+    namica::Vec4 backgroundColor{1.0f, 1.0f, 1.0f, 1.0f};
     Camera camera{};
     camera.getTransform().position.z() = 4.0f;
     auto windowSize{glfw_opengl::getWindowSize(window)};
@@ -150,7 +150,7 @@ TEST_F(TestWindowRender, file_render)
 
     // 漫反射光源
     Light light{};
-    light.position = namica::Vec3{0.0f, 1000.0f, 0.0f};
+    light.position = namica::Vec3{0.0f, 5.0f, 5.0f};
 
     std::chrono::steady_clock::time_point lastPoint{std::chrono::steady_clock::now()};
     while (!glfw_opengl::windowShouldClose(window))
