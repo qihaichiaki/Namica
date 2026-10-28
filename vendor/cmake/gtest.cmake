@@ -14,17 +14,6 @@ endif()
 
 add_subdirectory(
     "${CMAKE_SOURCE_DIR}/vendor/googletest"
-    "${CMAKE_BINARY_DIR}/vendor/googletest/${CMAKE_BUILD_TYPE}"
+    "${CMAKE_BINARY_DIR}/vendor/googletest"
     EXCLUDE_FROM_ALL
-)
-
-set_target_properties(gtest PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/vendor/${CMAKE_BUILD_TYPE}"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/vendor/${CMAKE_BUILD_TYPE}"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/vendor/${CMAKE_BUILD_TYPE}"
-)
-set_target_properties(gtest_main PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/vendor/${CMAKE_BUILD_TYPE}"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/vendor/${CMAKE_BUILD_TYPE}"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/vendor/${CMAKE_BUILD_TYPE}"
 )

@@ -2,15 +2,17 @@
     "version": 3,
     "cmakeMinimumRequired": {
         "major": 3,
-        "minor": 10,
+        "minor": 21,
         "patch": 0
     },
     "configurePresets": [
         {
             "name": "namica_base",
             "hidden": true,
-            "binaryDir": "${sourceDir}/build",
-            "cacheVariables": {}
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "BUILD_PLAYGROUND": "OFF"
+            }
         },
         {
             "name": "windows_base",
