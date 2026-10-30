@@ -285,6 +285,8 @@ private:
     std::unordered_set<namica::Int> m_disableDrawIndex{};
 };
 
+struct Light;
+
 class Object
 {
 public:
@@ -293,10 +295,17 @@ public:
     std::shared_ptr<Mesh> getMesh();
     Transform& getTransform();
 
-    void onRender(Camera& _camera);
+    void onRender(Camera const& _camera, Light const& _light);
 
 private:
     Transform m_transf{};
     std::shared_ptr<Mesh> m_mesh{};
     std::unordered_set<ShaderProgram*> m_ShaderPrograms{};
+};
+
+// 漫反射光源
+struct Light
+{
+    namica::Vec3 color{1.0f};  // 光源颜色
+    namica::Vec3 position{};   // 光源位置
 };

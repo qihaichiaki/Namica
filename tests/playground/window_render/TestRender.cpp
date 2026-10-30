@@ -1224,20 +1224,24 @@ Object::Object(std::shared_ptr<Mesh> const& _mesh) : m_mesh{_mesh}
     }
 }
 
-void Object::onRender(Camera& _camera)
+void Object::onRender(Camera const& _camera, Light const& _light)
 {
     if (this->m_mesh == nullptr)
     {
         return;
     }
 
-    // shaderProgram上传mvp数据
+    // shaderProgram上传mvp数据, 光照数据
     for (auto& shaderProgram : this->m_ShaderPrograms)
     {
         shaderProgram->bind();
         shaderProgram->setParam("uModel", m_transf.getTransform());
         shaderProgram->setParam("uView", _camera.getView());
         shaderProgram->setParam("uProject", _camera.getProject());
+
+        // 光照
+        shaderProgram->setParam("uLight.color", _light.color);
+        shaderProgram->setParam("uLight.position", _light.position);
     }
 
     this->m_mesh->draw();
