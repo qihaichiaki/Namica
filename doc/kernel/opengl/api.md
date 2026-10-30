@@ -107,7 +107,7 @@ void glLinkProgram(PROGRAM_OBJ);
 
 ### glGetProgramiv
 ```C++
-void glGetShaderiv(PROGRAM_OBJ, PROGRAM_STATUS_TYPE, OUT_PROGRAM_STATUS);
+void glGetProgramiv(PROGRAM_OBJ, PROGRAM_STATUS_TYPE, OUT_PROGRAM_STATUS);
 // PROGRAM_OBJ shader程序对象
 // PROGRAM_STATUS_TYPE/OUT_PROGRAM_STATUS: 程序查询状态
 //    GL_LINK_STATUS: 程序link状态(0失败/1成功)
@@ -366,3 +366,37 @@ glActiveTexture(GL_TEXTURE0 + TEXTURE_INDEX)
 
 * 激活纹理为对应纹理槽
 * 后面绑定纹理即给纹理槽给予对应纹理
+
+### glEnable
+```C++
+    void (*glEnable)(GLenum cap);
+```
+
+* 启用当前OpenGL上下文中的某项功能开关，让后续相关操作按启用后的状态执行。
+* cap 是要启用的功能名称，来自 OpenGL 规定的一组常量
+* 对应的关闭函数是 glDisable，查询函数是 glIsEnabled
+
+| cap | 作用 | 初始状态 |
+|---|---|---|
+| `GL_DEPTH_TEST` | 深度测试，比较片元深度与深度缓冲中的值 | 关闭 |
+| `GL_BLEND` | 将新产生的颜色与颜色缓冲中已有的颜色混合 | 关闭 |
+| `GL_CULL_FACE` | 根据正反面判定剔除三角形等面图元 | 关闭 |
+| `GL_STENCIL_TEST` | 模板测试，按照模板缓冲中的值限制绘制等 | 关闭 |
+| `GL_SCISSOR_TEST` | 裁剪测试，将绘制限制在指定矩形内 | 关闭 |
+| `GL_MULTISAMPLE` | 控制多重采样光栅化 | **开启** |
+
+### glBlendFunc
+```C++
+    void (*glBlendFunc)(GLenum sfactor, GLenum dfactor);
+```
+
+* 配合`glEnable(GL_BLEND)`食用, 用于设置颜色混合时，源颜色和目标颜色各自乘以什么因子
+```C++
+glEnable(GL_BLEND);
+glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+```
+* 常见的半透明混合设置：新绘制颜色的 Alpha 越大，它在结果中占的比例越高。
+* 源颜色的权重：使用当前片元的源 Alpha。目标颜色的权重：使用 1 - 源 Alpha。
+
+* 默认情况下最终混合颜色的结果是加法组合. 可通过`glBlendEquation`进行设置
+* 注意会影响Alpha通道
