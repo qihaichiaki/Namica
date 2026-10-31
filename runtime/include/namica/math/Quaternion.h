@@ -1,6 +1,6 @@
 #pragma once
 
-#include "namica/Common.h"
+#include "namica/core/Types.h"
 #include "namica/math/Matrix.h"
 #include "namica/math/Vector.h"
 

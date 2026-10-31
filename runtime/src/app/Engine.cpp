@@ -1,4 +1,4 @@
-#include "namica/Engine.h"
+#include "namica/app/Engine.h"
 
 namespace namica
 {

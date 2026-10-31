@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 namespace namica
 {
@@ -19,6 +20,7 @@ using Double = double;
 using Bool = bool;
 using Char = char;
 using UChar = unsigned char;
+using String = std::string;
 
 [[maybe_unused]] static constexpr Bool True{true};
 [[maybe_unused]] static constexpr Bool False{false};

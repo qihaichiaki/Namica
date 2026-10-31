@@ -1,6 +1,6 @@
 #pragma once
 
-#include "namica/Base.h"
+#include "namica/core/Base.h"
 
 namespace namica
 {

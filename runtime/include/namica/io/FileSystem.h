@@ -1,7 +1,7 @@
 #pragma once
 
-#include "namica/Base.h"
-#include "namica/Common.h"
+#include "namica/core/Base.h"
+#include "namica/core/Types.h"
 #include <filesystem>
 #include <vector>
 

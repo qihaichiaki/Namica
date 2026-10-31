@@ -10,7 +10,7 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <namica/Common.h>
+#include <namica/core/Types.h>
 #include <namica/math/Vector.h>
 #include <namica/math/Quaternion.h>
 #include <namica/math/Matrix.h>

@@ -2,7 +2,7 @@
 
 #include <concepts>
 
-#include "namica/Common.h"
+#include "namica/core/Types.h"
 
 namespace namica
 {
