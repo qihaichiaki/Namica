@@ -1,6 +1,8 @@
 # 当前项目事实
 
-核对日期：2026-10-31（Asia/Shanghai）。核对时 HEAD 为 `f9d2147`（整体规划文档）；工作区已有用户暂存的四处文件迁移，尚未提交。这是快照，后续回答具体问题应检查对应文件。
+核对日期：2026-10-31（Asia/Shanghai）。核对时 HEAD 为 `2c983b5`（整理 core、app 目录结构）；用户已提交目录迁移和初始知识库，当前新增的 Log.h、Logger.h 尚未跟踪。这是快照，后续回答具体问题应检查对应文件。
+
+2026-11-01 局部更新：本轮重新读取 Log.h、Logger.h、Types.h 及工作区状态；更新下列相关条目，没有重新验证其他模块或执行构建。
 
 ## 目标与背景
 
@@ -14,8 +16,10 @@
 | --- | --- |
 | [根 CMakeLists.txt](../CMakeLists.txt) | C++20，加入 vendor、runtime、editor、tests；设置源码 assets 目录和构建输出 |
 | [runtime/CMakeLists.txt](../runtime/CMakeLists.txt) | `Namica` 为 SHARED 库；公开 `include`，私有 `src`；私有链接 stb_image 和 nlohmann_json |
-| [core/Base.h](../runtime/include/namica/core/Base.h) | Windows 平台判断、DLL 导入导出宏；用户已迁入 core |
-| [core/Types.h](../runtime/include/namica/core/Types.h) | 原 Common.h；基础数值类型别名、布尔常量、`NAMICA_TOL`，本轮新增 `String = std::string` |
+| [core/Base.h](../runtime/include/namica/core/Base.h) | Windows 平台判断、DLL 导入导出宏；用户已迁入 core，并新增 CLASS_DISABLE_COPY_MOVE 宏 |
+| [core/Types.h](../runtime/include/namica/core/Types.h) | 原 Common.h；基础数值类型别名、String、布尔常量、`NAMICA_TOL`；2026-11-01 已有映射到 std 的 UniquePtr / SharedPtr / WeakPtr 模板别名 |
+| [core/Log.h](../runtime/include/namica/core/Log.h) | 用户新建的空头文件，只有 pragma once 与 namica 命名空间；没有接口或实现 |
+| [core/Logger.h](../runtime/include/namica/core/Logger.h) | 2026-11-01：Logger final，私有构造，禁拷贝/移动；声明析构、返回 SharedPtr 的两个 create 重载、setLogFmt / setDefaultLogFmt，成员 m_logFmt；尚无等级、过滤或消息输出接口，runtime 中未找到对应实现文件 |
 | [app/Engine.h](../runtime/include/namica/app/Engine.h) | 用户已迁入 app，对应实现为 [src/app/Engine.cpp](../runtime/src/app/Engine.cpp)；仍是简单单例入口，尚未成为完整的系统生命周期管理器 |
 | [math](../runtime/include/namica/math) | Vector、Mat4、Quat、Constants、角度转换等；采用 `.h + .inl` |
 | [FileSystem.h](../runtime/include/namica/io/FileSystem.h) | 文件读取、资源根目录、程序目录查询、图片加载目前集中在一个类 |
@@ -29,7 +33,7 @@
 
 检查时没有正式的顶层 `tooling/`、`tools/`、`projects/` 实现。文档中出现这些目录不表示它们已经创建或能构建。
 
-2026-10-31 日志规划核对：runtime 尚无 Log 模块，vendor 的 CMake 配置未接入 spdlog 或 fmt；窗口、Shader、纹理与模型加载实验使用分散的 `std::cout` / `std::cerr` 输出，见 TestRender.cpp。FileSystem 的部分失败路径直接返回空容器。窗口和输入能力目前主要在 playground，Engine 仍只有简单单例，编辑器入口未变化。用户计划下一步开发日志，尚未开始实现。
+2026-10-31 日志规划核对：用户已创建空的 Log.h 及 Logger.h 类骨架，尚无可用日志接口或实现；vendor 的 CMake 配置未接入 spdlog 或 fmt。窗口、Shader、纹理与模型加载实验使用分散的 `std::cout` / `std::cerr` 输出，见 TestRender.cpp。FileSystem 的部分失败路径直接返回空容器。窗口和输入能力目前主要在 playground，Engine 仍只有简单单例，编辑器入口未变化。
 
 ## 构建现状
 
@@ -64,8 +68,8 @@
 - `doc/` 是用户原有的学习与项目资料；`.agent/` 是接续指导用的上下文。
 - `doc/项目总览.md` 已写入 runtime、editor、tooling 分开的蓝图，但 runtime 注释仍残留“引擎能力与内容处理工具库”等旧措辞；不能据此重新把 tooling 并回 runtime。
 - 顶层 `serialization`、大量未来模块也是规划内容；最近的建议已收敛粒度，见 [ARCHITECTURE.md](ARCHITECTURE.md)。不要将早期蓝图当作必须逐项创建的文件清单。
-- 2026-10-31 核对时 `.agent` 未被忽略，包含 `.agent/AGENTS.md` 的知识库尚未跟踪、未提交；根目录不再保留 AGENTS.md。本次没有改动 `.gitignore`；用户日记中的同期改动保持原样。
+- 2026-10-31 后续核对时，五个 `.agent/` 知识库文件已被用户纳入版本管理；根目录不再保留 AGENTS.md。agent 本次只更新知识库，不提交、不改 `.gitignore`，保留用户日记与 Log.h 等同期改动。
 
 ## 当前待继续的工作
 
-用户下一步计划开发 Log，并讨论先补必要基础、配少量测试，再推进 render、scene、editor 的路线。Log 尚无实现，接口与后端选型待讨论；具体建议见 ARCHITECTURE。agent 只维护知识库，没有修改代码，后续仍以指导、审阅为默认模式。
+2026-11-01：用户已在 Types.h 添加标准智能指针别名，在 Logger.h 声明返回 SharedPtr 的创建入口；不能再沿用“没有别名/没有创建声明”的旧快照，也不能据此认定所有对象都采用共享所有权。当前问题为日志等级过滤，用户强调先说明长期结构，当前只实现其子集。尚未观察到内存池或 GC 实现；日志输出、过滤及后端仍未实现或未定案。建议见 ARCHITECTURE，agent 仍只指导、审阅与维护知识库。

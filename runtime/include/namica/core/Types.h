@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <memory>
 
 namespace namica
 {
@@ -21,6 +22,15 @@ using Bool = bool;
 using Char = char;
 using UChar = unsigned char;
 using String = std::string;
+
+template <class T>
+using UniquePtr = std::unique_ptr<T>;
+
+template <class T>
+using SharedPtr = std::shared_ptr<T>;
+
+template <class T>
+using WeakPtr = std::weak_ptr<T>;
 
 [[maybe_unused]] static constexpr Bool True{true};
 [[maybe_unused]] static constexpr Bool False{false};
