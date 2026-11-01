@@ -205,6 +205,39 @@ Log 第一版建议：
 - 构建配置必须覆盖实际使用日志宏的 runtime、editor 和游戏翻译单元；已编译 DLL 内的调用不会因游戏程序修改宏而改变，需重编对应目标。不要在各源文件随意定义阈值；公共内联/模板定义亦需保持一致。被预处理丢弃的日志代码不接受常规 C++ 类型检查，应保留启用完整日志的构建验证。
 - 本轮读取现有 CMakePresets、runtime/CMakeLists 和 Base/Logger 头文件：有 Debug/Release 预设，但未见专用日志裁剪宏；未修改代码、CMake 或执行构建。
 
+关于现有 Logger 的审阅（2026-11-01，建议未实施）：
+
+- 现状：已形成模板消息格式化 → 导出非模板 println → 同步控制台输出的结构，严重程度顺序及 >= 阈值含义正确。私有构造配 create 中的 SharedPtr{new Logger{}} 可以成立，不能机械建议换成无构造权限的 make_shared；final 也不阻止未来通过组合输出目标扩展。
+- 右值传参问题已修复：原先对 make_format_args 使用 std::forward，令整数右值、临时 String 无法绑定 Args&...；用户现已改为直接传命名参数 _args...，合并后的 13 项测试全部通过。参考本机 MSVC 声明及 [在线标准草案](https://eel.is/c++draft/format.arg.store)：同步格式化借用参数，不要求复制；未来不能直接把这些引用存入异步队列。
+- 过滤顺序问题已由用户修复：原先 log 先 vformat、println 后判断等级，导致隐藏消息仍执行格式化。用户现已在 log 入口先判断阈值，相关测试通过，不再作为当前缺陷。此改动仍不能省掉调用前已经执行的参数计算，宏裁剪/惰性参数仍是独立职责。此前参考的 [spdlog v1.15.3 logger.h](https://github.com/gabime/spdlog/blob/v1.15.3/include/spdlog/logger.h) 在普通日志关闭且没有 backtrace 捕获时，也在格式化前返回。最新完整日志测试结果见 PROJECT。
+- 格式失败契约已落地：此前 setLogFmt("{3}") 被接受、延迟到输出才抛错；用户已加入三 String 样本校验，失败返回 false、成功才赋值，并移除 noexcept/nodiscard。2026-11-01 新增布局失败及恢复测试后，共 17 项 Logger 用例全部通过。消息字面量可考虑 std::format_string 编译检查，动态格式仍需独立错误策略；输出路径可考虑不递归的简单后备诊断。
+- 颜色与输出边界：当前无条件写 ANSI 颜色码，管道输出也包含 ESC；未检测终端或启用 Windows VT。建议颜色模式由控制台输出目标控制（自动/开启/关闭），文件与编辑器接收独立等级字段和干净消息。参考 [Windows VT 文档](https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences) 与 [spdlog v1.15.3 Windows sink](https://github.com/gabime/spdlog/blob/v1.15.3/include/spdlog/sinks/wincolor_sink-inl.h) 的终端判断和输出锁。
+- 长期职责参考：当日核对 [Godot master logger.h](https://github.com/godotengine/godot/blob/master/core/io/logger.h)（开发分支，未固定提交）的 StdLogger / RotatedFileLogger / CompositeLogger，以及 [Unreal 5.8 日志文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/logging-in-unreal-engine) 的类别、FOutputDevice、UE_LOGFMT。Namica 可保留当前少量文件，但不应把通用 Logger 长期绑定为 std::cout 加 ANSI 字符串。
+- 并发属于待明确契约：当前配置成员无同步，多线程同时调用 setter 和 log 会产生数据竞争；多段 cout 插入也不能保证整条记录不交错。未来多个 logger 共享控制台/文件时应在共享输出目标协调写入，配置修改另行同步。当前无多线程承诺，未将其描述为已复现故障。
+- 初次审阅时只有固定文本打印、无断言；用户随后授权并要求先同步长期接口，测试已扩展至 17 项。布局配置已确定显式失败结果并通过测试，消息提交的格式失败策略仍待定；实际范围和结果见 PROJECT。
+
+关于公开接口与测试的长期关系（2026-11-01 用户要求及本轮适配）：
+
+- 用户要求将 Logger 右值检查直接接入 runtime/core，已删除独立 compile 目录和目标，合并为两个同时验证调用及输出的普通测试。之前独立目标仅为隔离模板编译错误，不是长期架构要求。合并时模板错误曾阻断整个 test_core，现已由用户修复，不能通过跳过测试掩盖今后的类似回归。
+- 当日核对 [Godot stable 单元测试说明](https://docs.godotengine.org/en/stable/engine_details/architecture/unit_testing.html)：普通 C++ 用例直接构造/调用接口并断言结果，统一编译后运行。此依据支持普通接口回归留在模块测试中；不据此声称成熟引擎完全不用独立编译测试。Namica 只有遇到专门验证编译器诊断、编译期契约等需求时，再考虑相应测试设施。
+
+- 用户要求在增加测试前先同步公开接口是否符合长期规划。本轮已沟通：create 的受控创建、log 的消息提交、setLogMinLevel 的运行期过滤职责成立；setLogFmt 可作为默认输出的便利入口，但不能因此规定未来所有输出目标只能共享一种布局。
+- 本轮测试绑定可观察行为：消息参数支持、阈值边界、过滤不触发 formatter、有效布局字段、独立新建实例的配置互不影响。没有把 SharedPtr 的具体类型、私有 println、ANSI 颜色或默认样式做成长期不变的断言。输出采集集中到测试辅助类，未来引入其他输出目标时可调整采集适配。
+- 动态格式与字面量格式检查应分开：被过滤的动态错误格式不应解析；未来字面量在编译时被检查不违背该行为。测试应表达这一差别，不能为通过过滤测试而要求字面量错误永远编译成功。
+- 最初无效布局的失败方式尚未选定，因此没有固定进测试；用户选择显式失败结果并保留 setLogFmt 名称（D16）后，已授权补充布局错误、配置恢复及字符串生命周期测试，全部通过。多线程、异步、文件输出、宏裁剪仍是扩展功能。测试可长期保留行为目标，但公开签名或输出适配变化后仍可能需要更新调用代码。
+
+关于无效输出格式的公开契约（2026-11-01，布局失败已选择显式结果，消息失败仍待定）：
+
+- 此前暂缺相关测试是为了不先替用户确定错误策略；用户选择显式失败结果并完善实现后，已增加布局配置失败测试。仍需区分 setLogFmt 的整行布局配置和 log 的单条消息格式：当前覆盖无效布局、被过滤的动态错误消息，不覆盖被接收消息发生格式失败后的恢复策略。
+- 建议布局配置采用“先验证、成功后替换”的约定：无效格式必须在设置时可被调用者识别，失败后旧布局仍可用。至少覆盖未闭合大括号、越界字段 {3}、将字符串字段按整数格式化 {1:d}。允许省略、重排或重复有效字段，不要求每个布局包含全部字段。
+- 用户已选择显式失败结果，并保留 setLogFmt 名称自行修改（D16）。接口为 NAMICA_API Bool setLogFmt(String const& _logFmt)：成功才更新并返回 true，无效布局返回 false 且保留旧值。用户最新实现已移除 [[nodiscard]] 和 noexcept；前者仍是可选诊断策略，不推广成禁止整个项目使用该属性。内部捕获标准库的格式异常与公开返回失败结果可以并存；Bool 不承诺所有资源故障都返回 false。更丰富的错误说明可随需要补充，不先建立通用错误框架。
+- [[nodiscard]] 的取舍：它建议编译器警告未使用返回值，调用者可直接用于 if，无需另存变量，也可 static_cast<void>(call) 显式忽略。如果接口允许调用者接受设置失败后保留旧布局，省略该属性同样符合长期设计；若忽略失败通常意味着程序逻辑错误，再强调该属性。2026-11-01 核对 [标准草案 nodiscard 规则](https://eel.is/c++draft/dcl.attr.nodiscard) 及 [Godot master ConfigFile](https://github.com/godotengine/godot/blob/master/core/io/config_file.h)：load/parse/save 返回 Error 且未标记该属性，[Error 枚举](https://github.com/godotengine/godot/blob/master/core/error/error_list.h) 也未标记。此例仅证明显式结果与忽略警告是独立设计选择，不推导所有失败都应该忽略。
+- 日志提交过程的格式错误应另定策略：字面量可考虑编译检查；动态消息格式错误可交给不递归的后备诊断，避免掩盖原业务错误。不可把“设置布局失败”和“输出消息失败”强行规定成相同处理方式，也不能仅添加 noexcept 代替实际处理。
+- 当日重核 Unreal 5.8 的 [日志文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/logging-in-unreal-engine)：UE_LOGFMT 提交结构化事件，FOutputDevice 扩展输出；参考职责区分，不声称其有与 Namica 相同的布局 API。补充参考 [spdlog v1.15.3 logger-inl.h](https://github.com/gabime/spdlog/blob/v1.15.3/include/spdlog/logger-inl.h) 的 formatter 配置及 [logger.h](https://github.com/gabime/spdlog/blob/v1.15.3/include/spdlog/logger.h) 的日志错误处理；不宣称其格式语法或具体错误策略可直接照搬。
+- 格式检查建议：Namica 当前使用 C++20 标准库 <format>，不是已接入第三方 {fmt}。使用三个命名的 String 样本分别代表时间、等级、消息，调用 std::vformat(_logFmt, std::make_format_args(time, level, message))，丢弃结果并只捕获 std::format_error；正常才允许替换布局。校验与实际输出的参数数量、顺序、类型必须一致，不调用 Logger::log 或获取真实时间来校验。括号计数、正则或 std::format_parse_context 本身不足以承担整个格式字符串及参数匹配检查，不借用标准库内部私有解析函数。
+- 保持标准语法的建议边界：字段可省略、重复、重排；支持转义大括号与字符串对齐。{} {1} 混合自动/手动索引无效；{1:d} 对 String 无效；空串和纯文本在格式语法上合法，若另行禁止应明确是业务约束。样本试格式化会生成临时字符串，在设置布局时执行；它检查当前固定 String 字段的语法/类型兼容性，不保证未来每次输出不会分配失败，也不是任意自定义 formatter 的通用验证器。长期如需限制输出宽度、完全禁用异常或更换字段类型，应单独设计，不默认自写完整解析器。
+- 2026-11-01 核对 [Godot master core/string/ustring.cpp 的 String::sprintf](https://github.com/godotengine/godot/blob/master/core/string/ustring.cpp)：解析器同时检查参数数量/类型，经 r_error 显式报告失败并提供错误描述。这里仅参考“由格式化实现判断有效性并反馈错误”，其 % 语法与 Namica 不同，master 为开发分支且未固定提交。标准依据见在线草案 [格式字符串规则](https://eel.is/c++draft/format.string)、[格式错误报告](https://eel.is/c++draft/format.err.report)；仅使用当前 C++20 已有的 std::vformat 能力，不把草案新增接口假定为本项目可用。
+
 关于静态生命周期与两个 logger（2026-10-31 讨论，尚未定案）：
 
 - 用户询问能否让日志随程序存活，用 static 保存，并在 runtime 内保留 editor logger 声明。该问题不是已确认实现方案。

@@ -38,8 +38,10 @@ public:
      *
      * @param _logFmt 日志输出格式(使用fmt格式, 其中0表示h:m:s的输出位置, 1表示level级别的输出位置,
      * 2表示格式化文本msg的输出位置)
+     *
+     * @return 设置格式是否符合规范
      */
-    NAMICA_API void setLogFmt(String const& _logFmt);
+    NAMICA_API Bool setLogFmt(String const& _logFmt);
 
     /**
      * @brief 设置当前日志输出的最低日志级别(默认全输出)
