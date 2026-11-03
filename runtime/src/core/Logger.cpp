@@ -5,6 +5,8 @@
 namespace namica
 {
 
+#define NAMICA_DEFAULT_LOG_FMT "[{0}][{1}] {2}"
+
 // 字符映射
 static String const levelStrs[]{"Trace", "Debug", "Info", "Warning", "Error", "Critical"};
 
@@ -13,7 +15,7 @@ static String const levelStrs[]{"Trace", "Debug", "Info", "Warning", "Error", "C
 static char const* levelPreColor[]{"", "\033[36m", "\033[32m", "\033[33m", "\033[31m", "\033[31m"};
 static char const* levelPostColor[]{"", "\033[0m", "\033[0m", "\033[0m", "\033[0m", "\033[0m"};
 
-Logger::Logger() : m_logFmt{NAMICA_LOG_FMT}, m_minLogLevel{LogLevel::Trace}
+Logger::Logger() : m_logFmt{NAMICA_DEFAULT_LOG_FMT}, m_minLogLevel{LogLevel::Trace}
 {
 }
 

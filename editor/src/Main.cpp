@@ -1,7 +1,11 @@
-#include <thread>
+#include <namica/app/Application.h>
 
 int main()
 {
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    namica::ApplicationConfig config{};
+    namica::SharedPtr<namica::Application> app{new namica::Application{config}};
+
+    app->run();
+
     return 0;
 }

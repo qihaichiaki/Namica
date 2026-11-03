@@ -1,10 +1,53 @@
 # 日志
 
-`Logger` 用于输出带等级的诊断消息，当前采用同步控制台输出。
+`Log` 提供 Core/App 两组日志入口和便捷宏；`Logger` 提供等级过滤、消息格式化与布局设置，当前采用同步控制台输出。
 
-## 创建和输出
+## 使用便捷宏
 
-在已链接 `Namica` 的应用中使用：
+`Log` 依赖 `Application` 管理初始化，使用便捷宏或访问默认 Logger 前，必须先完成应用构造；无需用户显式调用 init：
+
+```cpp
+#include <namica/app/Application.h>
+#include <namica/core/Log.h>
+
+int main()
+{
+    namica::ApplicationConfig config{};
+    namica::Application app{config};
+
+    NAMICA_APP_INFO("得分：{}", 10);
+    NAMICA_APP_WARNING("资源尚未加载：{}", "texture.png");
+    app.run();
+    return 0;
+}
+```
+
+引擎内部使用 `NAMICA_CORE_*`，应用代码使用 `NAMICA_APP_*`；两组均提供 `TRACE`、`DEBUG`、`INFO`、`WARNING`、`ERROR`、`CRITICAL`。默认整行布局分别为 `[{0}][{1}]Core: {2}` 与 `[{0}][{1}]App: {2}`。
+
+`Log::getCoreLogger()` 与 `Log::getAppLogger()` 返回借用的 `Logger&`，可以设置对应日志的最低等级和布局。调用者不拥有这些实例，不应删除或用智能指针接管它们。初始化前访问不会自动创建 Logger，也没有空值保护；独立工具可采用下方自行创建 Logger 的方式。
+
+## 编译期开关
+
+`NAMICA_LOG_DEBUG` 控制便捷宏中的 Trace/Debug 调用：
+
+| 调用方编译时的配置 | Trace/Debug 宏行为 |
+| --- | --- |
+| 定义 `NAMICA_LOG_DEBUG` | 调用 Logger，继续受运行期最低等级控制 |
+| 未定义 `NAMICA_LOG_DEBUG` | 不执行日志调用，不求值日志参数 |
+
+当前使用 `#ifdef`，因此定义为 `0` 也会启用。Info 及以上不受此开关影响；直接调用 `Logger::log(LogLevel::Debug, ...)` 也不受它裁剪。
+
+DLL 与应用分别配置自己的开关。DLL 的 PRIVATE 编译定义不会随链接 `Namica` 传播到应用；应用的定义也不会改变 DLL 内已编译的调用。需要调试日志的应用目标可显式配置：
+
+```cmake
+target_compile_definitions(MyApp PRIVATE NAMICA_LOG_DEBUG)
+```
+
+当前开关与 Debug/Release 构建类型没有自动绑定。关闭分支展开为 `(void)0`，不保留日志参数表达式或执行其副作用；这些调用的 C++ 类型与格式化兼容性需要在启用日志的构建中检查。不要在日志参数中放必须执行的业务操作。
+
+## 单独创建 Logger
+
+无需创建 `Application`，在已链接 `Namica` 的程序中使用：
 
 ```cpp
 #include <namica/core/Logger.h>
@@ -41,7 +84,7 @@ int main()
 | `Error` | 某项操作失败 |
 | `Critical` | 严重故障标记 |
 
-`Critical` 本身不会终止程序。调用日志函数前的参数求值仍然会发生，即使消息随后被过滤。
+`Critical` 本身不会终止程序。运行期等级过滤不会阻止调用前的参数求值；只有上文关闭的 Trace/Debug 宏会跳过参数求值。
 
 ## 调整消息和布局
 
@@ -59,8 +102,10 @@ int main()
 
 ## 使用边界
 
-目前没有文件输出、编辑器订阅或线程安全保证，`Log.h` 也尚无统一入口。无效的消息格式可能抛出 `std::format_error`；布局设置的失败返回值不等同于消息提交的错误处理。
+目前没有文件输出、编辑器订阅或线程安全保证。无效的消息格式可能抛出 `std::format_error`；布局设置的失败返回值不等同于消息提交的错误处理。
+
+`NAMICA_CORE_ASSERT(condition)` 与 `NAMICA_APP_ASSERT(condition)` 用于开发诊断。调用方定义 `NAMICA_ENABLE_ASSERTS` 时，条件失败会输出 Error 并在 Windows 触发调试中断；关闭时不求值 condition。调用时像普通语句一样追加分号；它们不能代替必须执行的错误处理。
 
 控制台输出带 ANSI 颜色，其显示取决于终端支持；重定向得到的文本可能包含颜色控制码。
 
-公开接口：[Logger.h](../../runtime/include/namica/core/Logger.h)。返回[用户指南](README.md)。
+公开接口：[Log.h](../../runtime/include/namica/core/Log.h) · [Logger.h](../../runtime/include/namica/core/Logger.h)。返回[用户指南](README.md)。

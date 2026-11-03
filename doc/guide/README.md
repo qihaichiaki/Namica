@@ -11,7 +11,7 @@ Namica 是使用 C++20 开发的个人游戏引擎原型，目前支持 Windows�
 | 想做什么 | 指南 | 对应模块 |
 | --- | --- | --- |
 | 使用基础类型、取得日期时间文本 | [基础类型与时间](Core.md) | core |
-| 输出日志、设置等级和显示格式 | [日志](Logging.md) | core / Logger |
+| 输出日志、使用便捷宏、设置等级和显示格式 | [日志](Logging.md) | core / Log、Logger |
 | 定位资源目录、读取文本和图片 | [文件与图片](FileSystem.md) | io |
 | 使用向量、变换矩阵和四元数 | [数学](Math.md) | math |
 | 了解应用入口、运行渲染和游戏实验 | [应用入口与示例](Examples.md) | app / editor / playground |

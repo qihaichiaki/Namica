@@ -2,9 +2,9 @@
 
 ## 当前应用入口
 
-app 模块目前提供 `Engine::getInstance()`，返回已有引擎实例的指针；调用者不负责销毁它。当前尚无公开的初始化、帧循环或关闭接口，取得实例不会自动创建窗口或运行游戏。
+app 模块目前提供 `Application` 与 `ApplicationConfig`。配置暂时只有应用名称，构造时保存配置并初始化 Core/App 日志；`run()` 尚未实现帧循环，也不会创建窗口或运行游戏。
 
-`NamicaEditor` 也只是应用入口，目前等待约三秒后退出。体验窗口、渲染和游戏应运行下面的实验程序。
+`NamicaEditor` 也只是应用入口，目前创建 Application、调用 `run()` 后退出，应用启动、运行和销毁处带有诊断日志。体验窗口、渲染和游戏应运行下面的实验程序。
 
 ## 构建交互实验
 
@@ -38,4 +38,4 @@ cmake --build build/x64-debug --target test_snake_game test_window_render
 
 还可以选择 `TestWindowRender.file_render` 查看资源加载相关示例。此类实验使用配置时指定的仓库 `assets/` 目录；直接复制可执行文件到其他位置不等于获得了完整可发布程序。
 
-入口与源码：[Engine.h](../../runtime/include/namica/app/Engine.h) · [编辑器入口](../../editor/src/Main.cpp) · [渲染实验](../../tests/playground/window_render/)。返回[用户指南](README.md)。
+入口与源码：[Application.h](../../runtime/include/namica/app/Application.h) · [ApplicationConfig.h](../../runtime/include/namica/app/ApplicationConfig.h) · [编辑器入口](../../editor/src/Main.cpp) · [渲染实验](../../tests/playground/window_render/)。返回[用户指南](README.md)。

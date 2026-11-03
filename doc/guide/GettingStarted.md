@@ -52,7 +52,7 @@ cmake --build build/x64-debug --target MyApp
 ## 常见情况
 
 - 配置时提示缺少 GoogleTest 或 GLFW：检查子模块是否已初始化。
-- 运行 `NamicaEditor` 后没有界面：当前入口只等待约三秒后退出，尚无可用编辑器 UI。
+- 运行 `NamicaEditor` 后没有界面：当前入口创建 Application、调用 `run()` 后退出，尚无主循环或可用编辑器 UI。
 - 示例找不到资源：可执行文件目录、进程工作目录和资源根目录是不同概念；先检查实际传入的路径。
 - 构建 Release 不会自动整理资源或生成完整游戏发布包。
 
