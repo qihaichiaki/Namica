@@ -25,7 +25,7 @@ target_link_libraries(${NAMICA_RUNTIME} PRIVATE
 
 target_compile_definitions(${NAMICA_RUNTIME} PRIVATE
     -DNAMICA_BUILD_DLL # 生成动态库导出信息
-    # -DNAMICA_LOG_DEBUG # 保持log的debug模式(不去除trace, debug等log调用)
+    -DNAMICA_LOG_DEBUG # 保持log的debug模式(不去除trace, debug等log调用)
     -DNAMICA_ENABLE_ASSERTS # 启用宏断点检查
     # $<$<CONFIG:DEBUG>:-DNAMICA_DEBUG> # 启动Debug模式
 )

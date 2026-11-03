@@ -7,6 +7,8 @@
 namespace namica
 {
 
+struct LogConfig;
+
 class Log final
 {
 public:
@@ -25,8 +27,9 @@ public:
 private:
     /**
      * @brief log系统初始化
+     * @throw invalid_argument 部分参数初始化失败
      */
-    static void init();
+    static void init(LogConfig const& _config);
 
 private:
     static SharedPtr<Logger> s_coreLogger;  // namica app内部使用logger

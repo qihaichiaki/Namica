@@ -8,11 +8,14 @@
 
 ```cpp
 #include <namica/app/Application.h>
+#include <namica/app/ApplicationConfig.h>
 #include <namica/core/Log.h>
 
 int main()
 {
     namica::ApplicationConfig config{};
+    config.logConfig.coreConfig.minLevel = namica::LogLevel::Warning;
+    config.logConfig.appConfig.minLevel = namica::LogLevel::Info;
     namica::Application app{config};
 
     NAMICA_APP_INFO("得分：{}", 10);
@@ -25,6 +28,25 @@ int main()
 引擎内部使用 `NAMICA_CORE_*`，应用代码使用 `NAMICA_APP_*`；两组均提供 `TRACE`、`DEBUG`、`INFO`、`WARNING`、`ERROR`、`CRITICAL`。默认整行布局分别为 `[{0}][{1}]Core: {2}` 与 `[{0}][{1}]App: {2}`。
 
 `Log::getCoreLogger()` 与 `Log::getAppLogger()` 返回借用的 `Logger&`，可以设置对应日志的最低等级和布局。调用者不拥有这些实例，不应删除或用智能指针接管它们。初始化前访问不会自动创建 Logger，也没有空值保护；独立工具可采用下方自行创建 Logger 的方式。
+
+## 启动参数与运行期调整
+
+`ApplicationConfig::logConfig` 中的 `coreConfig` 与 `appConfig` 分别配置两组默认 Logger，每组包含：
+
+| 字段 | 作用 |
+| --- | --- |
+| `logFmt` | 设置整行布局，格式规则见下方说明 |
+| `minLevel` | 设置最低日志等级，默认 `LogLevel::Trace` |
+
+这些参数在应用构造时生效，包括应用自身的启动日志。任一启动布局无效时，应用构造会抛出 `std::invalid_argument`。
+
+Config 只表达启动参数。应用创建后修改原始 Config 不会影响正在运行的系统；运行期修改通过对应 Logger 的接口完成，例如：
+
+```cpp
+namica::Log::getAppLogger().setLogMinLevel(namica::LogLevel::Warning);
+```
+
+运行期布局调整使用 `setLogFmt()`，返回值与失败行为见下方“调整消息和布局”。创建配置对象时应显式包含 `ApplicationConfig.h`；`Application.h` 只提供配置类型的前置声明。
 
 ## 编译期开关
 
@@ -106,6 +128,6 @@ int main()
 
 `NAMICA_CORE_ASSERT(condition)` 与 `NAMICA_APP_ASSERT(condition)` 用于开发诊断。调用方定义 `NAMICA_ENABLE_ASSERTS` 时，条件失败会输出 Error 并在 Windows 触发调试中断；关闭时不求值 condition。调用时像普通语句一样追加分号；它们不能代替必须执行的错误处理。
 
-控制台输出带 ANSI 颜色，其显示取决于终端支持；重定向得到的文本可能包含颜色控制码。
+当前按 UTF-8 编译文本字面量，但这不会自动设置终端的解码方式；Windows 控制台代码页与 UTF-8 不匹配时，中文仍可能乱码。当前没有终端编码转换或能力检测。输出带 ANSI 颜色，其显示取决于终端支持；重定向得到的文本可能包含颜色控制码。
 
-公开接口：[Log.h](../../runtime/include/namica/core/Log.h) · [Logger.h](../../runtime/include/namica/core/Logger.h)。返回[用户指南](README.md)。
+公开接口：[Log.h](../../runtime/include/namica/core/Log.h) · [LogConfig.h](../../runtime/include/namica/core/LogConfig.h) · [Logger.h](../../runtime/include/namica/core/Logger.h)。返回[用户指南](README.md)。

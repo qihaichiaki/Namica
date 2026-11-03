@@ -1,4 +1,5 @@
 #include "namica/app/Application.h"
+#include "namica/app/ApplicationConfig.h"
 #include "namica/core/Log.h"
 
 #include <stdexcept>
@@ -8,7 +9,7 @@ namespace namica
 
 static Application* s_instance{nullptr};
 
-Application::Application(ApplicationConfig const& _config) : m_config{_config}
+Application::Application(ApplicationConfig const& _config)
 {
     if (s_instance)
     {
@@ -16,7 +17,7 @@ Application::Application(ApplicationConfig const& _config) : m_config{_config}
     }
 
     // 进程Application唯一使用log尝试初始化
-    Log::init();
+    Log::init(_config.logConfig);
     NAMICA_CORE_TRACE("Log初始化完成");
 
     s_instance = this;

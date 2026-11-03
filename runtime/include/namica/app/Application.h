@@ -1,10 +1,11 @@
 #pragma once
 
 #include "namica/core/Base.h"
-#include "namica/app/ApplicationConfig.h"
 
 namespace namica
 {
+
+struct ApplicationConfig;
 
 class Application
 {
@@ -32,7 +33,6 @@ public:
     NAMICA_API void run();
 
 private:
-    ApplicationConfig m_config;
 };
 
 }  // namespace namica

@@ -1,4 +1,5 @@
 #include <namica/app/Application.h>
+#include <namica/app/ApplicationConfig.h>
 
 int main()
 {

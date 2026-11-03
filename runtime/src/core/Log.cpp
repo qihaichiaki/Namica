@@ -1,4 +1,7 @@
 #include "namica/core/Log.h"
+#include "namica/core/LogConfig.h"
+
+#include <stdexcept>
 
 namespace namica
 {
@@ -6,17 +9,32 @@ namespace namica
 SharedPtr<Logger> Log::s_coreLogger{nullptr};
 SharedPtr<Logger> Log::s_appLogger{nullptr};
 
-void Log::init()
+void Log::init(LogConfig const& _config)
 {
-    if (!s_coreLogger)
+    SharedPtr<Logger> coreLogger{};
+    SharedPtr<Logger> appLogger{};
+    if (s_coreLogger)
     {
-        s_coreLogger = Logger::create();
-        s_appLogger = Logger::create();
+        coreLogger = s_coreLogger;
+        appLogger = s_appLogger;
+    }
+    else
+    {
+        coreLogger = Logger::create();
+        appLogger = Logger::create();
     }
 
-    s_coreLogger->setLogFmt("[{0}][{1}]Core: {2}");
-    s_appLogger->setLogFmt("[{0}][{1}]App: {2}");
-    // TODO: LogConfig
+    if (!coreLogger->setLogFmt(_config.coreConfig.logFmt) ||
+        !appLogger->setLogFmt(_config.appConfig.logFmt))
+    {
+        throw std::invalid_argument{"invalid logFmt"};
+    }
+
+    coreLogger->setLogMinLevel(_config.coreConfig.minLevel);
+    appLogger->setLogMinLevel(_config.appConfig.minLevel);
+
+    s_coreLogger = coreLogger;
+    s_appLogger = appLogger;
 }
 
 Logger& Log::getCoreLogger()

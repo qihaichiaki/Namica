@@ -2,7 +2,7 @@
 
 ## 当前应用入口
 
-app 模块目前提供 `Application` 与 `ApplicationConfig`。配置暂时只有应用名称，构造时保存配置并初始化 Core/App 日志；`run()` 尚未实现帧循环，也不会创建窗口或运行游戏。
+app 模块目前提供 `Application` 与 `ApplicationConfig`。配置包含应用名称与日志启动参数，构造时将日志参数传给 Core/App 日志系统，不保留完整配置对象；应用名称字段暂未用于运行行为。`run()` 尚未实现帧循环，也不会创建窗口或运行游戏。
 
 `NamicaEditor` 也只是应用入口，目前创建 Application、调用 `run()` 后退出，应用启动、运行和销毁处带有诊断日志。体验窗口、渲染和游戏应运行下面的实验程序。
 
