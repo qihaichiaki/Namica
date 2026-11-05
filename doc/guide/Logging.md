@@ -1,5 +1,7 @@
 # 日志
 
+> 当前源码正在迁移到 LogSink 输出接口，控制台输出尚未接通。下方完整示例及 Logger 的布局/等级设置用法对应迁移前接口，暂不能用于当前工作区；待接口完成后更新示例。公开头文件已迁入 `namica/log/`。
+
 `Log` 提供 Core/App 两组日志入口和便捷宏；`Logger` 提供等级过滤、消息格式化与布局设置，当前采用同步控制台输出。
 
 ## 使用便捷宏
@@ -9,7 +11,7 @@
 ```cpp
 #include <namica/app/Application.h>
 #include <namica/app/ApplicationConfig.h>
-#include <namica/core/Log.h>
+#include <namica/log/Log.h>
 
 int main()
 {
@@ -72,7 +74,7 @@ target_compile_definitions(MyApp PRIVATE NAMICA_LOG_DEBUG)
 无需创建 `Application`，在已链接 `Namica` 的程序中使用：
 
 ```cpp
-#include <namica/core/Logger.h>
+#include <namica/log/Logger.h>
 #include <namica/core/Types.h>
 
 int main()
@@ -130,4 +132,4 @@ int main()
 
 当前按 UTF-8 编译文本字面量，但这不会自动设置终端的解码方式；Windows 控制台代码页与 UTF-8 不匹配时，中文仍可能乱码。当前没有终端编码转换或能力检测。输出带 ANSI 颜色，其显示取决于终端支持；重定向得到的文本可能包含颜色控制码。
 
-公开接口：[Log.h](../../runtime/include/namica/core/Log.h) · [LogConfig.h](../../runtime/include/namica/core/LogConfig.h) · [Logger.h](../../runtime/include/namica/core/Logger.h)。返回[用户指南](README.md)。
+公开接口：[Log.h](../../runtime/include/namica/log/Log.h) · [LogConfig.h](../../runtime/include/namica/log/LogConfig.h) · [Logger.h](../../runtime/include/namica/log/Logger.h)。返回[用户指南](README.md)。

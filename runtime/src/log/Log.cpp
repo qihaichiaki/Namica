@@ -1,5 +1,5 @@
-#include "namica/core/Log.h"
-#include "namica/core/LogConfig.h"
+#include "namica/log/Log.h"
+#include "namica/log/LogConfig.h"
 
 #include <stdexcept>
 

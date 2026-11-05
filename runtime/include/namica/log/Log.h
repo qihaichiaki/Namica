@@ -2,7 +2,7 @@
 
 #include "namica/core/Base.h"
 #include "namica/core/Types.h"
-#include "namica/core/Logger.h"
+#include "namica/log/Logger.h"
 
 namespace namica
 {

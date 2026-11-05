@@ -1,6 +1,6 @@
 #include "namica/app/Application.h"
 #include "namica/app/ApplicationConfig.h"
-#include "namica/core/Log.h"
+#include "namica/log/Log.h"
 
 #include <stdexcept>
 

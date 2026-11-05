@@ -1,6 +1,6 @@
 # 基础类型与时间
 
-core 提供通用类型、日期时间文本和日志能力。日志的使用单独见[日志指南](Logging.md)。
+core 提供通用类型和时间点；日志位于 log 模块，使用说明见[日志指南](Logging.md)。
 
 ## 常用类型
 
@@ -19,18 +19,18 @@ core 提供通用类型、日期时间文本和日志能力。日志的使用单
 
 ## 获取日期时间文本
 
-`getCurrentTime()` 返回当前系统时区下的时间字符串，适合日志时间戳和文本显示：
+`SystemTimePoint` 在构造时保存当前系统时间点，`getStr()` 按系统时区返回该时间点的文本，适合日志时间戳和文本显示：
 
 ```cpp
-#include <namica/core/Time.h>
+#include <namica/core/TimePoint.h>
 #include <namica/core/Types.h>
 #include <iostream>
 
 int main()
 {
-    namica::String const time{namica::getCurrentTime()};
-    namica::String const dateTime{
-        namica::getCurrentTime(NAMICA_TIME_YMD_HMS)};
+    namica::SystemTimePoint timePoint{};
+    namica::String const time{timePoint.getStr()};
+    namica::String const dateTime{timePoint.getStr(NAMICA_TIME_YMD_HMS)};
 
     std::cout << time << '\n' << dateTime << '\n';
     return 0;
@@ -43,10 +43,10 @@ int main()
 | `NAMICA_TIME_YMD` | `年-月-日` |
 | `NAMICA_TIME_YMD_HMS` | `年-月-日 时:分:秒` |
 
-也可以传入日期时间格式串，如 `namica::getCurrentTime("{:%Y/%m/%d}")`。格式包含外层大括号和冒号。
+也可以传入日期时间格式串，如 `timePoint.getStr("{:%Y/%m/%d}")`。格式包含外层大括号和冒号。
 
 ## 使用边界
 
-这个接口提供秒精度的日历时间文本，不提供帧间隔、秒表或游戏计时功能。自定义格式错误及系统时区查询失败可能抛出异常，接口没有统一失败返回值。
+同一实例重复调用 getStr 不会重新采集当前时间；其日历时间文本精度为秒，不提供帧间隔、秒表或游戏计时功能。自定义格式错误及系统时区查询失败可能抛出异常，接口没有统一失败返回值。
 
-公开接口：[Types.h](../../runtime/include/namica/core/Types.h) · [Time.h](../../runtime/include/namica/core/Time.h)。返回[用户指南](README.md)。
+公开接口：[Types.h](../../runtime/include/namica/core/Types.h) · [TimePoint.h](../../runtime/include/namica/core/TimePoint.h)。返回[用户指南](README.md)。

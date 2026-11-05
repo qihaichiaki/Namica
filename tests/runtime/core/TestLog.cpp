@@ -1,6 +1,6 @@
 #include "runtime/utils/TestUtils.h"
 
-#include <namica/core/Logger.h>
+#include <namica/log/Logger.h>
 #include <namica/core/Types.h>
 
 #include <array>

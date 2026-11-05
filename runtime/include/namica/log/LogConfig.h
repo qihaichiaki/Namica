@@ -1,7 +1,7 @@
 #pragma once
 
 #include "namica/core/Types.h"
-#include "namica/core/Logger.h"
+#include "namica/log/LogLevel.h"
 
 namespace namica
 {

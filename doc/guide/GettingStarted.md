@@ -40,7 +40,7 @@ enable_project_options(MyApp)
 
 `MyApp` 与 `Main.cpp` 是示例名称。这段配置使用仓库已有的 `enable_project_options`；链接 `Namica` 会传递公开头文件目录与 C++20 要求。使用者无需定义 `NAMICA_BUILD_DLL`。
 
-代码通过 `<namica/...>` 包含公开头文件，例如 `<namica/core/Logger.h>`。各模块的完整示例可以作为 `Main.cpp`；标注为片段的代码放入对应函数中使用。
+代码通过 `<namica/...>` 包含公开头文件，例如 `<namica/log/Logger.h>`。各模块的完整示例可以作为 `Main.cpp`；标注为片段的代码放入对应函数中使用。
 
 ```shell
 cmake --build build/x64-debug --target MyApp
