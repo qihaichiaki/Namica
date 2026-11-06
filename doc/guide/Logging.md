@@ -1,12 +1,10 @@
 # 日志
 
-> 当前源码正在迁移到 LogSink 输出接口，控制台输出尚未接通。下方完整示例及 Logger 的布局/等级设置用法对应迁移前接口，暂不能用于当前工作区；待接口完成后更新示例。公开头文件已迁入 `namica/log/`。
-
-`Log` 提供 Core/App 两组日志入口和便捷宏；`Logger` 提供等级过滤、消息格式化与布局设置，当前采用同步控制台输出。
+`Log` 提供 Core/App 两组入口和便捷宏；`Logger` 格式化正文并同步派发记录，`ConsoleSink` 控制最低等级、日期、整行布局、颜色和输出通道。目前提供控制台输出。
 
 ## 使用便捷宏
 
-`Log` 依赖 `Application` 管理初始化，使用便捷宏或访问默认 Logger 前，必须先完成应用构造；无需用户显式调用 init：
+使用默认 Log 前必须完成 Application 构造，无需手动初始化日志：
 
 ```cpp
 #include <namica/app/Application.h>
@@ -16,10 +14,11 @@
 int main()
 {
     namica::ApplicationConfig config{};
-    config.logConfig.coreConfig.minLevel = namica::LogLevel::Warning;
-    config.logConfig.appConfig.minLevel = namica::LogLevel::Info;
-    namica::Application app{config};
+    config.logConfig.coreConsoleSinkConfig.minLevel = namica::LogLevel::Warning;
+    config.logConfig.appConsoleSinkConfig.minLevel = namica::LogLevel::Info;
+    config.logConfig.appConsoleSinkConfig.colorMode = namica::ConsoleColorMode::Never;
 
+    namica::Application app{config};
     NAMICA_APP_INFO("得分：{}", 10);
     NAMICA_APP_WARNING("资源尚未加载：{}", "texture.png");
     app.run();
@@ -27,28 +26,93 @@ int main()
 }
 ```
 
-引擎内部使用 `NAMICA_CORE_*`，应用代码使用 `NAMICA_APP_*`；两组均提供 `TRACE`、`DEBUG`、`INFO`、`WARNING`、`ERROR`、`CRITICAL`。默认整行布局分别为 `[{0}][{1}]Core: {2}` 与 `[{0}][{1}]App: {2}`。
+引擎内部使用 `NAMICA_CORE_*`，应用代码使用 `NAMICA_APP_*`；均提供 TRACE、DEBUG、INFO、WARNING、ERROR、CRITICAL。默认布局分别为 `[{0}][{1}]Core {2}` 与 `[{0}][{1}]App {2}`。
 
-`Log::getCoreLogger()` 与 `Log::getAppLogger()` 返回借用的 `Logger&`，可以设置对应日志的最低等级和布局。调用者不拥有这些实例，不应删除或用智能指针接管它们。初始化前访问不会自动创建 Logger，也没有空值保护；独立工具可采用下方自行创建 Logger 的方式。
+`Log::getCoreLogger()` 与 `Log::getAppLogger()` 返回借用的 Logger&，可用于提交日志和注册输出端。不要删除或用智能指针接管它们；初始化前及 Application 销毁后不可访问。Application 正常退出时刷新并释放默认日志持有者。
 
-## 启动参数与运行期调整
+## 启动配置
 
-`ApplicationConfig::logConfig` 中的 `coreConfig` 与 `appConfig` 分别配置两组默认 Logger，每组包含：
+ApplicationConfig.logConfig 中的 `haveCoreConsoleSink`、`haveAppConsoleSink` 控制是否创建对应默认控制台端，均默认开启；各自的 `coreConsoleSinkConfig`、`appConsoleSinkConfig` 提供以下参数：
 
 | 字段 | 作用 |
 | --- | --- |
-| `logFmt` | 设置整行布局，格式规则见下方说明 |
-| `minLevel` | 设置最低日志等级，默认 `LogLevel::Trace` |
+| minLevel | 最低接收等级，默认 Trace |
+| target | Stdout 或 Stderr，默认 Stdout |
+| logFmt | 整条记录布局 |
+| dateFmt | 时间点的文本格式，默认 NAMICA_TIME_HMS |
+| colorTheme | 按等级指定整条记录的颜色 |
+| colorMode | Auto、Always、Never，默认 Auto |
 
-这些参数在应用构造时生效，包括应用自身的启动日志。任一启动布局无效时，应用构造会抛出 `std::invalid_argument`。
+Config 仅用于创建，修改原始 Config 不会改变已创建对象。非法启动布局或日期格式可能使创建抛出格式异常；时间格式化还依赖系统时区。运行期调整需要持有对应 ConsoleSink，并调用其 setter；Logger 本身不再提供布局和最低等级 setter。
 
-Config 只表达启动参数。应用创建后修改原始 Config 不会影响正在运行的系统；运行期修改通过对应 Logger 的接口完成，例如：
+Auto 在 Windows 下检测实际标准句柄并尝试启用 VT；重定向时不添加颜色。Always 强制添加颜色表示，Never 始终不添加。
+
+LogConfig 的 coreLoggerSource/appLoggerSource 分别设置记录来源，默认 Core/App；它们不会自动改写控制台的 logFmt 文本。
+
+## 创建并持有控制台输出端
+
+独立 Logger 不依赖 Application，create(name) 可指定记录来源，默认 NamicaLogger；创建后没有输出端，需要显式注册：
 
 ```cpp
-namica::Log::getAppLogger().setLogMinLevel(namica::LogLevel::Warning);
+#include <namica/core/Types.h>
+#include <namica/log/Logger.h>
+#include <namica/log/sink/ConsoleSink.h>
+#include <namica/log/sink/ConsoleSinkConfig.h>
+
+int main()
+{
+    namica::ConsoleSinkConfig config{};
+    config.minLevel = namica::LogLevel::Info;
+    config.logFmt = "[{1}] {2}";
+    config.colorMode = namica::ConsoleColorMode::Never;
+
+    auto consoleSink{namica::ConsoleSink::create(config)};
+    auto logger{namica::Logger::create()};
+    logger->addSink(consoleSink);
+
+    logger->log(namica::LogLevel::Info, "得分：{}", namica::Int{10});
+    consoleSink->setLogMinLevel(namica::LogLevel::Warning);
+    logger->log(namica::LogLevel::Info, "本条不输出");
+    logger->log(namica::LogLevel::Warning, "资源尚未加载");
+    logger->flush();
+    return 0;
+}
 ```
 
-运行期布局调整使用 `setLogFmt()`，返回值与失败行为见下方“调整消息和布局”。创建配置对象时应显式包含 `ApplicationConfig.h`；`Application.h` 只提供配置类型的前置声明。
+addSink 拒绝空指针和同一 Logger 的重复注册，返回是否添加成功；removeSink 解除注册。多个 Logger 可以持有同一个 sink，共享其配置与输出目标。
+
+若要调整应用日志并保留 sink 引用，可在启动配置中关闭对应默认控制台端，Application 构造完成后自行创建并 addSink；此时该端无法接收注册之前的启动日志。
+
+## 文本格式与刷新
+
+正文使用 C++20 格式化语法。外部文本作为参数传入，例如 `logger->log(namica::LogLevel::Error, "{}", message)`，避免把正文中的大括号当作格式语法。
+
+ConsoleSink 的 setLogFmt 设置整行布局，字段如下：
+
+| 占位符 | 内容 |
+| --- | --- |
+| `{0}` | 按 dateFmt 格式化的时间 |
+| `{1}` | 等级名称 |
+| `{2}` | 已格式化的正文 |
+
+setDateFmt 设置日期显示格式。两个 setter 校验成功返回 True，无效返回 False 并保留旧值；字符串由 sink 保存。颜色通过 setColorMode/setColorTheme 调整，当前只支持整条记录着色。
+
+ConsoleSink 在每次 write 末尾追加换行并刷新输出流，logFmt 和正文末尾通常不再加换行。正文内部换行会保留。Logger::flush 刷新所有已注册端，不创建新记录、不清空日志历史，也不等同于文件持久化。
+
+LogSink 的 write/flush 返回 Bool。当前 ConsoleSink 在刷新后检查流状态，True 表示未检测到流失败，False 表示写入或刷新失败；不保证用户已看到内容。Logger 当前不向调用方汇报这些结果，接口也尚未保证不抛异常。
+
+## 日志等级
+
+| 等级 | 常见用途 |
+| --- | --- |
+| Trace | 高频、细粒度执行过程 |
+| Debug | 开发诊断信息 |
+| Info | 正常运行的重要事件 |
+| Warning | 异常情况，但仍可继续 |
+| Error | 某项操作失败 |
+| Critical | 严重故障标记 |
+
+等级按表中顺序递增，Logger 只向最低等级不高于当前记录的端派发。Critical 本身不会终止程序。只有至少一个端接收时才格式化正文；当前正文格式化失败会丢弃该条记录。运行期过滤不阻止函数参数求值。
 
 ## 编译期开关
 
@@ -69,67 +133,12 @@ target_compile_definitions(MyApp PRIVATE NAMICA_LOG_DEBUG)
 
 当前开关与 Debug/Release 构建类型没有自动绑定。关闭分支展开为 `(void)0`，不保留日志参数表达式或执行其副作用；这些调用的 C++ 类型与格式化兼容性需要在启用日志的构建中检查。不要在日志参数中放必须执行的业务操作。
 
-## 单独创建 Logger
-
-无需创建 `Application`，在已链接 `Namica` 的程序中使用：
-
-```cpp
-#include <namica/log/Logger.h>
-#include <namica/core/Types.h>
-
-int main()
-{
-    auto logger{namica::Logger::create()};
-    logger->setLogMinLevel(namica::LogLevel::Info);
-    if (!logger->setLogFmt("[{1}] {2}"))
-    {
-        return 1;
-    }
-
-    logger->log(namica::LogLevel::Info, "得分：{}", namica::Int{10});
-    logger->log(namica::LogLevel::Debug, "本条低于阈值");
-    logger->log(namica::LogLevel::Warning, "资源尚未加载");
-    return 0;
-}
-```
-
-本例只输出 Info 与 Warning 消息，正文分别为“得分：10”和“资源尚未加载”。`create()` 返回 `SharedPtr<Logger>`，实例由共享所有权管理。
-
-## 选择日志等级
-
-等级从低到高排列如下，默认接收全部等级；`setLogMinLevel` 会过滤低于阈值的消息。
-
-| 等级 | 常见用途 |
-| --- | --- |
-| `Trace` | 高频、细粒度执行过程 |
-| `Debug` | 开发诊断信息 |
-| `Info` | 正常运行的重要事件 |
-| `Warning` | 异常情况，但仍可继续 |
-| `Error` | 某项操作失败 |
-| `Critical` | 严重故障标记 |
-
-`Critical` 本身不会终止程序。运行期等级过滤不会阻止调用前的参数求值；只有上文关闭的 Trace/Debug 宏会跳过参数求值。
-
-## 调整消息和布局
-
-`log` 的格式串描述正文，遵循 C++20 格式化语法。外部文本应作为参数传入，例如 `logger->log(namica::LogLevel::Error, "{}", message);`，这样正文中的大括号不会被当作格式语法。
-
-`setLogFmt` 设置整行布局，默认是 `[{0}][{1}] {2}`：
-
-| 占位符 | 内容 |
-| --- | --- |
-| `{0}` | 时间 |
-| `{1}` | 等级名称 |
-| `{2}` | 格式化后的正文 |
-
-该函数成功时返回 `True`；无效布局返回 `False`，保留旧布局。布局设置后由 Logger 保存，调用者不必维持原字符串的生命周期。
-
 ## 使用边界
 
-目前没有文件输出、编辑器订阅或线程安全保证。无效的消息格式可能抛出 `std::format_error`；布局设置的失败返回值不等同于消息提交的错误处理。
+当前没有文件输出、内置编辑器接收端或线程安全保证。自定义接收端可派生 LogSink 并调用其 protected 配置构造，实现返回 Bool 的 write/flush。write 收到的记录引用仅在该次调用期间有效；需要保留记录时复制数据，不保存引用。不要在 write/flush 中重入同一 Logger 或修改其接收端注册列表。输出端异常尚未逐端隔离。
 
-`NAMICA_CORE_ASSERT(condition)` 与 `NAMICA_APP_ASSERT(condition)` 用于开发诊断。调用方定义 `NAMICA_ENABLE_ASSERTS` 时，条件失败会输出 Error 并在 Windows 触发调试中断；关闭时不求值 condition。调用时像普通语句一样追加分号；它们不能代替必须执行的错误处理。
+内部字符串按 UTF-8 使用，但当前控制台仍通过窄字符标准流输出，没有原生 Unicode 控制台适配；真实 Windows 终端代码页不匹配时中文可能乱码。Never 可关闭 sink 添加的颜色。
 
-当前按 UTF-8 编译文本字面量，但这不会自动设置终端的解码方式；Windows 控制台代码页与 UTF-8 不匹配时，中文仍可能乱码。当前没有终端编码转换或能力检测。输出带 ANSI 颜色，其显示取决于终端支持；重定向得到的文本可能包含颜色控制码。
+NAMICA_CORE_ASSERT(condition) 与 NAMICA_APP_ASSERT(condition) 用于开发诊断。定义 NAMICA_ENABLE_ASSERTS 时，失败记录 Error 并在 Windows 触发调试中断；关闭时不求值 condition。它们不能代替必须执行的错误处理。
 
-公开接口：[Log.h](../../runtime/include/namica/log/Log.h) · [LogConfig.h](../../runtime/include/namica/log/LogConfig.h) · [Logger.h](../../runtime/include/namica/log/Logger.h)。返回[用户指南](README.md)。
+公开接口：[Log.h](../../runtime/include/namica/log/Log.h) · [LogConfig.h](../../runtime/include/namica/log/LogConfig.h) · [Logger.h](../../runtime/include/namica/log/Logger.h) · [ConsoleSink.h](../../runtime/include/namica/log/sink/ConsoleSink.h)。返回[用户指南](README.md)。

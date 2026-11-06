@@ -3,9 +3,7 @@
 namespace namica
 {
 
-#define NAMICA_DEFAULT_LOG_FMT "[{0}][{1}] {2}"
-
-Logger::Logger()
+Logger::Logger(String const& _name) : m_name{_name}
 {
 }
 
@@ -13,50 +11,9 @@ Logger::~Logger()
 {
 }
 
-SharedPtr<Logger> Logger::create()
+SharedPtr<Logger> Logger::create(String const& _name)
 {
-    return SharedPtr<Logger>{new Logger{}};
-}
-
-// static Bool isValidLogFmt(String const& _logFmt)
-// {
-//     // 参数数量、顺序和类型必须与实际输出一致。
-//     String const time{"00:00:00"};
-//     String const level{"Info"};
-//     String const message{"message"};
-
-//     try
-//     {
-//         // 只验证格式，不向控制台输出。
-//         static_cast<void>(std::vformat(_logFmt, std::make_format_args(time, level, message)));
-//         return true;
-//     }
-//     catch (std::format_error const&)
-//     {
-//         return false;
-//     }
-// }
-
-// Bool Logger::setLogFmt(String const& _logFmt)
-// {
-//     if (isValidLogFmt(_logFmt))
-//     {
-//         this->m_logFmt = _logFmt;
-//         return True;
-//     }
-
-//     return False;
-// }
-
-void Logger::println(LogLevel _logLevel, String const& _msg)
-{
-    // Int const levelIndex{static_cast<Int>(_logLevel)};
-    // String const timeStr{getCurrentTime()};
-    // String const& levelStr{levelStrs[levelIndex]};
-
-    // std::cout << levelPreColor[levelIndex]
-    //           << std::vformat(this->m_logFmt, std::make_format_args(timeStr, levelStr, _msg))
-    //           << levelPostColor[levelIndex] << std::endl;
+    return SharedPtr<Logger>{new Logger{_name}};
 }
 
 Bool Logger::addSink(SharedPtr<LogSink> _sink)
@@ -98,6 +55,10 @@ Bool Logger::removeSink(SharedPtr<LogSink> _sink)
 
 void Logger::flush()
 {
+    for (auto& sink : this->m_logSinks)
+    {
+        sink->flush();
+    }
 }
 
 }  // namespace namica

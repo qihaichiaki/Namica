@@ -31,6 +31,8 @@ private:
      */
     static void init(LogConfig const& _config);
 
+    static void clear();
+
 private:
     static SharedPtr<Logger> s_coreLogger;  // namica app内部使用logger
     static SharedPtr<Logger> s_appLogger;   // 继承自namica的app使用logger

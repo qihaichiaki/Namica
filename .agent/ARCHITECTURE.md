@@ -1,6 +1,6 @@
 # 当前架构思路
 
-整理：2026-11-05。以下保留仍有用的设计讨论，**建议不等于已批准接口或实施任务**。项目选择见 [DECISIONS.md](DECISIONS.md)，当前实现见 [PROJECT.md](PROJECT.md)。
+整理：2026-11-06。以下保留仍有用的设计讨论，**建议不等于已批准接口或实施任务**。项目选择见 [DECISIONS.md](DECISIONS.md)，当前实现见 [PROJECT.md](PROJECT.md)。
 
 参考来源保留原核对范围；再次据此提出新建议前，按 [协作规则](AGENTS.md#建议必须有成熟引擎依据)复核适用性。
 
@@ -66,16 +66,16 @@ FileSink 可直接使用标准文件流，或以后复用不依赖日志的底�
 
 | 边界 | 候选接口与职责 |
 | --- | --- |
-| LogRecord | `time` 为 system_clock::time_point，`level` 为 LogLevel，`source/message` 为拥有内容的 String |
-| LogSink | 虚析构、`write(LogRecord const&)`、`flush()`；通用 `setLogMinLevel/getLogMinLevel`，首版不承诺并发安全 |
-| Logger | 正文格式化、构建记录、汇总接收意愿；`addSink(SharedPtr<LogSink>)`、`removeSink(LogSink const&)`、`flush()`；不保存独立 minLevel/logFmt |
+| LogRecord | 记录拥有时间点、等级、来源与正文；当前字段名及时间包装见 PROJECT |
+| LogSink | 虚析构、返回 Bool 的 `write(LogRecord const&)` 与 `flush()`；通用等级访问，不强制文本布局接口，不承诺并发安全 |
+| Logger | 正文格式化、构建记录、汇总接收意愿、注册/移除及统一刷新；不保存独立 minLevel/logFmt，错误收集由用户明确后续实现 |
 | ConsoleSink | 标准输出/错误输出选择、最低等级、布局、颜色模式；`setLogFmt`、`setColorMode`、按等级着色，内部封装平台适配 |
 | FileSink | 标准库文件流负责打开、追加写入、刷新与关闭；配置路径、等级、布局和刷新策略，路径变更可通过重建完成 |
 | 编辑器自有接收端 | 实现 write/flush，普通有界容器保存自有记录；`drain(vector<LogRecord>&)` 转移当前批次，提供丢弃计数 |
 
 - SharedPtr 表达 Core/App 与宿主共享输出资源；拒绝空对象及同一 Logger 重复添加同一输出。移除仅解除该 Logger 的注册，不关闭其他持有者仍使用的对象。注册期间不从 write 内重入 Log 或改注册表。
 - 同步 write 的引用只在调用期间有效；保存或延迟处理必须复制/移动拥有数据的记录，不能缓存 format_args/string_view。编辑器接收结构化字段，不强制实现文本布局接口。
-- 整行布局建议继续使用标准格式化设施，候选保留 `{0}` 时间、`{1}` 等级、`{2}` 正文并增加 `{3}` 来源；具体映射和兼容策略待确认。不自行实现通用格式解析器。现有 setLogFmt 的 Bool 校验及失败保持旧值可继续用于相同语法，迁移后校验参数必须与真实输出一致。
+- 整行布局继续使用标准格式化设施，当前保留 `{0}` 时间、`{1}` 等级、`{2}` 正文。来源布局字段已明确留到 FileSink 阶段，候选为 `{3}`；届时校验参数与输出参数一并扩展。不自行实现通用格式解析器，保留 setter 无效返回 False 且不改变旧值的行为。
 - LoggerConfig 若保留只需来源名称；LogConfig 可组合内置控制台/文件配置和 extraSinks 代码注入列表。默认控制台开启、文件关闭仍为候选；不要先公开未实现的轮转或异步选项。
 - 编辑器接收对象可在 Application 创建前准备并通过 extraSinks 注入，创建阶段不能调用未初始化的 Log。接收状态随编辑器应用存活，独立于面板；面板关闭不注销，销毁 UI 前处理其关联生命周期。
 
@@ -85,28 +85,51 @@ FileSink 可直接使用标准文件流，或以后复用不依赖日志的底�
 - UTF-8 是内部文本约定，外来数据按已知编码转换。MSVC 字符集编译选项不保证终端解码或字体支持。纯标准 C++ 没有统一的终端能力检测、代码页与颜色控制接口；可靠的 Windows 中文/颜色输出需要私有平台适配，不能承诺仅 std::cout 就覆盖这些场景。
 - Windows 候选为检测输出句柄：真实控制台把 UTF-8 转为 UTF-16，调用 WriteConsoleW；文件/管道重定向写 UTF-8 字节。应用明确拥有控制台时也可统一设置 UTF-8 代码页。无控制台不影响文件或编辑器输出，不在每条记录中反复修改全局代码页。
 - ColorMode 候选为 Auto/Always/Never，Auto 重定向默认纯文本；使用 ANSI/VT 时确认终端能力，必要时降级或使用原生颜色接口。Linux/macOS 以后各自补适配，当前不承诺已支持。
-- 配色属于 ConsoleSink。文件不附加终端控制码，编辑器按字段绘制。默认布局可先只给等级区域着色；任意自定义整行布局和多段样式的组合仍需设计，std::vformat 不会自动提供片段位置，不能通过 find 等级字符串反推范围。
-- 当前单线程一次完成整条记录和颜色恢复；未来并发时保护同一目标的一整条记录。UTF-8 分段必须在字符边界；不能宣称能约束其他进程或绕过日志系统的输出。
+- 配色属于 ConsoleSink，按等级给整条日志着色并恢复样式。文件不附加终端控制码，编辑器按记录绘制；不修改 LogRecord 的正文，不开发字段范围定位或分段样式。
+- 当前单线程一次完成整条记录和颜色恢复；未来并发时保护同一目标的一整条记录。若内部拆分 UTF-8 写入，编码转换块须保持字符完整；不能宣称能约束其他进程或绕过日志系统的输出。
 
 ### ConsoleSink 审阅与收敛（待讨论）
 
-2026-11-05 根据进行中的 ConsoleSink/配置审阅，以下不是已确认接口：
+当前已采用整条着色与每条刷新；用户最新实现将日期配置移至 ConsoleSinkConfig.dateFmt，具体实现和审阅问题见 PROJECT。下面仍保留长期契约与建议，不能据此修改源码。
 
-- **公共职责**：LogSinkConfig 首版只放 minLevel；dateFormat 属于文本显示，移至 Console/File 配置，真正复用时再组合 TextLogConfig，不为此增加多层虚基类。结构化编辑器接收端不应被迫配置日期字符串。
-- **颜色三层**：ColorMode 表达用户意愿，theme 表达等级/字段的语义配色，实际输出能力由内部检测得出。默认 Auto，Never 关闭；Always 若增加，需要明确其强制输出 ANSI 到管道的语义，不假定能赋予终端不存在的能力。基础前景色枚举足够，RGB、背景、粗体和主题管理均可延后。
-- **现有配置**：LevelColorConfig 的六个命名字段可以保留，无需为了抽象改成 map；LogColorConfig 更适合命名 ConsoleColorTheme，dataColor 建议 timeColor，warringColor 应为 warningColor。Default 表达终端默认色，不能同时表示按日志等级着色。未来正文也要跟随等级时，再增加显式的 Default/Fixed/ByLevel 选择。m_logColorIndex[3] 不应用作格式结果中的固定字段位置。
-- **布局与着色**：std::vformat 不提供语义字段范围。任意布局可能重排、重复、省略字段并使用宽度/精度；不能搜索最终字符串或先向字段中拼 ANSI 再进行普通字符串排版。当前建议优先固定语义布局并只给等级区域着色；若优先保留任意 logFmt，可先采用整行等级着色。两条都是候选，尚未替用户取消已有布局需求。
-- **未来扩展**：确有任意布局与多段颜色组合需求时，文本格式化内部可产出纯文本和样式范围，由控制台后端应用颜色，文件取纯文本，编辑器仍直接取记录。该结构不能凭空恢复 vformat 的字段位置，届时需受限布局语法或合适的格式化实现；当前不增加通用解析器、公共 formatter 插件或样式框架。
-- **控制字段**：输出目标可用 Stdout/Stderr 枚举；首版只选一个目标，不提前增加按等级分流配置。timeFormat 与主题可以通过 setter 运行期修改，目标变更可重建 sink。isConsole、supportsColor、原生句柄、编码转换均是内部状态。flush 首版可以明确每条刷新，之后再引入真实需要的策略；不为每个内部动作增加开关。
+- **日期配置**：记录保持时间点，文本输出按配置转换为日期字符串，结构化输出可直接使用时间点。统一默认值不能保证各 sink 使用同一值；需要一致输出时由初始化传入相同格式与时区约定，不增加全局可变配置。配置当前归属见 PROJECT。
+- **颜色模式**：ColorMode 表达是否添加颜色，等级配色决定具体颜色，内部检测决定输出路径。Auto 仅在目标被识别为可着色终端时启用，重定向默认无颜色；Never 不添加颜色控制码。Always 可作为后续覆盖自动检测的选项，若采用 ANSI，含义是向有效输出目标强制发出 ANSI（包括管道/文件），不承诺接收端能够显示。Windows 真实终端使用 ANSI 时仍需启用 VT，不能把强制模式当作能力适配。
+- **配置收敛**：保留 LevelColorConfig 的六个等级颜色，去掉时间/正文等字段配色与 m_logColorIndex[3] 的相关设计；warringColor 应为 warningColor。ConsoleColor::Default 表示终端默认色，颜色模式 Never 对全部等级生效。建议默认 Auto；当前只实现 Auto/Never 也足够，不公开尚未实现的模式。
+- **整条输出**：dateFmt/logFmt 控制文本布局，颜色模式与等级决定配色，输出后恢复样式。布局可继续使用 std::vformat 的重排、宽度与精度，不需样式范围、通用布局解析器或 formatter 插件。基础前景色足够，RGB/背景/主题管理按实际需求再扩展。
+- **标准流**：stdout/stderr 是可以独立重定向的通道。诊断日志可以全部写 stderr，为命令行工具的 stdout 保留 JSON 等业务结果；也可将普通输出与错误输出分别路由。通道不决定颜色、严重程度或退出码，两路混合显示也不能承诺捕获端严格保序。当前已公开 Stdout/Stderr 并默认 Stdout，每个 ConsoleSink 固定一个目标，不要求按等级拆流。能力检测针对选中的目标，stdout 被重定向不代表 stderr 也被重定向。
+- **内部状态与运行期修改**：dateFormat、整行布局、颜色模式与配色通过实际需要的 setter 调整；Config 仍只用于创建。mode 是意愿，effective color 状态是检测结果；检测在创建或模式/目标变化时更新，不在每条日志中重复修改控制台模式。原生句柄、编码转换均为内部细节，标准流是借用资源。
+- **write/flush 契约**：当前同步方案在每次 log 调用中依次向接受该等级的 sink 调用 write，返回表示同步调用已完成，不代表终端已显示或文件持久化。write 可直接交给输出流，flush 同步该流的待输出缓冲；标准流缓冲可能因缓冲区满、自动同步等原因提前输出，并非只有显式 flush 才输出，也不是无限增长的记录容器。若另行设计 sink 自有批次容器，则需明确容量和提交时机，当前不建议为 ConsoleSink 增加这一层。
+- **刷新归属（建议）**：ConsoleSink 首版在 write 中完成整条纯文本/颜色拼装、交给选定流后调用自身 flush；Logger 只派发，不必每次再统一刷新所有端。Logger::flush 用于显式检查点/关闭时刷新已注册端，不按等级筛选、不清历史、不等 UI，也不承担首次派发。不要把主循环每帧刷新作为唯一输出机制，否则启动、阻塞和退出阶段缺少及时提交；Application 可在最后关闭阶段统一刷新。文件按需要增加周期或错误级别触发，flush 仍不保证持久化。
+- **流实现边界**：布局及日期格式在构造和 setter 阶段按真实参数校验，write 使用已生效配置输出。flush 调用所选流的 flush 并检查流状态；预期 I/O 失败返回 Bool，Logger 的集中收集后续实现，不主动把每次写失败转成 throw。等级索引与颜色索引分别约束有效范围。ostream 版不代表 Windows UTF-8/VT 适配完成；以后若直接使用 WriteConsoleW 且无自有输出缓冲，flush 可返回 True，不混用 cout 刷新和另一套原生 writer。
+- **Auto 的 Windows 实现建议**：按 ConsoleTarget 获取实际写入目标对应的标准句柄，先排除空值与 INVALID_HANDLE_VALUE；GetConsoleMode 成功才按控制台处理。读取并保留已有模式，确认或尝试开启 ENABLE_PROCESSED_OUTPUT 与 ENABLE_VIRTUAL_TERMINAL_PROCESSING；成功则可加 ANSI，失败则 Auto 关闭颜色。GetConsoleMode 失败也可能是无控制台或访问问题，不能一概声称一定是文件重定向。检测在创建或模式/目标更新时完成，不在每条日志重复设置；Never 只停止本 sink 添加样式，不关闭共享终端的 VT 模式。检测必须对应实际 writer，标准句柄检查不能替代任意 ostream/rdbuf 的能力判断。
 - **记录与过滤**：Logger 构造单条记录后分发，不默认保留完整历史。历史由专门有界接收端负责。建议 LogSink 提供 shouldLog(level) const noexcept，Logger 在格式化前汇总接收意愿、分发时逐端检查；若要求直接调用 write 也必定过滤，可用非虚 write 包装受保护虚 writeRecord，不叠加多套过滤策略。
-- **平台与失败**：Windows 真实控制台使用 UTF-8 到 UTF-16 转换及 WriteConsoleW；重定向写 UTF-8 字节，Auto 不添加颜色。颜色关闭不应切换为不可靠的窄字符控制台写入；VT 开启失败可降级纯文本。标准输出句柄为借用，不关闭或由 sink 自动创建控制台。运行失败不能重入同一 Logger，需恢复样式并隔离输出端故障；当前仍是单线程契约。
+- **平台与失败**：Windows 真实控制台使用 UTF-8 到 UTF-16 转换及 WriteConsoleW；重定向写 UTF-8 字节。Never 同样保持正确编码；Auto 下 VT 开启失败可降级纯文本。sink 不关闭标准句柄或自动创建控制台；失败不重入同一 Logger，并隔离输出端故障。刷新先采用明确的简单行为，不因颜色设计增加线程或后台设施。
 
-依据（2026-11-05 核对固定标签）：Godot [4.4-stable logger.h](https://github.com/godotengine/godot/blob/4.4-stable/core/io/logger.h) 与 [logger.cpp](https://github.com/godotengine/godot/blob/4.4-stable/core/io/logger.cpp) 分开标准输出、文件与组合分发，StdLogger 只选择 stdout/stderr 及刷新；spdlog [v1.15.3 ANSI sink](https://github.com/gabime/spdlog/blob/v1.15.3/include/spdlog/sinks/ansicolor_sink-inl.h) 分离颜色模式、等级映射与 formatter 提供的单段颜色范围。这些是结构参考，不意味着重新接入 spdlog，也不要求复刻其所有能力。Microsoft [WriteConsole](https://learn.microsoft.com/en-us/windows/console/writeconsole) 与 [VT 文档](https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences)支持控制台/重定向分支及颜色能力判断；Namica 的最小配置和阶段取舍是适配建议。
+依据（2026-11-06 复核固定标签）：Godot [4.4-stable StdLogger](https://github.com/godotengine/godot/blob/4.4-stable/core/io/logger.cpp) 根据 p_err 选择 stderr 或 stdout；spdlog [v1.15.3 ANSI sink](https://github.com/gabime/spdlog/blob/v1.15.3/include/spdlog/sinks/ansicolor_sink-inl.h) 分开颜色模式、等级映射与实际着色，automatic 检测目标，always/never 覆盖检测。Microsoft [标准流](https://learn.microsoft.com/en-us/cpp/c-runtime-library/stdin-stdout-stderr?view=msvc-170)、[WriteConsole](https://learn.microsoft.com/en-us/windows/console/writeconsole)与 [VT 文档](https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences)说明输出通道、重定向和 VT 启用要求。Namica 配置归属与最小功能范围是项目适配，不是上述项目的统一规范。
+
+同日补充核对：[GetConsoleMode](https://learn.microsoft.com/en-us/windows/console/getconsolemode)、[SetConsoleMode](https://learn.microsoft.com/en-us/windows/console/setconsolemode)说明控制台检测与 VT/PROCESSED_OUTPUT 标志；Godot 上述 CompositeLogger 在调用中逐个转发，StdLogger 根据策略刷新，支持同步派发与缓冲刷新分别理解。spdlog [v1.15.3 os-inl.h](https://github.com/gabime/spdlog/blob/v1.15.3/include/spdlog/details/os-inl.h) 在 POSIX 侧结合 isatty 与 TERM/COLORTERM 识别，说明 Auto 属于平台探测规则，不能保证识别所有中间管道或终端。
+
+缓冲补充依据（2026-11-06）：[C++ ostream write/flush](https://eel.is/c++draft/ostream.unformatted) 与 [filebuf 输出缓冲](https://eel.is/c++draft/filebuf.virtuals)（工作草案，仅参考已有标准设施）区分写入与缓冲同步；上述 spdlog v1.15.3 ANSI sink 在每条输出后调用 fflush，Godot 4.4-stable 则按刷新策略处理。这支持将刷新策略留在输出实现中，不要求依赖 Application 每帧驱动。
+
+本轮审阅补充依据（2026-11-06）：Microsoft [GetStdHandle](https://learn.microsoft.com/en-us/windows/console/getstdhandle)明确其返回值也可能是重定向句柄，不能将非空句柄视为颜色能力；[Unreal 模块 API 文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/module-api-specifiers-in-unreal-engine)（页面标注 UE 5.8）区分跨 DLL 导出与 C++ 访问范围，外部派生类所需的基类构造也属于链接契约。spdlog [v1.15.3 logger-inl.h](https://github.com/gabime/spdlog/blob/v1.15.3/include/spdlog/logger-inl.h)在各 sink 的 log/flush 周围处理标准异常；Namica 应适配自己的非递归报告和析构清理策略，不照搬其全部异常行为。
+
+### 运行期日志失败策略（待讨论）
+
+已确认初始化可用异常，正常运行期优先状态/错误码；Sink 的 write/flush 已采用 Bool，Logger 错误收集明确后续实现。当前不建立全引擎异常层级，以下其余策略仍为建议：
+
+- 配置非法、必需输出端无法创建等启动失败可抛标准异常，由启动入口处理并回滚；可选端创建失败可选择降级，但必须明确其可选性。
+- Bool 足以表达当前成功/失败需求；建议约定 True 为该端完成本次提交或刷新且未检测到错误，False 为本次失败，不承诺显示、持久化或绝无部分写入。未来缓冲端的 write 成功表示已接收记录，flush 的完成语义需另定。Logger 集中消费结果，业务日志调用不必每条检查；以后确需按原因采取不同恢复策略再扩展错误信息，不预建错误枚举或框架。
+- std::vformat、String 分配、时间格式化及用户 formatter 仍可能抛出；改变返回类型不会消除这些异常。正文构建和单 sink 调用可设有限的转换边界，不逐层重复 catch/rethrow。sink 若暂仍可能抛，则不标 noexcept 后再寄望调用方捕获；只有内部已完成错误转换后才承诺该边界不抛。
+- 日志自身失败要可观察：丢弃计数、故障端状态与限频的固定后备诊断即可。报告路径不依赖同一 Log，不执行需要动态分配/格式化的复杂诊断；持续失败可暂停该端或退避，不在遍历中随意修改注册容器。资源耗尽情况下只承诺尽力报告，不承诺应用仍可恢复。
+- shutdown 尝试处理所有端并释放持有者，失败不能阻止其他端清理；析构不让异常逃逸。普通日志接口若最终承诺不抛，需要覆盖来源复制、格式化、分发和失败报告等完整路径；捕获格式错误后静默 break 不构成这一保证。
+- 性能需区分正常路径进入 try 与真正抛出/展开。MSVC x64 使用表驱动展开元数据，不能据此承诺零开销，也不能断言有 try/catch 就严重降低帧性能；代码体积、优化约束及实测调用成本都要考虑。本轮未进行性能基准。高频可预期失败应走状态路径，持续异常要修正策略，避免每帧重复抛出。
+
+依据（2026-11-06）：Microsoft [x64 异常模型](https://learn.microsoft.com/en-us/cpp/build/exception-handling-x64?view=msvc-170)、[错误处理建议](https://learn.microsoft.com/en-us/cpp/cpp/errors-and-exception-handling-modern-cpp?view=msvc-170)区分异常用途并允许性能关键循环采用错误码；Godot [4.4 FileAccess.get_error](https://docs.godotengine.org/en/4.4/classes/class_fileaccess.html#class-fileaccess-method-get-error)提供错误值查询，证明引擎 I/O 可以采用显式状态；[标准格式化错误规则](https://eel.is/c++draft/format.err.report)说明格式化与分配仍可能抛出。spdlog v1.15.3 的逐端异常边界是另一种可参考的适配方式，不要求 Namica 将预期 I/O 失败主动转成异常。
 
 ### 文件、编辑器与失败处理（待讨论）
 
 - FileSink 首版建议只做 UTF-8 纯文本、明确的打开/追加策略、写入/刷新错误处理与正常退出关闭。以 filesystem::path 接收路径，日志文件不依赖需要 Log 报错的资源加载流程。复杂轮转、压缩、远程上传等按需求再增加，不将它们预设为当前实现任务。
-- 标准文件流写入失败通常通过状态位体现，必须检查状态或设置所需异常掩码；不能只在外面加 try/catch 便认为所有失败都会抛出。析构清理不抛异常；可报告错误的 flush/关闭应在明确的生命周期阶段执行。flush 不等于 fsync，也不保证崩溃/断电保留最后一条记录。
+- 标准文件流写入失败通常通过状态位体现，当前优先检查状态并返回失败结果；不能只在外面加 try/catch 便认为所有失败都会抛出。析构清理不抛异常；可报告错误的 flush/关闭应在明确的生命周期阶段执行。flush 不等于 fsync，也不保证崩溃/断电保留最后一条记录。
 - 分发边界应隔离某个输出端失败并继续其余端，通过独立且限频的后备诊断报告，不能递归调用同一 Log。启动时必需文件输出打不开与运行期输出失败分别约定，不吞掉失败后假装正常写入。
 - 编辑器首版同线程使用 vector/deque 等普通有界容器，按条数/字节限制；超限丢旧记录并计数，单条超大则丢该条。drain 转移并清空当前批次，flush 不等待 UI 绘制。UI 历史模型也需容量策略。
 - 接收端注销后再销毁依赖对象；持有 SharedPtr 不延长其捕获的裸 UI 指针寿命。同进程接收不承诺跨进程；未来独立游戏进程通信可另增输出端。
@@ -114,13 +137,14 @@ FileSink 可直接使用标准文件流，或以后复用不依赖日志的底�
 ### 长期扩展与交付（待讨论）
 
 - Logger 只依赖 LogSink 接口，文件流、平台句柄和具体容器不成为公共调用参数；需要隐藏平台成员时可采用私有实现，不为每个小类强制增加 Pimpl。这样以后替换某个输出实现或接入成熟后端时，常规日志调用不必随之重写；不能据此保证所有未来需求都无需接口变化。
+- 当前 Log/Logger/LogRecord/LogSink 的职责可继续沿用。增加文件端时只按真实复用提取文本布局辅助，不把控制台颜色或 UI 逻辑推入 Logger；接编辑器时保存记录副本和有界历史。后续实现错误收集时可将派发集中到 Logger.cpp 的内部非模板方法，保持全部端拒收时不格式化；若公开模板调用该方法，仍须导出对应 DLL 符号，不必新增 Dispatcher 类。
 - 首版建议日志写入、配置和注册修改都限定应用主线程，无后台写入、锁或并发队列。未来扩展位置是 runtime 内部非模板记录提交点、输出端资源同步，以及编辑器缓冲存取；记录拥有字符串即可为延迟处理保留基础。异步加入时另定 flush/shutdown 等待语义。
 - 当前需完成记录/分发、控制台编码与基础颜色、文件基础写入以及编辑器接收边界；可先明确接口契约再分步开发。验收关注各端独立过滤、全部拒收时不格式化、UTF-8 与重定向、输出失败隔离、记录所有权和正常关闭；多线程、复杂轮转、远程和崩溃采集留待实际需求。
 - 使用标准库不会破坏记录与输出分离的结构，代价是平台适配、文件策略与故障处理由项目维护；若这些能力显著扩大，应重新比较维护成本与成熟库，不为补齐库功能而无限扩展日志模块。
 
-2026-11-04 核对 [Godot logger.h](https://github.com/godotengine/godot/blob/master/core/io/logger.h) 与 [logger.cpp](https://github.com/godotengine/godot/blob/master/core/io/logger.cpp)（master，未固定提交）：项目定义 StdLogger、RotatedFileLogger、CompositeLogger，标准输出使用 C stdio，文件输出通过自己的 FileAccess。它支持“引擎自有输出抽象与实现”的参考，不代表纯标准 C++ 能覆盖所有平台输出能力；Namica 不照搬其可变参数或资源接口。
+2026-11-06 复核 [Godot 4.4-stable logger.h](https://github.com/godotengine/godot/blob/4.4-stable/core/io/logger.h) 与 [logger.cpp](https://github.com/godotengine/godot/blob/4.4-stable/core/io/logger.cpp)：CompositeLogger 同步转发给具体输出实现，StdLogger 使用标准输出，RotatedFileLogger 管理文件。它支持分发与目标端分离的方向，不代表其接口与 Namica 的 Bool 返回契约相同，也不证明纯标准 C++ 能覆盖所有平台能力；Namica 不照搬其可变参数或资源接口。
 
-标准与平台依据（同日核对）：[C++ 格式化设施](https://eel.is/c++draft/format)、[文件流](https://eel.is/c++draft/filebuf)（当前工作草案，仅参考已有标准设施，不把草案新 API 当作当前编译基线）、Microsoft [流状态与异常](https://learn.microsoft.com/en-us/cpp/standard-library/basic-ios-class?view=msvc-170)及 [WriteConsole 与重定向](https://learn.microsoft.com/en-us/windows/console/writeconsole)。这些支持格式化、I/O 和平台边界；日志接口、阶段范围与失败策略是 Namica 的适配建议。
+标准与平台依据（2026-11-04 核对）：[C++ 格式化设施](https://eel.is/c++draft/format)、[文件流](https://eel.is/c++draft/filebuf)（当前工作草案，仅参考已有标准设施，不把草案新 API 当作当前编译基线）、Microsoft [流状态与异常](https://learn.microsoft.com/en-us/cpp/standard-library/basic-ios-class?view=msvc-170)及 [WriteConsole 与重定向](https://learn.microsoft.com/en-us/windows/console/writeconsole)。这些支持格式化、I/O 和平台边界；日志接口、阶段范围与失败策略是 Namica 的适配建议。
 
 ### Application 与运行库（待讨论）
 
@@ -168,11 +192,11 @@ Application 作为应用框架协调 WindowSystem、LayerStack 等应用子系�
 - 初始化过程消费 Config，不要求保留整个配置副本。长期使用的名称、路径或回调等由所属系统拥有，不能留下依赖临时 Config 的悬空引用。区分启动请求与当前运行状态；日志等级通过所属输出端接口调整，渲染后端等选项可能需要重建。
 - Application 初始化本次启用的模块，未来无窗口工具等场景再明确可选表达；不要让所有程序必须开启全部子系统。文件可保存的数据与回调、外部对象等代码注入参数分清，普通配置结构体不自动获得 DLL 二进制兼容性。
 - 当前先用代码组装和默认值。后续由上层合并项目文件、用户覆盖和启动参数，明确优先级后形成同一份配置，再校验并启动系统；子系统不各自读取全局配置。Log 初始化前的配置加载错误需由入口返回、异常或独立后备诊断处理，不能调用尚未有效的 Log。动态注册、反射与配置中心等到实际扩展需求出现再引入。
-- 日志启动参数已由 ApplicationConfig.logConfig 传给 Log；当前 Logger setter 的实现事实见 PROJECT，已确认的后续方向是将等级和布局接口迁移至输出端。不因参数集中到应用配置就向其他子系统暴露全部字段。
+- 日志启动参数已由 ApplicationConfig.logConfig 传给 Log；等级与布局已迁移至输出端，当前实现与问题见 PROJECT。不因参数集中到应用配置就向其他子系统暴露全部字段。
 
-当前 LoggerConfig、LogConfig 的字段与默认值见 PROJECT，统一入口仍由 Application 控制。配置保留可用默认值，用户只覆盖需要改变的启动参数，不要求填写所有字段。
+当前 LogConfig 与 ConsoleSinkConfig 的字段和默认值见 PROJECT，统一入口仍由 Application 控制。配置保留可用默认值，用户只覆盖需要改变的启动参数，不要求填写所有字段。
 
-启动配置应在首条启动日志前生效。当前无效启动布局抛 std::invalid_argument、运行期 setLogFmt 返回 False 并保留旧值，实际状态见 PROJECT；布局迁移到输出端后，校验参数必须与实际格式化一致。首次初始化已采用局部创建和配置后再发布，已有实例复用及应用重建的状态边界见 PROJECT。运行期阈值无法恢复编译宏已裁掉的调用。
+启动配置应在首条启动日志前生效。当前无效启动布局抛 std::format_error、运行期 setLogFmt 返回 False 并保留旧值，实际状态见 PROJECT；校验参数必须与实际格式化一致。首次初始化已采用局部创建和配置后再发布，已有实例复用及应用重建的状态边界见 PROJECT。运行期阈值无法恢复编译宏已裁掉的调用。
 
 多个输出端的布局与最低等级分别配置，Logger 根据输出端接收意愿决定是否需要格式化正文；不再保留一套独立 Logger 阈值。具体草案见 Log 的近期扩展，不提前增加配置文件加载器或插件机制。
 
@@ -217,7 +241,7 @@ Release 优化配置与发行日志策略分开；具体默认阈值与是否提
 
 - C++ 的 public/protected/private 与 friend 决定源码访问权限；NAMICA_API 决定 DLL 的符号导入导出；公开头文件决定正式提供哪些声明。非导出不能替代访问控制，公开模板、inline 或函数指针等调用路径也不能靠省略导出宏一概阻止。
 - 仅限内部调用的操作可用 private 与必要友元限制；若调用与定义均在 runtime 的 .cpp 内，可同时不导出。友元权限不由派生类自动继承。protected 只用于有意允许派生类访问的扩展接口；当前 Log 私有 init 由 Application 友元调用。
-- private 成员也可能需要导出：当前 Logger::log 是公开模板，会在客户端生成对 private println 的调用；println 不能因此去掉导出。exported class 的私有成员同样不会变成 public。
+- private 成员也可能需要导出：公开模板若调用在 DLL 中实现的非内联私有方法，该方法仍需提供导出符号。exported class 的私有成员同样不会变成 public。
 - 完全内部的函数和类型放在 .cpp 或 runtime/src 私有头中，公开头只保留必要接口；需要隐藏公开类的实现结构时再考虑 PImpl，不默认给所有类增加间接层。不要用构建宏裁出两份不同的公开类定义。
 - 权限需覆盖间接修改：返回可修改的 SharedPtr& 会允许调用方替换/清空公共实例。当前 Log 已采用 Logger& 借用接口，仍需明确有效期，引用不转移所有权。
 
@@ -225,15 +249,15 @@ Release 优化配置与发行日志策略分开；具体默认阈值与是否提
 
 ### 接口演进与回归
 
-现有 create/log 入口继续承担对象创建与日志提交；Logger::setLogMinLevel/setLogFmt 向输出端迁移，配置字段与调用方同步调整。标准格式化布局的参数映射、校验与返回语义需显式说明；保留全部输出拒收时不格式化正文、相同布局规则下无效设置保持旧值等有效契约。输出采集可随实现演进调整。
+现有 create/log 入口继续承担对象创建与日志提交；等级和布局已迁至输出端，测试已适配。Logger 测试通过公开 LogSink 扩展接口采集记录，ConsoleSink 测试观察输出及返回值；保留全部输出拒收时不格式化正文、相同布局规则下无效设置保持旧值等有效契约，不固定 ANSI 配色或未来错误收集策略。
 
 非公开实现的测试建议：
 
-- 默认经正式入口验证可观察行为。私有构造经工厂或所属系统创建；Logger 的校验和 println 经 setLogFmt/log 验证；Application 的私有实例守卫经应用创建、失败和清理行为验证。现有 Logger 测试已采用此方式，不要求每个私有函数有同名测试，也不以读取内部标记替代行为断言。
+- 默认经正式入口验证可观察行为。私有构造经工厂或所属系统创建；ConsoleSink 的格式校验经 setter 和输出验证，Logger 的分发经注册接收端观察；Application 的私有实例守卫经应用创建、失败和清理行为验证。不要求每个私有函数有同名测试，也不以读取内部标记替代行为断言。
 - 若复杂内部算法有独立、稳定的职责且端到端触发成本高，可在私有实现模块中单独测试；不为几个简单辅助函数强行拆类。难触发的资源失败可通过实际依赖边界替换或注入失败来覆盖，不给公开配置增加纯测试开关。
 - 少数确需直接访问的内部行为可使用范围有限的 friend 测试访问器或 GoogleTest FRIEND_TEST；测试夹具的友元权限不自动传给 TEST_F 生成的派生类，需要夹具访问方法或明确友元。不要用 #define private public、测试宏改类的访问布局或直接包含 .cpp 作为常规方案。
 - Namica 的外部测试目前链接 runtime DLL，友元/内部头文件只解决源码可见性，不解决未导出符号的链接。必要的内部测试可用独立目标链接同一份生产实现的对象或静态模块；避免同一测试进程又链接 DLL 又编译同一组全局状态。保留通过正式 DLL 的公开接口回归，不为测试直接扩大正式导出面。
-- Application 的异常类型、失败后状态及是否支持关闭后重建需先明确，再写相应回归；当前仅讨论测试方式，未添加或执行测试。覆盖率用于寻找遗漏，不要求为不可观察的实现细节逐一增加测试。
+- Application 的异常类型、失败后状态及是否支持关闭后重建需先明确，再写相应回归；现有日志集成测试仅验证正常初始化、Core/App 配置及关闭时刷新释放。覆盖率用于寻找遗漏，不要求为不可观察的实现细节逐一增加测试。
 
 测试依据：2026-11-03 核对 [GoogleTest 私有代码测试](https://google.github.io/googletest/advanced.html#testing-private-code)（浮动官方文档），优先公开接口，并提供内部模块与友元方案；Godot [单元测试](https://docs.godotengine.org/en/stable/engine_details/architecture/unit_testing.html#testing-failure-paths)（stable 浮动文档）通过 Color::html 的无效输入检查失败结果，并提供场景树、渲染和音频等测试环境支持。仅参考行为验证与依赖隔离，Namica 继续使用已有 GoogleTest。
 

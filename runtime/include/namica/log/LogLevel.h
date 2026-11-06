@@ -17,4 +17,9 @@ enum class LogLevel
 
 inline String const levelStrs[]{"Trace", "Debug", "Info", "Warning", "Error", "Critical"};
 
+inline String const& getLogLevelStr(LogLevel _logLevel) noexcept
+{
+    return levelStrs[static_cast<UInt8>(_logLevel)];
+}
+
 }  // namespace namica

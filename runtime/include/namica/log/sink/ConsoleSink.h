@@ -3,11 +3,10 @@
 #include "namica/core/Base.h"
 #include "namica/core/Types.h"
 #include "namica/log/sink/LogSink.h"
+#include "namica/log/sink/ConsoleSinkConfig.h"
 
 namespace namica
 {
-
-struct ConsoleSinkConfig;
 
 class ConsoleSink final : public LogSink
 {
@@ -25,15 +24,24 @@ public:
      * @return 设置格式是否符合规范
      */
     NAMICA_API Bool setLogFmt(String const& _logFmt);
+    NAMICA_API Bool setDateFmt(String const& _dateFmt);
 
-    NAMICA_API void write(LogRecord const& _record) override;
-    NAMICA_API void flush() override;
+    NAMICA_API void setColorMode(ConsoleColorMode _colorMode);
+    NAMICA_API void setColorTheme(ConsoleColorTheme const& _colorTheme);
+
+    NAMICA_API Bool write(LogRecord const& _record) override;
+    NAMICA_API Bool flush() override;
 
 private:
     ConsoleSink(ConsoleSinkConfig const& _config);
 
 private:
-    UInt8 m_logColorIndex[3];
+    std::ostream* m_os;
+    String m_logFmt;
+    String m_dateFmt;
+    ConsoleColorMode m_colorMode;
+    Bool m_colorEnabled;
+    UInt8 m_logColorIndex[6];
 };
 
 }  // namespace namica

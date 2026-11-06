@@ -3,14 +3,12 @@
 #include "namica/core/Base.h"
 #include "namica/core/Types.h"
 #include "namica/log/LogLevel.h"
-#include "namica/log/LogRecord.h"
+#include "namica/log/sink/LogSink.h"
 
 #include <vector>
 
 namespace namica
 {
-
-class LogSink;
 
 class Logger final
 {
@@ -23,7 +21,7 @@ public:
     /**
      * @brief 创建默认格式化输出的的log
      */
-    NAMICA_API static SharedPtr<Logger> create();
+    NAMICA_API static SharedPtr<Logger> create(String const& _name = "NamicaLogger");
 
 public:
     /**
@@ -37,18 +35,17 @@ public:
     template <typename... Args>
     void log(LogLevel _logLevel, String const& _msgFmt, Args&&... _args);
 
-    [[nodiscard]] NAMICA_API Bool addSink(SharedPtr<LogSink> _sink);
-    [[nodiscard]] NAMICA_API Bool removeSink(SharedPtr<LogSink> _sink);
+    NAMICA_API Bool addSink(SharedPtr<LogSink> _sink);
+
+    NAMICA_API Bool removeSink(SharedPtr<LogSink> _sink);
 
     NAMICA_API void flush();
 
 private:
-    Logger();
-
-    NAMICA_API void println(LogLevel _logLevel, String const& _msg);
+    Logger(String const& _name);
 
 private:
-    std::vector<LogRecord> m_logRecords;
+    String m_name;
     std::vector<SharedPtr<LogSink>> m_logSinks;
 };
 

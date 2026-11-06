@@ -1,5 +1,4 @@
 #include "namica/core/TimePoint.h"
-#include <chrono>
 #include <format>
 
 namespace namica
@@ -13,7 +12,7 @@ SystemTimePoint::~SystemTimePoint()
 {
 }
 
-String SystemTimePoint::getStr(String const& _fmt)
+String SystemTimePoint::getStr(String const& _fmt) const
 {
     auto localTime{std::chrono::floor<std::chrono::seconds>(
         std::chrono::current_zone()->to_local(this->m_timePoint))};

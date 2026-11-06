@@ -27,6 +27,8 @@ Application::~Application()
 {
     NAMICA_CORE_DEBUG("再见啦~");
     s_instance = nullptr;
+
+    Log::clear();
 }
 
 Application* Application::get() noexcept
