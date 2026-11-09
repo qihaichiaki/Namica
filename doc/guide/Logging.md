@@ -1,6 +1,6 @@
 # 日志
 
-`Log` 提供 Core/App 两组入口和便捷宏；`Logger` 格式化正文并同步派发记录。`ConsoleSink` 当前负责控制台输出，与后续文件输出端共享 `TextSink` 的整行布局和日期格式，并额外控制颜色与输出通道。目前提供控制台输出。
+`Log` 提供 Core/App 两组入口和便捷宏；`Logger` 格式化正文并同步派发记录。`ConsoleSink` 输出到控制台，`FileSink` 输出到文件，两者共享 `TextSink` 的整行布局和日期格式，各自设置最低等级。控制台端额外控制颜色与输出通道。
 
 ## 使用便捷宏
 
@@ -14,9 +14,8 @@
 int main()
 {
     namica::ApplicationConfig config{};
-    config.logConfig.coreConsoleSinkConfig.minLevel = namica::LogLevel::Warning;
-    config.logConfig.appConsoleSinkConfig.minLevel = namica::LogLevel::Info;
-    config.logConfig.appConsoleSinkConfig.colorMode = namica::ConsoleColorMode::Never;
+    config.logConfig.consoleSinkConfig.minLevel = namica::LogLevel::Info;
+    config.logConfig.consoleSinkConfig.colorMode = namica::ConsoleColorMode::Never;
 
     namica::Application app{config};
     NAMICA_APP_INFO("得分：{}", 10);
@@ -32,7 +31,7 @@ int main()
 
 ## 启动配置
 
-ApplicationConfig.logConfig 中的 `haveCoreConsoleSink`、`haveAppConsoleSink` 控制是否创建对应默认控制台端，均默认开启；各自的 `coreConsoleSinkConfig`、`appConsoleSinkConfig` 提供以下参数：
+ApplicationConfig.logConfig 中的 `haveConsoleSink` 控制是否创建默认控制台端，默认开启；Core/App 共享同一个端，由 `consoleSinkConfig` 提供以下参数，因此等级与输出设置同时影响两组日志：
 
 | 字段 | 作用 |
 | --- | --- |
@@ -81,7 +80,41 @@ int main()
 
 addSink 拒绝空指针和同一 Logger 的重复注册，返回是否添加成功；removeSink 解除注册。多个 Logger 可以持有同一个 sink，共享其配置与输出目标。
 
-若要调整应用日志并保留 sink 引用，可在启动配置中关闭对应默认控制台端，Application 构造完成后自行创建并 addSink；此时该端无法接收注册之前的启动日志。
+若要调整应用日志并保留 sink 引用，可将启动配置中的 haveConsoleSink 设为 False，Application 构造完成后自行创建并 addSink。需要 Core/App 分别配置时，为两个 Logger 各注册独立的 ConsoleSink；这些端无法接收注册之前的启动日志。
+
+## 输出到文件
+
+在构造 Application 前启用文件端，即可同时收集 Core/App 和启动日志。以下片段接在 ApplicationConfig 创建之后：
+
+```cpp
+config.logConfig.haveFileSink = namica::True;
+config.logConfig.fileSinkConfig.filePath = "logs/Namica.log";
+config.logConfig.fileSinkConfig.minLevel = namica::LogLevel::Info;
+config.logConfig.fileSinkConfig.openMode = namica::FileOpenMode::Append;
+config.logConfig.fileSinkConfig.flushOnWrite = namica::True;
+```
+
+相对路径以创建 sink 时的进程工作目录为准；缺少的父目录会自动创建。未指定路径时，LogConfig 使用可执行目录下的 `Namica.log`；发布到不可写安装目录时，应由应用指定可写路径。文件端默认关闭。
+
+Append 保留已有内容并追加，Truncate 在创建时清空已有内容。两者均以二进制方式写入传入的 UTF-8 字节，每条追加 LF，不添加 BOM 或控制台颜色。空路径、目录创建失败或打开失败会使初始化抛异常。LogConfig 的文件配置默认包含年月日和时间；独立创建的 FileSinkConfig 继承 TextSinkConfig 的时分秒格式，且需要显式指定路径。
+
+需要独立 Logger 或运行期调整时，可自行创建并保留文件端。以下片段假设已有 logger，并包含 `namica/log/sink/FileSink.h` 和 `namica/log/sink/FileSinkConfig.h`：
+
+```cpp
+namica::FileSinkConfig fileConfig{};
+fileConfig.filePath = "logs/session.log";
+fileConfig.dateFmt = NAMICA_TIME_YMD_HMS;
+fileConfig.flushOnWrite = namica::False;
+auto fileSink{namica::FileSink::create(fileConfig)};
+logger->addSink(fileSink);
+
+logger->log(namica::LogLevel::Info, "场景加载完成");
+namica::Bool const flushed{fileSink->flush()};
+// flushed 为 False 时由调用方处理写入/刷新失败。
+fileSink->setFlushOnWrite(namica::True);
+```
+
+多个 Logger 写同一个文件时，应注册同一个 FileSink 对象。移除一个 Logger 的注册不会关闭其他持有者使用的文件；最后一个持有者释放时关闭。Application 默认文件端已采用共享方式；手动添加的端只能收到注册后的记录。
 
 ## 文本格式与刷新
 
@@ -96,11 +129,13 @@ addSink 拒绝空指针和同一 Logger 的重复注册，返回是否添加成�
 | `{2}` | 日志来源 |
 | `{3}` | 已格式化的正文 |
 
-setDateFmt 设置日期显示格式。两个 setter 由 `TextSink` 提供，校验成功返回 True，无效返回 False 并保留旧值；字符串由 sink 保存。`TextSink::formatRecord(record)` 返回当前布局下的纯文本行，不含颜色和末尾换行，供自定义文本输出端复用。颜色通过 setColorMode/setColorTheme 调整，当前只支持整条记录着色。
+setDateFmt 设置日期显示格式。两个 setter 由 `TextSink` 提供，校验成功返回 True，无效返回 False 并保留旧值；字符串由 sink 保存。`TextSink::formatRecord(record)` 返回当前布局下的纯文本，不额外添加颜色或行结束符，供自定义文本输出端复用。颜色通过 setColorMode/setColorTheme 调整，当前只支持整条记录着色。
 
-ConsoleSink 在每次 write 末尾追加换行并刷新输出流，logFmt 和正文末尾通常不再加换行。正文内部换行会保留。Logger::flush 刷新所有已注册端，不创建新记录、不清空日志历史，也不等同于文件持久化。
+ConsoleSink 在每次 write 末尾追加换行并刷新输出流。FileSink 同样追加换行，默认 flushOnWrite=True，每条写完后刷新；False 只关闭逐条刷新，不启用定时器，也不保证数据留在缓冲中直到手动刷新。需要时调用 fileSink->flush() 或 Logger::flush()；Application 正常关闭也会刷新。setFlushOnWrite 只影响后续写入，切换本身不刷新已有缓冲。
 
-LogSink 的 write/flush 返回 Bool。当前 ConsoleSink 在刷新后检查流状态，True 表示未检测到流失败，False 表示写入或刷新失败；不保证用户已看到内容。Logger 当前不向调用方汇报这些结果，接口也尚未保证不抛异常。
+logFmt 和正文末尾通常不再加换行，正文内部换行会保留。Logger::flush 刷新所有已注册端，不创建新记录；刷新不等同于断电持久化。
+
+LogSink 的 write/flush 返回 Bool。ConsoleSink 在刷新后检查流状态；FileSink 关闭逐条刷新时，write 成功仅表示流接收了数据，后续 flush 仍可能失败。False 表示检测到写入或刷新失败，True 不保证用户已看到内容。Logger 当前不向调用方汇报这些结果，接口也尚未保证不抛异常。
 
 ## 日志等级
 
@@ -136,10 +171,10 @@ target_compile_definitions(MyApp PRIVATE NAMICA_LOG_DEBUG)
 
 ## 使用边界
 
-当前没有文件输出、内置编辑器接收端或线程安全保证。自定义接收端可派生 LogSink 并调用其 protected 配置构造，实现返回 Bool 的 write/flush。write 收到的记录引用仅在该次调用期间有效；需要保留记录时复制数据，不保存引用。不要在 write/flush 中重入同一 Logger 或修改其接收端注册列表。输出端异常尚未逐端隔离。
+当前没有文件轮转、周期刷新、内置编辑器接收端或线程安全保证。自定义接收端可派生 LogSink 并调用其 protected 配置构造，实现返回 Bool 的 write/flush。write 收到的记录引用仅在该次调用期间有效；需要保留记录时复制数据，不保存引用。不要在 write/flush 中重入同一 Logger 或修改其接收端注册列表。输出端异常尚未逐端隔离。
 
 内部字符串按 UTF-8 使用，但当前控制台仍通过窄字符标准流输出，没有原生 Unicode 控制台适配；真实 Windows 终端代码页不匹配时中文可能乱码。Never 可关闭 sink 添加的颜色。
 
 NAMICA_CORE_ASSERT(condition) 与 NAMICA_APP_ASSERT(condition) 用于开发诊断。定义 NAMICA_ENABLE_ASSERTS 时，失败记录 Error 并在 Windows 触发调试中断；关闭时不求值 condition。它们不能代替必须执行的错误处理。
 
-公开接口：[Log.h](../../runtime/include/namica/log/Log.h) · [LogConfig.h](../../runtime/include/namica/log/LogConfig.h) · [Logger.h](../../runtime/include/namica/log/Logger.h) · [ConsoleSink.h](../../runtime/include/namica/log/sink/ConsoleSink.h)。返回[用户指南](README.md)。
+公开接口：[Log.h](../../runtime/include/namica/log/Log.h) · [LogConfig.h](../../runtime/include/namica/log/LogConfig.h) · [Logger.h](../../runtime/include/namica/log/Logger.h) · [ConsoleSink.h](../../runtime/include/namica/log/sink/ConsoleSink.h) · [FileSink.h](../../runtime/include/namica/log/sink/FileSink.h) · [FileSinkConfig.h](../../runtime/include/namica/log/sink/FileSinkConfig.h)。返回[用户指南](README.md)。

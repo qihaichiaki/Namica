@@ -438,8 +438,7 @@ TEST_F(NamicaRuntimeTest, LogUsesApplicationConfigAndFlushesOnShutdown)
     namica::WeakPtr<RecordingSink> lifetime{};
     {
         namica::ApplicationConfig config{};
-        config.logConfig.haveCoreConsoleSink = namica::False;
-        config.logConfig.haveAppConsoleSink = namica::False;
+        config.logConfig.haveConsoleSink = namica::False;
         config.logConfig.coreLoggerSource = "Runtime";
         config.logConfig.appLoggerSource = "Game";
         namica::Application app{config};

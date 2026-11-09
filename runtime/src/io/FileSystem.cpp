@@ -27,7 +27,7 @@ Bool FileSystem::setAssetsFolder(std::filesystem::path const& _path)
     return False;
 }
 
-std::filesystem::path FileSystem::getExecutableFolder() const
+std::filesystem::path FileSystem::getExecutableFolder()
 {
 #ifdef NAMICA_PLATFORM_WINDOWS
     wchar_t buffer[MAX_PATH]{};

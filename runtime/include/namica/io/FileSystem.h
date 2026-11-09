@@ -40,7 +40,7 @@ public:
      *
      * @return 可执行程序所在文件夹路径
      */
-    NAMICA_API std::filesystem::path getExecutableFolder() const;
+    NAMICA_API static std::filesystem::path getExecutableFolder();
 
     // 加载图片功能
 

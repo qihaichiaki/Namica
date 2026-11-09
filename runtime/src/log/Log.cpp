@@ -1,6 +1,7 @@
 #include "namica/log/Log.h"
 #include "namica/log/LogConfig.h"
 #include "namica/log/sink/ConsoleSink.h"
+#include "namica/log/sink/FileSink.h"
 
 namespace namica
 {
@@ -21,16 +22,18 @@ void Log::init(LogConfig const& _config)
     coreLogger = Logger::create(_config.coreLoggerSource);
     appLogger = Logger::create(_config.appLoggerSource);
 
-    if (_config.haveCoreConsoleSink)
+    if (_config.haveConsoleSink)
     {
-        auto consoleSink{ConsoleSink::create(_config.coreConsoleSinkConfig)};
+        auto consoleSink{ConsoleSink::create(_config.consoleSinkConfig)};
         coreLogger->addSink(consoleSink);
+        appLogger->addSink(consoleSink);
     }
 
-    if (_config.haveAppConsoleSink)
+    if (_config.haveFileSink)
     {
-        auto consoleSink{ConsoleSink::create(_config.appConsoleSinkConfig)};
-        appLogger->addSink(consoleSink);
+        auto fileSink{FileSink::create(_config.fileSinkConfig)};
+        coreLogger->addSink(fileSink);
+        appLogger->addSink(fileSink);
     }
 
     s_coreLogger = coreLogger;

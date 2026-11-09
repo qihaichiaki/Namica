@@ -11,6 +11,7 @@ namespace namica
 class ConsoleSink final : public TextSink
 {
 public:
+    CLASS_DISABLE_COPY_MOVE(ConsoleSink)
     NAMICA_API static SharedPtr<ConsoleSink> create(ConsoleSinkConfig const& _config);
 
 public:

@@ -41,7 +41,7 @@ runtime 提供通用运行能力，tooling 处理制作和发布，editor 提供
 
 ## Log 的近期扩展
 
-当前方向是在 Namica 内用标准库实现阶段所需的日志功能，保留 LogRecord/LogSink 边界，整行布局与最低等级迁移至输出端，暂不开发多线程日志；有效选择见 DECISIONS。文本输出端已抽出 TextSink，ConsoleSink 与后续 FileSink 共享布局/日期格式；当前进度见 PROJECT，下面的完整契约、平台适配和交付子集仍为建议。
+当前方向是在 Namica 内用标准库实现阶段所需的日志功能，保留 LogRecord/LogSink 边界，整行布局与最低等级迁移至输出端，暂不开发多线程日志；有效选择见 DECISIONS。文本输出端已抽出 TextSink，ConsoleSink 与 FileSink 共享布局/日期格式；当前进度见 PROJECT，下面的完整契约、平台适配和交付子集仍为建议。
 
 ```text
 Application → Log 生命周期与访问
@@ -76,8 +76,8 @@ FileSink 可直接使用标准文件流，或以后复用不依赖日志的底�
 
 - SharedPtr 表达 Core/App 与宿主共享输出资源；拒绝空对象及同一 Logger 重复添加同一输出。移除仅解除该 Logger 的注册，不关闭其他持有者仍使用的对象。注册期间不从 write 内重入 Log 或改注册表。
 - 同步 write 的引用只在调用期间有效；保存或延迟处理必须复制/移动拥有数据的记录，不能缓存 format_args/string_view。编辑器接收结构化字段，不强制实现文本布局接口。
-- 整行布局继续使用标准格式化设施，当前四参数为 `{0}` 时间、`{1}` 等级、`{2}` 来源、`{3}` 正文。TextSink 统一校验与渲染，ConsoleSink 与后续 FileSink 不重复实现；默认布局为 `[{0}][{1}]{2}: {3}`。不自行实现通用格式解析器，保留 setter 无效返回 False 且不改变旧值的行为。
-- LoggerConfig 若保留只需来源名称；LogConfig 可组合内置控制台/文件配置和 extraSinks 代码注入列表。默认控制台开启、文件关闭仍为候选；不要先公开未实现的轮转或异步选项。
+- 整行布局继续使用标准格式化设施，当前四参数为 `{0}` 时间、`{1}` 等级、`{2}` 来源、`{3}` 正文。TextSink 统一校验与渲染，ConsoleSink 与 FileSink 不重复实现；默认布局为 `[{0}][{1}]{2}: {3}`。不自行实现通用格式解析器，保留 setter 无效返回 False 且不改变旧值的行为。
+- LoggerConfig 若保留只需来源名称；LogConfig 已组合内置控制台/文件配置，默认控制台开启、文件关闭。extraSinks 代码注入列表仍为候选；不要先公开未实现的轮转或异步选项。
 - 编辑器接收对象可在 Application 创建前准备并通过 extraSinks 注入，创建阶段不能调用未初始化的 Log。接收状态随编辑器应用存活，独立于面板；面板关闭不注销，销毁 UI 前处理其关联生命周期。
 
 ### 标准库与控制台边界（待讨论）
@@ -129,11 +129,31 @@ FileSink 可直接使用标准文件流，或以后复用不依赖日志的底�
 
 ### 文件、编辑器与失败处理（待讨论）
 
-- FileSink 首版建议只做 UTF-8 纯文本、明确的打开/追加策略、写入/刷新错误处理与正常退出关闭。以 filesystem::path 接收路径，日志文件不依赖需要 Log 报错的资源加载流程。复杂轮转、压缩、远程上传等按需求再增加，不将它们预设为当前实现任务。
-- 标准文件流写入失败通常通过状态位体现，当前优先检查状态并返回失败结果；不能只在外面加 try/catch 便认为所有失败都会抛出。析构清理不抛异常；可报告错误的 flush/关闭应在明确的生命周期阶段执行。flush 不等于 fsync，也不保证崩溃/断电保留最后一条记录。
-- 分发边界应隔离某个输出端失败并继续其余端，通过独立且限频的后备诊断报告，不能递归调用同一 Log。启动时必需文件输出打不开与运行期输出失败分别约定，不吞掉失败后假装正常写入。
+- **FileSink 首版职责**：继承已有 TextSink，复用四参数布局和日期校验，仅负责一个文件的打开、写入、刷新与关闭，内部持有 std::ofstream。不另建文本格式化类，不将颜色或资源查找流程接入文件日志；复杂轮转、压缩、异步和跨进程共写留到实际需求。
+- **基础配置（已落地）**：FileSinkConfig 继承 TextSinkConfig，提供 filesystem::path filePath、FileOpenMode（Append/Truncate，默认 Append）与 Bool flushOnWrite（默认 True，仅控制逐条刷新）。布局、日期和等级不重复声明；LogConfig 的默认文件端使用完整日期时间。路径为空视为启动配置错误，路径变更通过新建 sink 完成；运行期开关已有 setFlushOnWrite，不为对称性强制新增 getter。具体行为见 PROJECT，后续策略见下方。
+- **路径与打开**：使用 path 原生重载打开，不先转为窄 String；相对路径按创建时工作目录解释，应用层决定实际可写目录，sink 不默认写入资源目录或可执行文件目录。建议在构造阶段校验布局和路径，再创建非空父目录并打开文件；失败抛标准异常，不能返回一个未打开的可用对象。Append 使用 out|app|binary，Truncate 使用 out|trunc|binary；覆盖仅在创建时发生，不能每条日志重新打开。
+- **文本与编码**：建议写入已有 UTF-8 字节，不加 BOM、终端颜色或宽字符转换；使用 binary 避免平台换行翻译，由 FileSink 在 formatRecord 的结果后追加 LF。binary 本身不负责把非 UTF-8 输入转为 UTF-8，正文内部换行按原样保留。这是日志文件格式建议，不改变仓库源码换行配置。
+- **write/flush**：write 格式化并提交给文件流，检查状态；flushOnWrite 开启时再返回 flush 的结果，关闭时成功只表示流接收了数据，后续 flush 仍可能失败。flush 检查底层同步结果，保留 Bool 契约；不主动为预期 I/O 失败开启流异常掩码，也不通过同一 Logger 报告故障。格式化/内存分配异常边界仍按现有待定策略，不新增 noexcept 保证。flush 不等于 fsync，不保证崩溃或断电保留最后一条记录；不要无条件 clear 状态后重试整条记录，失败可能已部分写入。
+- **共享与关闭**：Core/App 写同一个文件时注册同一个 SharedPtr<FileSink>，不要分别创建两个 writer 指向同一路径。Logger 移除只解除注册，最后一个持有者释放时才析构并关闭文件；正常关闭先显式 flush，ofstream 的 RAII 负责释放资源，析构不向外抛。当前已在 Log::init 发布静态 Logger 前创建和注册可选文件端，能够收集 Application 初始化日志。FileSink/ConsoleSink 已禁止对象复制与移动，保持已注册对象与输出资源的绑定；移动 SharedPtr 不移动其对象。
+- **实现后验证建议**：在 tests/runtime/log 使用独立临时目录覆盖创建/追加/覆盖、中文路径及 UTF-8 字节、四参数布局和单次追加换行、显式刷新、配置所有权、Core/App 共享及最后持有者释放；无效路径可用“父路径实际为文件”构造确定性失败，不依赖平台权限或真实磁盘写满。Logger 错误收集仍按用户安排后续实现。
+
+FileSink 参考（2026-11-09 核对）：Godot [4.4-stable RotatedFileLogger](https://github.com/godotengine/godot/blob/4.4-stable/core/io/logger.cpp) 自行管理目录、文件与备份，并按错误/配置决定刷新；spdlog [v1.15.3 basic_file_sink](https://github.com/gabime/spdlog/blob/v1.15.3/include/spdlog/sinks/basic_file_sink-inl.h) 将写入和刷新分开，其 [file_helper](https://github.com/gabime/spdlog/blob/v1.15.3/include/spdlog/details/file_helper-inl.h) 处理二进制追加、可选截断和目录创建，[base_sink](https://github.com/gabime/spdlog/blob/v1.15.3/include/spdlog/sinks/base_sink.h) 显式禁止复制/移动。这些支持职责划分，不要求 Namica 采用它们的依赖、轮转或运行期抛异常策略。标准库 [ofstream 路径重载](https://eel.is/c++draft/ofstream.cons)、[打开模式](https://eel.is/c++draft/filebuf.members)、[write/flush 状态](https://eel.is/c++draft/ostream.unformatted)仅参考项目已有标准能力；Microsoft [文本/二进制翻译规则](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/fopen-wfopen?view=msvc-170)说明换行翻译与内容编码是不同问题。已落地范围以 PROJECT 为准，剩余建议不构成修改代码授权。
+
 - 编辑器首版同线程使用 vector/deque 等普通有界容器，按条数/字节限制；超限丢旧记录并计数，单条超大则丢该条。drain 转移并清空当前批次，flush 不等待 UI 绘制。UI 历史模型也需容量策略。
 - 接收端注销后再销毁依赖对象；持有 SharedPtr 不延长其捕获的裸 UI 指针寿命。同进程接收不承诺跨进程；未来独立游戏进程通信可另增输出端。
+
+### 文件刷新策略与接口稳定性（待讨论）
+
+用户已明确公共接口长期尽量保持，优先通过新增扩展，规则见 AGENTS。逐条开关与同步 flush 已落地；以下周期、阈值和异步扩展仍为建议，尚未批准实现。
+
+- **逐条触发器**：flushOnWrite=True 表示 write 完成输出后、返回前刷新，write 的 True 包含该次刷新成功；False 仅关闭这个触发器，不禁止显式 flush、底层缓冲自然输出或其他单独启用的触发器。它不自动启用周期刷新。运行期 setter 只影响后续写入；切换本身不隐式刷新，已有缓冲需要时显式 flush。
+- **稳定操作**：FileSink::flush 保持同步尝试刷新当前输出、以 Bool 返回结果，不关闭文件、不修改策略，不因 flushOnWrite=False 而跳过；无数据时可成功返回。它不保证断电持久化。Logger::flush 保持现有 void 签名，后续错误收集或查询另增接口，不为返回汇总结果修改旧签名。
+- **首版策略**：默认逐条刷新；关闭后通过现有 FileSink::flush 或 Logger::flush 在重要检查点、长操作前和正常关闭时刷新。底层缓冲也可能自行输出，但没有固定可见延迟保证。当前 Application 尚无实际主循环，不能将周期刷新写成现有能力。
+- **后续调度**：等级阈值、记录数/字节数阈值和时间周期可作为独立触发器增量提供，新选项默认关闭，旧配置继续保持行为。周期调度建议归日志模块，由 Application 主线程在正常运行与暂停状态的公共维护阶段驱动，使用 steady_clock 到期判断并调用已有 flush；多个 Logger 共用端时可合并重复刷新。仅在 write 中检查时间不是真正的空闲期刷新；主线程阻塞时也不能承诺严格时限。后台周期服务需要另行实现同步与停止顺序，当前不添加线程。
+- **预留范围**：现在保留 Bool write/flush 和逐条开关的清晰职责即可，不给 LogSink 增加 tick/update 纯虚函数，也不公开尚未实现的周期字段。未来调度层直接复用现有 flush；若引入异步，旧 flush 应保留等待此前已接收记录写出并完成底层刷新的语义，单纯提交刷新请求可另增接口或独立包装类型，不悄悄改为只入队。
+- **兼容范围**：新增策略保留现有重载、默认行为和旧 Config 构造用法，不通过修改导出函数参数列表加默认参数冒充兼容扩展。新增 Config/类成员或虚方法可能改变 DLL ABI；当前可按源码兼容、调用方与 runtime 配套重编演进，若要求旧二进制直接替换 DLL，需单独讨论 ABI 版本及数据布局，尚无该保证。
+
+依据（2026-11-09）：Godot [4.4-stable 文件日志](https://github.com/godotengine/godot/blob/4.4-stable/core/io/logger.cpp) 以错误标记或逐条刷新配置触发 flush，说明触发条件可以组合；spdlog [v1.15.3 logger](https://github.com/gabime/spdlog/blob/v1.15.3/include/spdlog/logger-inl.h) 提供显式 flush 和等级触发，[registry](https://github.com/gabime/spdlog/blob/v1.15.3/include/spdlog/details/registry.h) 另外提供 flush_every 并调用 flush_all。Namica 的主线程驱动方式是针对当前单线程范围的适配建议，不照搬其后台 worker。
 
 ### 长期扩展与交付（待讨论）
 

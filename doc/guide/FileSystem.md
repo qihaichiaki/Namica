@@ -8,7 +8,7 @@
 | --- | --- |
 | `loadFile / loadFileText / loadImage` | 直接使用传入路径；普通相对路径相对于进程工作目录 |
 | `loadAssetFile / loadAssetFileText / loadAssetImage` | 将传入的相对路径拼到已配置的资源根目录下 |
-| `getExecutableFolder()` | 查询可执行程序所在目录 |
+| `FileSystem::getExecutableFolder()` | 静态方法，查询可执行程序所在目录 |
 | `getAssetsFolder()` | 查询当前资源根目录 |
 
 默认资源根目录是可执行程序目录。通过 `setAssetsFolder` 可以更改；如果设置的是相对路径，后续解析仍受进程工作目录影响。传给 `loadAsset...` 的路径应是相对资源路径；绝对路径会覆盖前面的根路径。
@@ -41,7 +41,7 @@ int main()
 }
 ```
 
-若资源放在程序旁边，可以使用 `files.getExecutableFolder() / "assets"` 设置资源根目录，从而不依赖启动时的工作目录。
+若资源放在程序旁边，可以使用 `namica::FileSystem::getExecutableFolder() / "assets"` 设置资源根目录，从而不依赖启动时的工作目录。
 
 读取二进制数据使用 `loadFile` 或 `loadAssetFile`，返回 `std::vector<namica::Char>`；文本版本返回字符串，不进行文本编码转换。
 
