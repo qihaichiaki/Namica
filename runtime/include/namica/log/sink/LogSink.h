@@ -13,7 +13,7 @@ struct LogRecord;
 class LogSink
 {
 public:
-    NAMICA_API virtual ~LogSink() noexcept;
+    NAMICA_API virtual ~LogSink();
 
 public:
     NAMICA_API void setLogMinLevel(LogLevel _level) noexcept;

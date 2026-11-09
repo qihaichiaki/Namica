@@ -8,7 +8,7 @@ LogSink::LogSink(LogSinkConfig const& _config) : m_minLogLevel{_config.minLevel}
 {
 }
 
-LogSink::~LogSink() noexcept
+LogSink::~LogSink()
 {
 }
 

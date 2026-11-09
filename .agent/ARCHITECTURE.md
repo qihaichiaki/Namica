@@ -1,6 +1,6 @@
 # 当前架构思路
 
-整理：2026-11-06。以下保留仍有用的设计讨论，**建议不等于已批准接口或实施任务**。项目选择见 [DECISIONS.md](DECISIONS.md)，当前实现见 [PROJECT.md](PROJECT.md)。
+整理：2026-11-09。以下保留仍有用的设计讨论，**建议不等于已批准接口或实施任务**。项目选择见 [DECISIONS.md](DECISIONS.md)，当前实现见 [PROJECT.md](PROJECT.md)。
 
 参考来源保留原核对范围；再次据此提出新建议前，按 [协作规则](AGENTS.md#建议必须有成熟引擎依据)复核适用性。
 
@@ -41,13 +41,13 @@ runtime 提供通用运行能力，tooling 处理制作和发布，editor 提供
 
 ## Log 的近期扩展
 
-当前方向是在 Namica 内用标准库实现阶段所需的日志功能，保留 LogRecord/LogSink 边界，整行布局与最低等级迁移至输出端，暂不开发多线程日志；有效选择见 DECISIONS。用户已开始实现记录与输出端，当前进度见 PROJECT；下面的完整契约、平台适配和交付子集仍为建议。
+当前方向是在 Namica 内用标准库实现阶段所需的日志功能，保留 LogRecord/LogSink 边界，整行布局与最低等级迁移至输出端，暂不开发多线程日志；有效选择见 DECISIONS。文本输出端已抽出 TextSink，ConsoleSink 与后续 FileSink 共享布局/日期格式；当前进度见 PROJECT，下面的完整契约、平台适配和交付子集仍为建议。
 
 ```text
 Application → Log 生命周期与访问
               → Logger 检查接收意愿、格式化正文 → LogRecord
-                                                 → ConsoleSink
-                                                 → FileSink
+                                                 → TextSink → ConsoleSink
+                                                            → FileSink
                                                  → 编辑器接收端 → 有界缓冲 → UI
 ```
 
@@ -62,20 +62,21 @@ Application → Log 生命周期与访问
 
 FileSink 可直接使用标准文件流，或以后复用不依赖日志的底层文件设施。当前 FileSystem 包含资源根目录、图片和文件读取；不能因复用它而让文件日志失败递归进入同一日志链路。
 
-### 四步接口草案（待讨论）
+### 接口分层与草案（部分已实现）
 
-| 边界 | 候选接口与职责 |
+| 边界 | 接口与职责 |
 | --- | --- |
 | LogRecord | 记录拥有时间点、等级、来源与正文；当前字段名及时间包装见 PROJECT |
 | LogSink | 虚析构、返回 Bool 的 `write(LogRecord const&)` 与 `flush()`；通用等级访问，不强制文本布局接口，不承诺并发安全 |
+| TextSink | 文本输出端公共基类：保存整行布局与日期格式，提供 `setLogFmt`/`setDateFmt`/`formatRecord`；不负责颜色、目标流和刷新，构造函数与析构导出 |
 | Logger | 正文格式化、构建记录、汇总接收意愿、注册/移除及统一刷新；不保存独立 minLevel/logFmt，错误收集由用户明确后续实现 |
-| ConsoleSink | 标准输出/错误输出选择、最低等级、布局、颜色模式；`setLogFmt`、`setColorMode`、按等级着色，内部封装平台适配 |
-| FileSink | 标准库文件流负责打开、追加写入、刷新与关闭；配置路径、等级、布局和刷新策略，路径变更可通过重建完成 |
+| ConsoleSink | 继承 TextSink，实现标准输出/错误输出选择、颜色模式与按等级着色；write 完成着色、换行和刷新，内部封装平台适配 |
+| FileSink | 继承 TextSink，标准库文件流负责打开、追加写入、刷新与关闭；配置路径、等级、布局和刷新策略，路径变更可通过重建完成 |
 | 编辑器自有接收端 | 实现 write/flush，普通有界容器保存自有记录；`drain(vector<LogRecord>&)` 转移当前批次，提供丢弃计数 |
 
 - SharedPtr 表达 Core/App 与宿主共享输出资源；拒绝空对象及同一 Logger 重复添加同一输出。移除仅解除该 Logger 的注册，不关闭其他持有者仍使用的对象。注册期间不从 write 内重入 Log 或改注册表。
 - 同步 write 的引用只在调用期间有效；保存或延迟处理必须复制/移动拥有数据的记录，不能缓存 format_args/string_view。编辑器接收结构化字段，不强制实现文本布局接口。
-- 整行布局继续使用标准格式化设施，当前保留 `{0}` 时间、`{1}` 等级、`{2}` 正文。来源布局字段已明确留到 FileSink 阶段，候选为 `{3}`；届时校验参数与输出参数一并扩展。不自行实现通用格式解析器，保留 setter 无效返回 False 且不改变旧值的行为。
+- 整行布局继续使用标准格式化设施，当前四参数为 `{0}` 时间、`{1}` 等级、`{2}` 来源、`{3}` 正文。TextSink 统一校验与渲染，ConsoleSink 与后续 FileSink 不重复实现；默认布局为 `[{0}][{1}]{2}: {3}`。不自行实现通用格式解析器，保留 setter 无效返回 False 且不改变旧值的行为。
 - LoggerConfig 若保留只需来源名称；LogConfig 可组合内置控制台/文件配置和 extraSinks 代码注入列表。默认控制台开启、文件关闭仍为候选；不要先公开未实现的轮转或异步选项。
 - 编辑器接收对象可在 Application 创建前准备并通过 extraSinks 注入，创建阶段不能调用未初始化的 Log。接收状态随编辑器应用存活，独立于面板；面板关闭不注销，销毁 UI 前处理其关联生命周期。
 
@@ -93,14 +94,14 @@ FileSink 可直接使用标准文件流，或以后复用不依赖日志的底�
 当前已采用整条着色与每条刷新；用户最新实现将日期配置移至 ConsoleSinkConfig.dateFmt，具体实现和审阅问题见 PROJECT。下面仍保留长期契约与建议，不能据此修改源码。
 
 - **日期配置**：记录保持时间点，文本输出按配置转换为日期字符串，结构化输出可直接使用时间点。统一默认值不能保证各 sink 使用同一值；需要一致输出时由初始化传入相同格式与时区约定，不增加全局可变配置。配置当前归属见 PROJECT。
-- **颜色模式**：ColorMode 表达是否添加颜色，等级配色决定具体颜色，内部检测决定输出路径。Auto 仅在目标被识别为可着色终端时启用，重定向默认无颜色；Never 不添加颜色控制码。Always 可作为后续覆盖自动检测的选项，若采用 ANSI，含义是向有效输出目标强制发出 ANSI（包括管道/文件），不承诺接收端能够显示。Windows 真实终端使用 ANSI 时仍需启用 VT，不能把强制模式当作能力适配。
-- **配置收敛**：保留 LevelColorConfig 的六个等级颜色，去掉时间/正文等字段配色与 m_logColorIndex[3] 的相关设计；warringColor 应为 warningColor。ConsoleColor::Default 表示终端默认色，颜色模式 Never 对全部等级生效。建议默认 Auto；当前只实现 Auto/Never 也足够，不公开尚未实现的模式。
+- **颜色模式**：ColorMode 表达是否添加颜色，等级配色决定具体颜色，内部检测决定输出路径。Auto 仅在目标被识别为可着色终端时启用，重定向默认无颜色；Never 不添加颜色控制码。Always 覆盖自动检测；若采用 ANSI，含义是向有效输出目标强制发出 ANSI（包括管道/文件），不承诺接收端能够显示。Windows 真实终端使用 ANSI 时仍需启用 VT，不能把强制模式当作能力适配。
+- **配置收敛**：保留 LevelColorConfig 的六个等级颜色，去掉时间/正文等字段配色与 m_logColorIndex[3] 的相关设计；warringColor 应为 warningColor。ConsoleColor::Default 表示终端默认色，颜色模式 Never 对全部等级生效。默认 Auto；当前已实现 Auto/Always/Never 三种模式。
 - **整条输出**：dateFmt/logFmt 控制文本布局，颜色模式与等级决定配色，输出后恢复样式。布局可继续使用 std::vformat 的重排、宽度与精度，不需样式范围、通用布局解析器或 formatter 插件。基础前景色足够，RGB/背景/主题管理按实际需求再扩展。
 - **标准流**：stdout/stderr 是可以独立重定向的通道。诊断日志可以全部写 stderr，为命令行工具的 stdout 保留 JSON 等业务结果；也可将普通输出与错误输出分别路由。通道不决定颜色、严重程度或退出码，两路混合显示也不能承诺捕获端严格保序。当前已公开 Stdout/Stderr 并默认 Stdout，每个 ConsoleSink 固定一个目标，不要求按等级拆流。能力检测针对选中的目标，stdout 被重定向不代表 stderr 也被重定向。
 - **内部状态与运行期修改**：dateFormat、整行布局、颜色模式与配色通过实际需要的 setter 调整；Config 仍只用于创建。mode 是意愿，effective color 状态是检测结果；检测在创建或模式/目标变化时更新，不在每条日志中重复修改控制台模式。原生句柄、编码转换均为内部细节，标准流是借用资源。
 - **write/flush 契约**：当前同步方案在每次 log 调用中依次向接受该等级的 sink 调用 write，返回表示同步调用已完成，不代表终端已显示或文件持久化。write 可直接交给输出流，flush 同步该流的待输出缓冲；标准流缓冲可能因缓冲区满、自动同步等原因提前输出，并非只有显式 flush 才输出，也不是无限增长的记录容器。若另行设计 sink 自有批次容器，则需明确容量和提交时机，当前不建议为 ConsoleSink 增加这一层。
 - **刷新归属（建议）**：ConsoleSink 首版在 write 中完成整条纯文本/颜色拼装、交给选定流后调用自身 flush；Logger 只派发，不必每次再统一刷新所有端。Logger::flush 用于显式检查点/关闭时刷新已注册端，不按等级筛选、不清历史、不等 UI，也不承担首次派发。不要把主循环每帧刷新作为唯一输出机制，否则启动、阻塞和退出阶段缺少及时提交；Application 可在最后关闭阶段统一刷新。文件按需要增加周期或错误级别触发，flush 仍不保证持久化。
-- **流实现边界**：布局及日期格式在构造和 setter 阶段按真实参数校验，write 使用已生效配置输出。flush 调用所选流的 flush 并检查流状态；预期 I/O 失败返回 Bool，Logger 的集中收集后续实现，不主动把每次写失败转成 throw。等级索引与颜色索引分别约束有效范围。ostream 版不代表 Windows UTF-8/VT 适配完成；以后若直接使用 WriteConsoleW 且无自有输出缓冲，flush 可返回 True，不混用 cout 刷新和另一套原生 writer。
+- **流实现边界**：布局及日期格式在 TextSink 构造和 setter 阶段按真实参数校验，具体 sink 的 write 使用已生效配置输出。flush 调用所选流的 flush 并检查流状态；预期 I/O 失败返回 Bool，Logger 的集中收集后续实现，不主动把每次写失败转成 throw。等级索引与颜色索引分别约束有效范围。ostream 版不代表 Windows UTF-8/VT 适配完成；以后若直接使用 WriteConsoleW 且无自有输出缓冲，flush 可返回 True，不混用 cout 刷新和另一套原生 writer。
 - **Auto 的 Windows 实现建议**：按 ConsoleTarget 获取实际写入目标对应的标准句柄，先排除空值与 INVALID_HANDLE_VALUE；GetConsoleMode 成功才按控制台处理。读取并保留已有模式，确认或尝试开启 ENABLE_PROCESSED_OUTPUT 与 ENABLE_VIRTUAL_TERMINAL_PROCESSING；成功则可加 ANSI，失败则 Auto 关闭颜色。GetConsoleMode 失败也可能是无控制台或访问问题，不能一概声称一定是文件重定向。检测在创建或模式/目标更新时完成，不在每条日志重复设置；Never 只停止本 sink 添加样式，不关闭共享终端的 VT 模式。检测必须对应实际 writer，标准句柄检查不能替代任意 ostream/rdbuf 的能力判断。
 - **记录与过滤**：Logger 构造单条记录后分发，不默认保留完整历史。历史由专门有界接收端负责。建议 LogSink 提供 shouldLog(level) const noexcept，Logger 在格式化前汇总接收意愿、分发时逐端检查；若要求直接调用 write 也必定过滤，可用非虚 write 包装受保护虚 writeRecord，不叠加多套过滤策略。
 - **平台与失败**：Windows 真实控制台使用 UTF-8 到 UTF-16 转换及 WriteConsoleW；重定向写 UTF-8 字节。Never 同样保持正确编码；Auto 下 VT 开启失败可降级纯文本。sink 不关闭标准句柄或自动创建控制台；失败不重入同一 Logger，并隔离输出端故障。刷新先采用明确的简单行为，不因颜色设计增加线程或后台设施。
@@ -249,7 +250,7 @@ Release 优化配置与发行日志策略分开；具体默认阈值与是否提
 
 ### 接口演进与回归
 
-现有 create/log 入口继续承担对象创建与日志提交；等级和布局已迁至输出端，测试已适配。Logger 测试通过公开 LogSink 扩展接口采集记录，ConsoleSink 测试观察输出及返回值；保留全部输出拒收时不格式化正文、相同布局规则下无效设置保持旧值等有效契约，不固定 ANSI 配色或未来错误收集策略。
+现有 create/log 入口继续承担对象创建与日志提交；等级和布局已迁至输出端，文本布局由 TextSink 统一，测试已适配。Logger 测试通过公开 LogSink 扩展接口采集记录，ConsoleSink 测试观察输出及返回值；保留全部输出拒收时不格式化正文、相同布局规则下无效设置保持旧值等有效契约，不固定 ANSI 配色或未来错误收集策略。
 
 非公开实现的测试建议：
 

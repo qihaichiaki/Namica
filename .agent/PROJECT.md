@@ -1,6 +1,6 @@
 # 当前项目事实
 
-日志、SystemTimePoint 与 Application 按 2026-11-06 当前工作区核对。记录与控制台输出已接通；以下区分源码事实和实际验证，不以编辑器运行成功代替全部测试通过。
+日志、SystemTimePoint 与 Application 按 2026-11-09 当前工作区核对。记录、TextSink 文本布局与控制台输出已接通；以下区分源码事实和实际验证，不以编辑器运行成功代替全部测试通过。
 
 ## 实现与入口
 
@@ -12,7 +12,9 @@
 | 时间 | [TimePoint.h](../runtime/include/namica/core/TimePoint.h) 的 SystemTimePoint 构造时采集系统时间，getStr 按系统时区输出秒精度文本；该方法已为 const |
 | Logger | [Logger.h](../runtime/include/namica/log/Logger.h)、[Logger.inl](../runtime/include/namica/log/Logger.inl)、[Logger.cpp](../runtime/src/log/Logger.cpp)：正文格式化、单条记录构建、逐端过滤派发与统一 flush 已实现，不再保存历史记录容器 |
 | 日志记录 | [LogRecord.h](../runtime/include/namica/log/LogRecord.h) 拥有 SystemTimePoint、LogLevel、source、message；[LogLevel.h](../runtime/include/namica/log/LogLevel.h) 独立定义六级枚举 |
-| 输出端 | [LogSink.h](../runtime/include/namica/log/sink/LogSink.h) 提供等级访问、返回 Bool 的虚 write/flush；[ConsoleSink.h](../runtime/include/namica/log/sink/ConsoleSink.h) 已实现构造校验、布局/日期 setter、标准流选择、整条等级配色、自动换行与每条刷新；Auto 已接入 Windows 终端/VT 检测 |
+| 输出接口 | [LogSink.h](../runtime/include/namica/log/sink/LogSink.h) 提供等级访问、返回 Bool 的虚 write/flush |
+| 文本输出 | [TextSink.h](../runtime/include/namica/log/sink/TextSink.h)、[TextSink.cpp](../runtime/src/log/sink/TextSink.cpp)：保存 logFmt/dateFmt，setLogFmt/setDateFmt 校验并返回 Bool，formatRecord(record) 为 const 并返回不含颜色/换行的文本行；构造校验失败向外传播异常，构造函数与析构已导出 |
+| 控制台 | [ConsoleSink.h](../runtime/include/namica/log/sink/ConsoleSink.h) 继承 TextSink，实现标准流选择、整条等级配色、自动换行与每条刷新；Auto 已接入 Windows 终端/VT 检测 |
 | Log | [Log.h](../runtime/include/namica/log/Log.h)、[Log.cpp](../runtime/src/log/Log.cpp) 保留 Core/App 的持有、借用入口和宏；私有 init 按 [LogConfig](../runtime/include/namica/log/LogConfig.h) 创建独立 Core/App 控制台输出；clear 刷新并释放持有者 |
 | 应用 | [Application.h](../runtime/include/namica/app/Application.h)、[实现](../runtime/src/app/Application.cpp) 提供骨架与静态 get；构造拒绝已有实例，在 Log 初始化和启动诊断完成后登记 this，析构记录日志、清空实例指针并调用 Log::clear；[ApplicationConfig](../runtime/include/namica/app/ApplicationConfig.h) 包含 name 与 logConfig，当前只消费日志参数，不保存完整 Config，name 暂未使用；[编辑器入口](../editor/src/Main.cpp) 创建 Application 并调用 run，尚无主循环与窗口 |
 | 文件图片 | [FileSystem.h](../runtime/include/namica/io/FileSystem.h)、[实现](../runtime/src/io/FileSystem.cpp) 提供路径查询、文件与图片读取 |
@@ -25,10 +27,10 @@
 ## 影响后续开发的行为
 
 - Logger 私有构造、create(name) 返回 SharedPtr，默认名称 NamicaLogger；log 先创建记录，仅在首个接收端出现时填写来源与格式化正文，随后向所有匹配端复用记录。正文格式化失败由 catch (...) 直接 break，当前没有失败统计或诊断；source 的 String 赋值仍位于该 try 外。log/flush 目前忽略 sink 的 Bool 返回值，错误收集由用户明确留待后续。addSink 拒绝空值与重复对象，removeSink 解除注册。
-- LogSinkConfig 现在只含 minLevel，已导出的 protected 基类构造初始化最低等级。ConsoleSinkConfig.dateFmt 保存文本日期格式。
-- ConsoleSinkConfig 包含 target、logFmt、dateFmt、ConsoleColorTheme 和 Auto/Always/Never；构造选择 cout/cerr、校验日期/布局并应用颜色。write 使用记录原时间、格式化输出、整条着色、追加换行并每条 flush；直接调用 write 不自行过滤。
-- setLogFmt/setDateFmt 校验成功才替换成员，无效返回 False 保留旧值；构造校验失败向外传播异常。日期校验也依赖系统时区，当前 helper 捕获全部 std::exception 并返回 False。ConsoleSink::write 返回自身 flush 的结果；flush 调用 ostream::flush 后返回 !fail()，可反映写入或刷新留下的失败状态，但未保证格式化或流异常不逃逸。颜色枚举现已使用与 36m 对应的 Cyan。
-- LogConfig 通过 haveCoreConsoleSink/haveAppConsoleSink 启停默认端，用 coreConsoleSinkConfig/appConsoleSinkConfig 分别配置；coreLoggerSource/appLoggerSource 默认 Core/App 并用于 LogRecord.source；默认控制台布局仍显式带 Core/App 文本。init 成功创建并注册两个局部 Logger 后才发布静态成员，已有实例则直接返回。clear 先刷新两个 Logger 再清空静态 SharedPtr；Application 正常析构已调用 clear。
+- LogSinkConfig 现在只含 minLevel，已导出的 protected 基类构造初始化最低等级。TextSinkConfig 增加 logFmt/dateFmt 和便利构造函数；ConsoleSinkConfig 继承它，包含 target、ConsoleColorTheme 与 Auto/Always/Never，logFmt/dateFmt 不再重复声明。
+- TextSink 构造时校验日期/布局并抛 std::format_error；ConsoleSink 构造选择 cout/cerr 并应用颜色。ConsoleSink::write 调用 formatRecord 后整条着色、追加换行并每条 flush；直接调用 write 不自行过滤。
+- setLogFmt/setDateFmt 由 TextSink 提供，校验成功才替换成员，无效返回 False 保留旧值；formatRecord 使用记录原时间、当前来源和正文。日期校验也依赖系统时区，当前 helper 捕获全部 std::exception 并返回 False。ConsoleSink::write 返回自身 flush 的结果；flush 调用 ostream::flush 后返回 !fail()，可反映写入或刷新留下的失败状态，但未保证格式化或流异常不逃逸。颜色枚举现已使用与 36m 对应的 Cyan。
+- LogConfig 通过 haveCoreConsoleSink/haveAppConsoleSink 启停默认端，用 coreConsoleSinkConfig/appConsoleSinkConfig 分别配置；coreLoggerSource/appLoggerSource 默认 Core/App 并用于 LogRecord.source；默认控制台布局为 `[{0}][{1}]{2}: {3}`，来源由记录字段提供，不再写死 Core/App 文本。init 成功创建并注册两个局部 Logger 后才发布静态成员，已有实例则直接返回。clear 先刷新两个 Logger 再清空静态 SharedPtr；Application 正常析构已调用 clear。
 - Log getter 返回借用 Logger&，有效期受 Application 初始化与清理限制；不支持初始化前或销毁后访问。失败路径仍需明确：初始化发布后的启动诊断若抛异常，不会进入 Application 析构；清理时任一 flush 抛异常会中断后续清理。
 - 尚无 FileSink、编辑器接收实现或线程安全承诺；Windows 仍使用窄字符标准流，没有 UTF-8 到 UTF-16 的原生控制台写入路径。
 - 未定义 NAMICA_LOG_DEBUG 时，四个 Trace/Debug 宏展开为 (void)0，日志参数不进入 C++ 表达式检查，也不被求值。直接调用 Logger::log 不受该开关影响。当前用 #ifdef，定义成 0 仍会启用。
@@ -40,11 +42,11 @@
 
 ## 当前边界与后续事项
 
-以下按 2026-11-06 当前源码及已完成的测试核对：
+以下按 2026-11-09 当前源码及已完成的测试核对：
 
 - **错误收集（已明确后续实现）**：Sink 已返回 Bool，Logger 尚未消费；正文格式失败也仍静默丢弃。当前没有统计、限频后备诊断或完整逐端异常隔离，不将这些未来工作列为本轮必须补齐的功能。
 - **生命周期边界**：来源赋值、sink 内日期/布局格式化和输出仍可抛异常，Application 析构中的日志和 clear 可能因此终止进程。初始化发布后的失败回滚、析构不抛和尽力清理所有端仍待完善，Bool 返回值本身不解决这些问题。
-- **来源布局**：ConsoleSink 布局目前只有时间/等级/正文，Core/App 默认标签仍在布局文本中；来源字段扩展已明确留到 FileSink 阶段。
+- **来源布局（已落地）**：TextSink 统一四参数 `{0}` 时间、`{1}` 等级、`{2}` 来源、`{3}` 正文；ConsoleSink 默认布局为 `[{0}][{1}]{2}: {3}`，Core/App 通过 LogRecord.source 表达；FileSink 尚未接入。
 - **其他边界**：真实控制台编码尚未适配；公开等级/颜色枚举索引没有越界保护，需约定合法枚举前提或在输入处校验。平台私有辅助函数可放匿名命名空间；warringColor 命名仍可统一为 warningColor。
 
 ## 构建与源码约定
@@ -59,8 +61,8 @@
 
 ## 最近实际验证
 
-**2026-11-06：日志测试位于 tests/runtime/log，重新配置后自动生成 test_log；Debug / MSVC / Ninja 构建成功，CTest 的 33/33 日志测试通过。** 移动前后两个测试文件的内容哈希一致；同进程状态恢复此前也已验证。运行库、CMake 脚本及依赖未修改。
+**2026-11-09：TextSink 抽象与四参数布局落地后，Debug / MSVC / Ninja 构建 Namica、test_log、NamicaEditor 成功；直接运行 test_log，33/33 通过。** 测试已按当前布局更新，覆盖 `{2}` 来源与 `{3}` 正文；运行库其余实现、CMake 脚本及依赖未修改。
 
-覆盖各端等级过滤、无接收端/全拒收不格式化、多端接收只格式化一次、正文及来源所有权、注册/移除/共享、统一刷新；ConsoleSink 覆盖布局/日期构造校验、setter 失败保留旧值、配置所有权、stdout/stderr、UTF-8 文本、换行刷新与写入/刷新失败的 Bool 返回；Log 经 Application 验证 Core/App 配置及正常关闭时刷新释放。测试自定义 Sink 通过 DLL 公开接口构造和析构。
+覆盖各端等级过滤、无接收端/全拒收不格式化、多端接收只格式化一次、正文及来源所有权、注册/移除/共享、统一刷新；ConsoleSink 覆盖四参数布局（来源/正文）与日期构造校验、setter 失败保留旧值、配置所有权、stdout/stderr、UTF-8 文本、换行刷新与写入/刷新失败的 Bool 返回；Log 经 Application 验证 Core/App 配置及正常关闭时刷新释放。测试自定义 Sink 通过 DLL 公开接口构造和析构。
 
 ConsoleSink 测试采用 Never 模式和受控 streambuf，失败缓冲不会操作真实标准句柄；这些结果不证明真实控制台中文、Auto/Always 颜色或平台适配正常。不测试尚未实现的 Logger 错误收集、异常恢复或关闭后重建策略。本轮未运行 Release、数学/图形回归或交互实验。

@@ -3,7 +3,6 @@
 #include "namica/log/LogRecord.h"
 
 #include <iostream>
-#include <format>
 
 #ifdef NAMICA_PLATFORM_WINDOWS
 #include <Windows.h>
@@ -46,91 +45,16 @@ Bool tryEnableAnsiColor(HANDLE _handle) noexcept
 static char const* levelPreColor[]{"", "\033[36m", "\033[32m", "\033[33m", "\033[31m"};
 static char const* levelPostColor[]{"", "\033[0m", "\033[0m", "\033[0m", "\033[0m"};
 
-namespace
-{
-
-void validDateFmt(String const& _dateFormat)
-{
-    auto localTime{std::chrono::floor<std::chrono::seconds>(
-        std::chrono::current_zone()->to_local(std::chrono::system_clock::now()))};
-    static_cast<void>(std::vformat(_dateFormat, std::make_format_args(localTime)));
-}
-
-Bool tryIsValidDateFmt(String const& _dateFormat) noexcept
-{
-    try
-    {
-        validDateFmt(_dateFormat);
-        return True;
-    }
-    catch (std::exception const&)
-    {
-        return False;
-    }
-}
-
-void validLogFmt(String const& _logFmt)
-{
-    // 参数数量、顺序和类型必须与实际输出一致。
-    String const time{"00:00:00"};
-    String const level{"Info"};
-    String const message{"message"};
-    static_cast<void>(std::vformat(_logFmt, std::make_format_args(time, level, message)));
-}
-
-Bool tryIsValidLogFmt(String const& _logFmt) noexcept
-{
-    try
-    {
-        validLogFmt(_logFmt);
-        return True;
-    }
-    catch (std::exception const&)
-    {
-        return False;
-    }
-}
-
-}  // namespace
-
 SharedPtr<ConsoleSink> ConsoleSink::create(ConsoleSinkConfig const& _config)
 {
     return SharedPtr<ConsoleSink>{new ConsoleSink{_config}};
 }
 
 ConsoleSink::ConsoleSink(ConsoleSinkConfig const& _config)
-    : LogSink{_config},
-      m_os{_config.target == ConsoleTarget::Stdout ? &std::cout : &std::cerr},
-      m_logFmt{_config.logFmt},
-      m_dateFmt{_config.dateFmt}
+    : TextSink{_config}, m_os{_config.target == ConsoleTarget::Stdout ? &std::cout : &std::cerr}
 {
-    validLogFmt(this->m_logFmt);
-    validDateFmt(this->m_dateFmt);
-
     this->setColorMode(_config.colorMode);
     this->setColorTheme(_config.colorTheme);
-}
-
-Bool ConsoleSink::setDateFmt(String const& _dateFmt)
-{
-    if (tryIsValidDateFmt(_dateFmt))
-    {
-        this->m_dateFmt = _dateFmt;
-        return True;
-    }
-
-    return False;
-}
-
-Bool ConsoleSink::setLogFmt(String const& _logFmt)
-{
-    if (tryIsValidLogFmt(_logFmt))
-    {
-        this->m_logFmt = _logFmt;
-        return True;
-    }
-
-    return False;
 }
 
 void ConsoleSink::setColorMode(ConsoleColorMode _colorMode)
@@ -169,22 +93,16 @@ void ConsoleSink::setColorTheme(ConsoleColorTheme const& _colorTheme)
 
 Bool ConsoleSink::write(LogRecord const& _record)
 {
-    UInt8 const levelIndex{static_cast<UInt8>(_record.logLevel)};
-    String const timeStr{_record.timePoint.getStr(this->m_dateFmt)};
-    String const& levelStr{getLogLevelStr(_record.logLevel)};
-
     if (this->m_colorEnabled)
     {
+        UInt8 const levelIndex{static_cast<UInt8>(_record.logLevel)};
         *(this->m_os) << levelPreColor[this->m_logColorIndex[levelIndex]]
-                      << std::vformat(this->m_logFmt,
-                                      std::make_format_args(timeStr, levelStr, _record.message))
+                      << this->formatRecord(_record)
                       << levelPostColor[this->m_logColorIndex[levelIndex]] << "\n";
     }
     else
     {
-        *(this->m_os) << std::vformat(this->m_logFmt,
-                                      std::make_format_args(timeStr, levelStr, _record.message))
-                      << "\n";
+        *(this->m_os) << this->formatRecord(_record) << "\n";
     }
 
     return this->flush();

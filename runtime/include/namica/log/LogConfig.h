@@ -10,19 +10,19 @@ struct LogConfig
 {
     String coreLoggerSource{"Core"};
     Bool haveCoreConsoleSink{True};
-    ConsoleSinkConfig coreConsoleSinkConfig{{LogLevel::Trace},
-                                            ConsoleTarget::Stdout,
-                                            "[{0}][{1}]Core {2}",
+    ConsoleSinkConfig coreConsoleSinkConfig{LogLevel::Trace,
+                                            NAMICA_DEFAULT_LOG_FMT,
                                             NAMICA_TIME_HMS,
+                                            ConsoleTarget::Stdout,
                                             ConsoleColorTheme{},
                                             ConsoleColorMode::Auto};
 
     String appLoggerSource{"App"};
     Bool haveAppConsoleSink{True};
-    ConsoleSinkConfig appConsoleSinkConfig{{LogLevel::Trace},
-                                           ConsoleTarget::Stdout,
-                                           "[{0}][{1}]App {2}",
+    ConsoleSinkConfig appConsoleSinkConfig{LogLevel::Trace,
+                                           NAMICA_DEFAULT_LOG_FMT,
                                            NAMICA_TIME_HMS,
+                                           ConsoleTarget::Stdout,
                                            ConsoleColorTheme{},
                                            ConsoleColorMode::Auto};
 

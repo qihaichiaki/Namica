@@ -1,13 +1,10 @@
 #pragma once
 
 #include "namica/core/Types.h"
-#include "namica/log/sink/LogSinkConfig.h"
-#include "namica/core/TimePoint.h"
+#include "namica/log/sink/TextSinkConfig.h"
 
 namespace namica
 {
-
-#define NAMICA_DEFAULT_LOG_FMT "[{0}][{1}] {2}"
 
 enum class ConsoleTarget
 {
@@ -41,16 +38,25 @@ enum class ConsoleColorMode
     Never,   // 不添加颜色显示
 };
 
-struct ConsoleSinkConfig : LogSinkConfig
+struct ConsoleSinkConfig : TextSinkConfig
 {
     ConsoleTarget target{ConsoleTarget::Stdout};
-
-    // 日志输出格式(使用fmt格式, 其中0表示日期的输出位置, 1表示level级别的输出位置,
-    // 2表示格式化文本msg的输出位置)
-    String logFmt{NAMICA_DEFAULT_LOG_FMT};
-    String dateFmt{NAMICA_TIME_HMS};
     ConsoleColorTheme colorTheme{};
     ConsoleColorMode colorMode{ConsoleColorMode::Auto};
+
+    ConsoleSinkConfig() = default;
+    ConsoleSinkConfig(LogLevel _minLevel,
+                      String const& _logFmt,
+                      String const& _dateFmt,
+                      ConsoleTarget _target,
+                      ConsoleColorTheme const& _colorTheme,
+                      ConsoleColorMode _colorMode)
+        : TextSinkConfig{_minLevel, _logFmt, _dateFmt},
+          target{_target},
+          colorTheme{_colorTheme},
+          colorMode{_colorMode}
+    {
+    }
 };
 
 }  // namespace namica

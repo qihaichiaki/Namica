@@ -25,7 +25,7 @@ public:
     /**
      * @brief 获取当前时区的时间字符串
      *
-     * @param _fmt 格式化输出字, %Y年 %m月 %d日 %H小时 %M分钟 %S秒, 需要包含{}, 内部:开头
+     * @param _fmt 格式化输出, %Y年 %m月 %d日 %H小时 %M分钟 %S秒, 需要包含{}, 内部:开头
      * @return NAMICA_API
      */
     NAMICA_API String getStr(String const& _fmt = NAMICA_TIME_HMS) const;

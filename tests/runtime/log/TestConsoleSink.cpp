@@ -103,7 +103,7 @@ protected:
 namica::ConsoleSinkConfig makeConsoleConfig()
 {
     namica::ConsoleSinkConfig config{};
-    config.logFmt = "{2}";
+    config.logFmt = "{3}";
     config.colorMode = namica::ConsoleColorMode::Never;
     return config;
 }
@@ -113,14 +113,15 @@ namica::ConsoleSinkConfig makeConsoleConfig()
 TEST_F(NamicaRuntimeTest, ConsoleSinkUsesRecordLayoutFields)
 {
     auto config{makeConsoleConfig()};
-    config.logFmt = "{2}|{1}|{0}";
+    config.logFmt = "{2}|{1}|{0}|{3}";
     config.dateFmt = NAMICA_TIME_YMD_HMS;
     auto sink{namica::ConsoleSink::create(config)};
     namica::LogRecord record{};
     record.logLevel = namica::LogLevel::Warning;
+    record.source = "Runtime";
     record.message = "payload";
-    auto const expected{namica::String{"payload|Warning|"} +
-                        record.timePoint.getStr(config.dateFmt) + "\n"};
+    auto const expected{namica::String{"Runtime|Warning|"} +
+                        record.timePoint.getStr(config.dateFmt) + "|payload\n"};
     ScopedLogCapture capture{};
 
     EXPECT_TRUE(sink->write(record));
@@ -136,10 +137,10 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkAcceptsValidLayouts)
         namica::String layout;
         namica::String expected;
     };
-    std::array const cases{LayoutCase{"{2}", "payload\n"},
-                           LayoutCase{"{2}|{1}|{2}", "payload|Info|payload\n"},
-                           LayoutCase{"{{{2}}}", "{payload}\n"},
-                           LayoutCase{"{1:>8}|{2:.3}", "    Info|pay\n"},
+    std::array const cases{LayoutCase{"{3}", "payload\n"},
+                           LayoutCase{"{3}|{1}|{3}", "payload|Info|payload\n"},
+                           LayoutCase{"{{{3}}}", "{payload}\n"},
+                           LayoutCase{"{1:>8}|{3:.3}", "    Info|pay\n"},
                            LayoutCase{"fixed text", "fixed text\n"},
                            LayoutCase{"", "\n"}};
 
@@ -167,10 +168,10 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkRejectsInvalidLayoutsAndPreservesConfigurat
                                     namica::String{"{99}"},
                                     namica::String{"{0:d}"},
                                     namica::String{"{1:d}"},
-                                    namica::String{"{2:d}"},
+                                    namica::String{"{3:d}"},
                                     namica::String{"{} {1}"},
                                     namica::String{"{0} {}"},
-                                    namica::String{"{2:{1}}"}};
+                                    namica::String{"{3:{1}}"}};
 
     for (auto const& layout : invalidLayouts)
     {
@@ -180,7 +181,7 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkRejectsInvalidLayoutsAndPreservesConfigurat
         EXPECT_THROW(namica::ConsoleSink::create(invalidConfig), std::format_error);
 
         auto config{makeConsoleConfig()};
-        config.logFmt = "saved:{1}|{2}";
+        config.logFmt = "saved:{1}|{3}";
         config.minLevel = namica::LogLevel::Warning;
         auto sink{namica::ConsoleSink::create(config)};
         auto logger{namica::Logger::create()};
@@ -203,7 +204,7 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkChangesLayoutAfterRejectedUpdate)
     auto sink{namica::ConsoleSink::create(makeConsoleConfig())};
     namica::LogRecord record{};
     record.message = "payload";
-    ASSERT_TRUE(sink->setLogFmt("first:{2}"));
+    ASSERT_TRUE(sink->setLogFmt("first:{3}"));
     ASSERT_FALSE(sink->setLogFmt("{"));
     {
         ScopedLogCapture capture{};
@@ -211,7 +212,7 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkChangesLayoutAfterRejectedUpdate)
         EXPECT_EQ(capture.text(), "first:payload\n");
     }
 
-    ASSERT_TRUE(sink->setLogFmt("next:{1}|{2}"));
+    ASSERT_TRUE(sink->setLogFmt("next:{1}|{3}"));
     ASSERT_FALSE(sink->setLogFmt("}"));
     {
         ScopedLogCapture capture{};
@@ -232,7 +233,7 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkRejectsInvalidDateFormatsAndPreservesConfig
         EXPECT_THROW(namica::ConsoleSink::create(invalidConfig), std::format_error);
 
         auto config{makeConsoleConfig()};
-        config.logFmt = "{0}|{2}";
+        config.logFmt = "{0}|{3}";
         config.dateFmt = NAMICA_TIME_YMD;
         auto sink{namica::ConsoleSink::create(config)};
         namica::Bool accepted{namica::True};
@@ -251,7 +252,7 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkRejectsInvalidDateFormatsAndPreservesConfig
 TEST_F(NamicaRuntimeTest, ConsoleSinkChangesDateFormatAfterRejectedUpdate)
 {
     auto config{makeConsoleConfig()};
-    config.logFmt = "{0}|{2}";
+    config.logFmt = "{0}|{3}";
     auto sink{namica::ConsoleSink::create(config)};
     ASSERT_FALSE(sink->setDateFmt("{"));
     ASSERT_TRUE(sink->setDateFmt(NAMICA_TIME_YMD));
@@ -270,11 +271,11 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkOwnsStartupConfiguration)
     namica::SharedPtr<namica::ConsoleSink> sink{};
     {
         auto config{makeConsoleConfig()};
-        config.logFmt = "owned:{0}|{2}";
+        config.logFmt = "owned:{0}|{3}";
         config.dateFmt = NAMICA_TIME_YMD;
         config.minLevel = namica::LogLevel::Warning;
         sink = namica::ConsoleSink::create(config);
-        config.logFmt = "changed:{2}";
+        config.logFmt = "changed:{3}";
         config.dateFmt = NAMICA_TIME_HMS;
         config.minLevel = namica::LogLevel::Critical;
         config.target = namica::ConsoleTarget::Stderr;
@@ -296,11 +297,11 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkOwnsRuntimeFormatStrings)
 {
     auto sink{namica::ConsoleSink::create(makeConsoleConfig())};
     {
-        namica::String layout{"owned:{0}|{2}"};
+        namica::String layout{"owned:{0}|{3}"};
         namica::String dateFormat{NAMICA_TIME_YMD};
         ASSERT_TRUE(sink->setLogFmt(layout));
         ASSERT_TRUE(sink->setDateFmt(dateFormat));
-        layout = "changed:{2}";
+        layout = "changed:{3}";
         dateFormat = NAMICA_TIME_HMS;
     }
     namica::LogRecord record{};
@@ -336,7 +337,7 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkTargetsSelectedStandardStream)
 TEST_F(NamicaRuntimeTest, ConsoleSinkPreservesMessageAndAppendsNewline)
 {
     auto config{makeConsoleConfig()};
-    config.logFmt = "{1}|{2}";
+    config.logFmt = "{1}|{3}";
     auto sink{namica::ConsoleSink::create(config)};
     auto logger{namica::Logger::create()};
     ASSERT_TRUE(logger->addSink(sink));
@@ -351,7 +352,7 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkPreservesMessageAndAppendsNewline)
 TEST_F(NamicaRuntimeTest, ConsoleSinkKeepsInstancesIndependent)
 {
     auto secondConfig{makeConsoleConfig()};
-    secondConfig.logFmt = "second:{2}";
+    secondConfig.logFmt = "second:{3}";
     secondConfig.minLevel = namica::LogLevel::Debug;
     auto secondSink{namica::ConsoleSink::create(secondConfig)};
     auto second{namica::Logger::create()};
@@ -359,7 +360,7 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkKeepsInstancesIndependent)
     ScopedLogCapture capture{};
     {
         auto firstConfig{makeConsoleConfig()};
-        firstConfig.logFmt = "first:{2}";
+        firstConfig.logFmt = "first:{3}";
         firstConfig.minLevel = namica::LogLevel::Error;
         auto firstSink{namica::ConsoleSink::create(firstConfig)};
         auto first{namica::Logger::create()};

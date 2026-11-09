@@ -1,6 +1,6 @@
 # 日志
 
-`Log` 提供 Core/App 两组入口和便捷宏；`Logger` 格式化正文并同步派发记录，`ConsoleSink` 控制最低等级、日期、整行布局、颜色和输出通道。目前提供控制台输出。
+`Log` 提供 Core/App 两组入口和便捷宏；`Logger` 格式化正文并同步派发记录。`ConsoleSink` 当前负责控制台输出，与后续文件输出端共享 `TextSink` 的整行布局和日期格式，并额外控制颜色与输出通道。目前提供控制台输出。
 
 ## 使用便捷宏
 
@@ -26,7 +26,7 @@ int main()
 }
 ```
 
-引擎内部使用 `NAMICA_CORE_*`，应用代码使用 `NAMICA_APP_*`；均提供 TRACE、DEBUG、INFO、WARNING、ERROR、CRITICAL。默认布局分别为 `[{0}][{1}]Core {2}` 与 `[{0}][{1}]App {2}`。
+引擎内部使用 `NAMICA_CORE_*`，应用代码使用 `NAMICA_APP_*`；均提供 TRACE、DEBUG、INFO、WARNING、ERROR、CRITICAL。默认布局为 `[{0}][{1}]{2}: {3}`，其中 `{2}` 是来源（默认 Core/App），`{3}` 是正文。
 
 `Log::getCoreLogger()` 与 `Log::getAppLogger()` 返回借用的 Logger&，可用于提交日志和注册输出端。不要删除或用智能指针接管它们；初始化前及 Application 销毁后不可访问。Application 正常退出时刷新并释放默认日志持有者。
 
@@ -63,7 +63,7 @@ int main()
 {
     namica::ConsoleSinkConfig config{};
     config.minLevel = namica::LogLevel::Info;
-    config.logFmt = "[{1}] {2}";
+    config.logFmt = "[{1}] {3}";
     config.colorMode = namica::ConsoleColorMode::Never;
 
     auto consoleSink{namica::ConsoleSink::create(config)};
@@ -87,15 +87,16 @@ addSink 拒绝空指针和同一 Logger 的重复注册，返回是否添加成�
 
 正文使用 C++20 格式化语法。外部文本作为参数传入，例如 `logger->log(namica::LogLevel::Error, "{}", message)`，避免把正文中的大括号当作格式语法。
 
-ConsoleSink 的 setLogFmt 设置整行布局，字段如下：
+文本输出端的 setLogFmt 设置整行布局，字段如下：
 
 | 占位符 | 内容 |
 | --- | --- |
 | `{0}` | 按 dateFmt 格式化的时间 |
 | `{1}` | 等级名称 |
-| `{2}` | 已格式化的正文 |
+| `{2}` | 日志来源 |
+| `{3}` | 已格式化的正文 |
 
-setDateFmt 设置日期显示格式。两个 setter 校验成功返回 True，无效返回 False 并保留旧值；字符串由 sink 保存。颜色通过 setColorMode/setColorTheme 调整，当前只支持整条记录着色。
+setDateFmt 设置日期显示格式。两个 setter 由 `TextSink` 提供，校验成功返回 True，无效返回 False 并保留旧值；字符串由 sink 保存。`TextSink::formatRecord(record)` 返回当前布局下的纯文本行，不含颜色和末尾换行，供自定义文本输出端复用。颜色通过 setColorMode/setColorTheme 调整，当前只支持整条记录着色。
 
 ConsoleSink 在每次 write 末尾追加换行并刷新输出流，logFmt 和正文末尾通常不再加换行。正文内部换行会保留。Logger::flush 刷新所有已注册端，不创建新记录、不清空日志历史，也不等同于文件持久化。
 
