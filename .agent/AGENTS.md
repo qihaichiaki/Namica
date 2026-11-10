@@ -23,8 +23,9 @@
 - 类型：`feat` 新功能、`fix` 修复、`docs` 文档、`style` 格式、`refactor` 重构、`perf` 性能优化、`test` 测试、`build` 构建系统/CMake/依赖、`ci` CI 配置、`chore` 杂项、`revert` 回滚。
 - 仓库协作约定：按主要目的选择类型，范围填写实际涉及的模块；说明使用中文，准确概括最终变化。例如 `[test](log): 补充文件日志回归测试`。需要正文时说明关键变化与真实验证结果，不复制讨论流水或未完成计划。
 - 提交前确认本次授权与变更范围；提交后核对 Author、Committer 及工作区状态。commit、修改已有提交和 push 均须在用户授权范围内执行，提交授权不包含 push。
-- 由 Codex 完成、用户审核的具体提交，使用 `--author="Codex <noreply@openai.com>"` 指定 Author；Committer 保留用户身份 `qihaichiaki <yushenqihai@gmail.com>`。此约定只作用于对应提交，不修改仓库本地或全局 Git 配置，也不改动用户的默认提交身份。
-- 用户自行完成的提交保持用户署名；实际共同编写时保留用户为 Author，并可按实际贡献追加 `Co-authored-by: Codex <noreply@openai.com>`。不能仅因 Codex 执行了 git 命令就将用户已有改动归为 Codex；推送仍使用用户的认证身份。
+- 由 agent 完成、用户审核的具体提交，通过 `--author="Agent Name <agent-email>"` 指定实际 agent 的 Author；Committer 保留用户身份 `qihaichiaki <yushenqihai@gmail.com>`。此约定只作用于对应提交，不修改仓库本地或全局 Git 配置，也不改动用户的默认提交身份。
+- 用户自行完成的提交保持用户署名；用户与 agent 共同编写时保留用户为 Author，并按实际参与者追加 `Co-authored-by: Agent Name <agent-email>`，多个参与者分别列出。署名依据实际贡献，不因谁执行 git 命令而改变；推送仍使用用户的认证身份。
+- 上述名称与邮箱是占位符，执行时使用对应 agent 已核实或用户指定的身份。当前已确认的 Codex 身份为 `Codex <noreply@openai.com>`；该映射仅适用于 Codex，DeepSeek 等其他 agent 使用各自的身份，不统一署名为 Codex，也不猜造其邮箱。
 
 ## 建议必须有成熟引擎依据
 
