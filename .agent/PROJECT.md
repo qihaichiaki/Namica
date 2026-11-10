@@ -1,6 +1,6 @@
 # 当前项目事实
 
-日志、SystemTimePoint 与 Application 按 2026-11-09 当前工作区核对。记录、TextSink 文本布局、控制台与文件输出已接通；以下区分源码事实和实际验证，不以编辑器运行成功代替全部测试通过。
+日志、SystemTimePoint 与 Application 按 2026-11-10 当前工作区核对。记录、TextSink 文本布局、控制台与文件输出已接通；以下区分源码事实和实际验证，不以编辑器运行成功代替全部测试通过。
 
 ## 实现与入口
 
@@ -21,7 +21,9 @@
 | 文件图片 | [FileSystem.h](../runtime/include/namica/io/FileSystem.h)、[实现](../runtime/src/io/FileSystem.cpp) 提供路径查询、文件与图片读取 |
 | 数学 | [math](../runtime/include/namica/math/) 提供 Vector、Mat4、Quat、常量及角度转换，主要采用 .h + .inl |
 | 实验 | [窗口渲染](../tests/playground/window_render/)与[贪吃蛇](../tests/playground/snake_game/TestSnakeGame.cpp) 尚非完整正式运行模块或游戏工程 |
-| 测试 | [runtime 测试](../tests/runtime/) 包含 log/math；[TestLog.cpp](../tests/runtime/log/TestLog.cpp) 有 19 项 Logger/Log 测试，[TestConsoleSink.cpp](../tests/runtime/log/TestConsoleSink.cpp) 有 14 项控制台测试，共 33 项，归入 test_log |
+| 测试 | [runtime 测试](../tests/runtime/) 包含 log/math；[TestLog.cpp](../tests/runtime/log/TestLog.cpp) 有 22 项 Logger/Log 测试，[TestConsoleSink.cpp](../tests/runtime/log/TestConsoleSink.cpp) 有 14 项控制台测试，[TestFileSink.cpp](../tests/runtime/log/TestFileSink.cpp) 有 17 项文件测试，共 53 项，归入 test_log |
+| 日志测试工具 | [FileTestUtils](../tests/runtime/log/utils/FileTestUtils.h) 提供独占临时目录及严格二进制读写；[StreamTestUtils](../tests/runtime/log/utils/StreamTestUtils.h) 提供流重定向与日志捕获。声明/实现分离，位于 namica::test::log，仅在 log 模块复用；现有构建递归收集该模块源码，只将这些工具编入 test_log |
+| 公共与数学测试工具 | [TestUtils](../tests/runtime/utils/TestUtils.h) 仅保留跨模块共用的 NamicaRuntimeTest 夹具；[MathTestUtils](../tests/runtime/math/utils/MathTestUtils.h) 保存数学容差和向量/矩阵比较，仅编入 test_math，日志测试不再通过夹具依赖数学头 |
 
 顶层 tooling 尚未实现。对外用法见 [用户指南](../doc/guide/README.md)；项目蓝图中出现的模块不等于已创建或必须立即实现。
 
@@ -43,13 +45,13 @@
 
 ## 当前边界与后续事项
 
-以下按 2026-11-09 当前源码及已完成的测试核对：
+以下按 2026-11-10 当前源码及已完成的测试核对：
 
 - **错误收集（已明确后续实现）**：Sink 已返回 Bool，Logger 尚未消费；正文格式失败也仍静默丢弃。当前没有统计、限频后备诊断或完整逐端异常隔离，不将这些未来工作列为本轮必须补齐的功能。
 - **生命周期边界**：来源赋值、sink 内日期/布局格式化和输出仍可抛异常，Application 析构中的日志和 clear 可能因此终止进程。初始化发布后的失败回滚、析构不抛和尽力清理所有端仍待完善，Bool 返回值本身不解决这些问题。
 - **来源布局（已落地）**：TextSink 统一四参数 `{0}` 时间、`{1}` 等级、`{2}` 来源、`{3}` 正文；ConsoleSink/FileSink 均已接入，Core/App 通过 LogRecord.source 表达。
 - **输出端约束（已落地）**：FileSink/ConsoleSink 使用 CLASS_DISABLE_COPY_MOVE 禁止对象复制与移动，SharedPtr 自身仍可复制/移动。FileSink 构造使用 switch 识别 Append/Truncate，其他值在创建目录和打开文件前抛 invalid_argument，避免无效模式触发截断。
-- **默认文件路径与覆盖范围**：可执行目录下 Namica.log 是当前默认用法，不保证发布后的安装目录可写；宿主应显式配置合适路径。FileSink 专项测试尚缺，优先覆盖追加/覆盖、父目录与无效路径、中文路径/UTF-8/LF、关闭逐条刷新后的显式刷新和共享生命周期。
+- **默认文件路径与覆盖范围**：可执行目录下 Namica.log 是当前默认用法，不保证发布后的安装目录可写；宿主应显式配置合适路径。FileSink 基础与集成回归已补，文件运行期 I/O 失败尚无稳定公开注入方式，不通过真实磁盘写满、权限变化或访问私有流补覆盖。
 - **FileSystem 接口兼容**：getExecutableFolder 从 const 成员函数改为 static，普通对象调用仍兼容，但原成员函数指针与 DLL 导出符号不兼容。若要保留这些旧用法，可保留旧成员并另增不同名称的静态入口；当前验证是调用方与 DLL 配套构建，未验证旧二进制直接替换。
 - **其他边界**：真实控制台编码尚未适配；公开等级/颜色枚举索引没有越界保护，需约定合法枚举前提或在输入处校验。平台私有辅助函数可放匿名命名空间；warringColor 命名仍可统一为 warningColor。
 
@@ -65,8 +67,12 @@
 
 ## 最近实际验证
 
-**2026-11-09：包含 Sink 复制/移动限制及无效打开模式校验的当前版本，Debug / MSVC / Ninja 构建 Namica、test_log、NamicaEditor 成功（目标已是最新，无待编译项）；直接运行 test_log，33/33 通过。** 编辑器入口退出码为 0，文件新增四条启动、App、运行及关闭日志，包含 Core/App 两种来源；新增字节严格 UTF-8 解码通过，换行为 LF。agent 未修改源码或测试。
+**2026-11-10：完成单测注释审核及模块工具归位后，Debug / MSVC / Ninja 构建 test_log、test_math 成功；直接运行日志测试 53/53、数学测试 61/61 通过，原有 3 项禁用测试保持不变。** 生成的构建依赖确认 FileTestUtils/StreamTestUtils 仅进入 test_log，MathTestUtils 仅进入 test_math，公用夹具不再依赖数学头。仅新增/整理测试工具、用例及文档，未修改运行时代码或 CMake。
 
-覆盖各端等级过滤、无接收端/全拒收不格式化、多端接收只格式化一次、正文及来源所有权、注册/移除/共享、统一刷新；ConsoleSink 覆盖四参数布局（来源/正文）与日期构造校验、setter 失败保留旧值、配置所有权、stdout/stderr、UTF-8 文本、换行刷新与写入/刷新失败的 Bool 返回；Log 经 Application 验证 Core/App 配置及正常关闭时刷新释放。测试自定义 Sink 通过 DLL 公开接口构造和析构。
+已逐项审核 runtime 的 117 项用例声明（日志 53、数学 64，含 3 项禁用），补齐场景、操作、预期与边界的中文注释；工具补充使用前提和清理职责。去注释后的代码对比确认本轮说明整理未改变断言或计算逻辑，数学工具保持原 API/行为，仅迁移所属目录和 include 依赖。
 
-ConsoleSink 测试采用 Never 模式和受控 streambuf，失败缓冲不会操作真实标准句柄；这些结果不证明真实控制台中文、Auto/Always 颜色或平台适配正常。FileSink 仅完成上述默认 Append/逐条刷新路径的冒烟，尚未覆盖 Truncate、flushOnWrite=False、中文文件路径或初始化失败。未测试尚未实现的 Logger 错误收集、异常恢复或关闭后重建策略；本轮未运行 Release、数学/图形回归或交互实验。
+Logger/ConsoleSink 原有过滤、格式化、所有权、注册/移除、流失败和正常关闭回归保留。FileSink 新增父目录/中文路径、追加/覆盖、空路径/父路径为文件/目标为目录、无效模式和格式在文件副作用前失败、四参数布局、UTF-8/NUL/换行字节、配置与运行期格式所有权、手动/逐条刷新及开关切换、析构关闭、过滤和共享生命周期。编译期断言禁止 FileSink 复制/移动；所有文件用例使用独占临时目录并自动清理。
+
+新增 Application 集成验证 Core/App 文件输出顺序与正常关闭、控制台和文件各自的等级/布局、关闭文件端时忽略其无效配置且不创建目录。流捕获复用于 ConsoleSink 与 Log 测试；临时目录原子创建以隔离 CTest 并行进程，读写失败明确抛出，清理失败报告为测试失败。
+
+未断言 flushOnWrite=False 时文件必须为空，不固定标准库缓冲策略；尚未覆盖相对路径解析、文件运行期 I/O 失败、真实控制台中文/Auto/Always、Logger 错误收集、异常恢复及关闭后重建策略。本轮未运行 Release、图形回归或交互实验。

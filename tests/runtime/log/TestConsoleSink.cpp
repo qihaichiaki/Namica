@@ -1,4 +1,5 @@
 #include "runtime/utils/TestUtils.h"
+#include "runtime/log/utils/StreamTestUtils.h"
 
 #include <namica/core/Types.h>
 #include <namica/log/Logger.h>
@@ -14,49 +15,11 @@
 namespace
 {
 
-// 失败状态也必须恢复，避免一个输出失败用例污染后续测试和 GoogleTest 输出。
-class ScopedStreamRedirect final
-{
-public:
-    ScopedStreamRedirect(std::ostream& _stream, std::streambuf& _buffer)
-        : m_stream{_stream}, m_previous{_stream.rdbuf()}, m_previousState{_stream.rdstate()}
-    {
-        this->m_stream.rdbuf(&_buffer);
-    }
+using namica::test::log::ScopedLogCapture;
+using namica::test::log::ScopedStreamRedirect;
 
-    ~ScopedStreamRedirect() noexcept
-    {
-        this->m_stream.rdbuf(this->m_previous);
-        this->m_stream.clear(this->m_previousState);
-    }
-
-    ScopedStreamRedirect(ScopedStreamRedirect const&) = delete;
-    ScopedStreamRedirect& operator=(ScopedStreamRedirect const&) = delete;
-
-private:
-    std::ostream& m_stream;
-    std::streambuf* m_previous;
-    std::ios::iostate m_previousState;
-};
-
-class ScopedLogCapture final
-{
-public:
-    explicit ScopedLogCapture(std::ostream& _stream = std::cout)
-        : m_redirect{_stream, *this->m_buffer.rdbuf()}
-    {
-    }
-
-    [[nodiscard]] namica::String text() const
-    {
-        return this->m_buffer.str();
-    }
-
-private:
-    std::ostringstream m_buffer{};
-    ScopedStreamRedirect m_redirect;
-};
-
+// 保留写入文本并记录同步次数，供刷新测试观察行为；不依赖真实终端是否立即显示。
+// 这些 buffer 只有本文件使用，保留局部即可，不提升到模块共用 utils。
 class FlushCountingBuffer final : public std::stringbuf
 {
 public:
@@ -76,6 +39,8 @@ private:
     namica::Int m_flushCalls{0};
 };
 
+// 批量写入返回短写，单字符写入也返回 EOF，保证不同标准库的输出路径都能触发失败。
+// 只替换 C++ 流缓冲区，不关闭真实 stdout/stderr，也不依赖磁盘或终端故障。
 class RejectingWriteBuffer final : public std::streambuf
 {
 protected:
@@ -90,6 +55,7 @@ protected:
     }
 };
 
+// 正常接收字符，只让 sync 失败，从而将“写入数据失败”和“提交缓冲失败”分开验证。
 class RejectingFlushBuffer final : public std::stringbuf
 {
 protected:
@@ -99,7 +65,8 @@ protected:
     }
 };
 
-// 文本测试显式禁用颜色，不依赖宿主终端能力，也不固定 ANSI 配色实现。
+// 默认只输出正文，让各用例按需加入其他字段；显式禁用颜色以排除终端探测和 ANSI 配色。
+// 捕获的是窄字符标准流中的文本，不据此声称真实控制台的中文显示或颜色适配已验证。
 namica::ConsoleSinkConfig makeConsoleConfig()
 {
     namica::ConsoleSinkConfig config{};
@@ -110,6 +77,8 @@ namica::ConsoleSinkConfig makeConsoleConfig()
 
 }  // namespace
 
+// 将来源、等级、时间和正文按非默认顺序排布，检查四个占位符是否取自当前 LogRecord。
+// 预期时间使用同一条记录的时间点生成，避免跨秒执行造成不稳定；输出还应追加一个换行。
 TEST_F(NamicaRuntimeTest, ConsoleSinkUsesRecordLayoutFields)
 {
     auto config{makeConsoleConfig()};
@@ -129,7 +98,8 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkUsesRecordLayoutFields)
     EXPECT_EQ(capture.text(), expected);
 }
 
-// 省略、重排、重复字段以及字符串格式说明符都应使用标准格式化语义。
+// 逐个设置合法布局后写入同一正文，验证 TextSink 的标准格式化语义能通过控制台端输出。
+// 即使布局不包含字段或为空，也应接受配置，并保留 ConsoleSink 自行追加行结束符的行为。
 TEST_F(NamicaRuntimeTest, ConsoleSinkAcceptsValidLayouts)
 {
     struct LayoutCase
@@ -137,6 +107,8 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkAcceptsValidLayouts)
         namica::String layout;
         namica::String expected;
     };
+    // 数据依次覆盖：只保留正文、重排并重复字段、花括号转义、字符串宽度/精度、
+    // 固定文本及空布局。预期值直接列出，避免用同一格式化实现计算后再与自己比较。
     std::array const cases{LayoutCase{"{3}", "payload\n"},
                            LayoutCase{"{3}|{1}|{3}", "payload|Info|payload\n"},
                            LayoutCase{"{{{3}}}", "{payload}\n"},
@@ -159,9 +131,12 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkAcceptsValidLayouts)
     }
 }
 
-// 非法布局应在构造时暴露；运行期拒绝后仍使用最近一次有效布局和等级。
+// 每个非法布局分别用于构造和运行期更新：构造抛格式异常，setter 返回 False 且不抛异常。
+// 拒绝更新后继续通过 Logger 写入，既检查旧布局仍生效，也检查原等级阈值未被修改。
 TEST_F(NamicaRuntimeTest, ConsoleSinkRejectsInvalidLayoutsAndPreservesConfiguration)
 {
+    // 覆盖不匹配括号（含合法前缀后接错误）、越界字段、对字符串使用数字格式、
+    // 混用自动/显式字段编号，以及拿字符串字段充当动态宽度等不同失效原因。
     std::array const invalidLayouts{namica::String{"{"},
                                     namica::String{"}"},
                                     namica::String{"{2} {"},
@@ -199,6 +174,8 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkRejectsInvalidLayoutsAndPreservesConfigurat
     }
 }
 
+// 先使用 first 布局并拒绝一次非法更新，再切换到 next 布局并再次拒绝非法更新。
+// 两次输出都应保留各自最近一次成功设置，防止失败后回退到初始配置或损坏后续更新能力。
 TEST_F(NamicaRuntimeTest, ConsoleSinkChangesLayoutAfterRejectedUpdate)
 {
     auto sink{namica::ConsoleSink::create(makeConsoleConfig())};
@@ -221,8 +198,11 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkChangesLayoutAfterRejectedUpdate)
     }
 }
 
+// 用非法日期格式分别构造和更新 sink，验证创建时抛异常、运行期返回 False 的不同契约。
+// 更新失败后仍按原年月日格式输出记录时间，不能留下半更新状态或丢失正文。
 TEST_F(NamicaRuntimeTest, ConsoleSinkRejectsInvalidDateFormatsAndPreservesConfiguration)
 {
+    // 日期格式只有一个时间参数：孤立括号、越界编号和不完整的百分号指令均应拒绝。
     std::array const invalidFormats{
         namica::String{"{"}, namica::String{"}"}, namica::String{"{1}"}, namica::String{"{:%}"}};
     for (auto const& dateFormat : invalidFormats)
@@ -249,6 +229,8 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkRejectsInvalidDateFormatsAndPreservesConfig
     }
 }
 
+// 先拒绝非法日期格式，再设置合法年月日格式，检查一次失败不会永久阻止后续配置。
+// 使用记录自身的日期构造预期值，只验证新日期格式和正文的组合，不依赖运行当天的固定值。
 TEST_F(NamicaRuntimeTest, ConsoleSinkChangesDateFormatAfterRejectedUpdate)
 {
     auto config{makeConsoleConfig()};
@@ -265,7 +247,8 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkChangesDateFormatAfterRejectedUpdate)
     EXPECT_EQ(capture.text(), record.timePoint.getStr(NAMICA_TIME_YMD) + "|payload\n");
 }
 
-// Config 是启动参数；源配置的修改、销毁均不能改变已创建的输出端。
+// Config 只提供启动参数：创建后修改布局、日期、等级与目标流，并销毁原配置。
+// sink 仍应使用创建时的值写入 stdout，stderr 保持为空，避免误保存 Config 引用。
 TEST_F(NamicaRuntimeTest, ConsoleSinkOwnsStartupConfiguration)
 {
     namica::SharedPtr<namica::ConsoleSink> sink{};
@@ -293,6 +276,8 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkOwnsStartupConfiguration)
     EXPECT_EQ(sink->getLogMinLevel(), namica::LogLevel::Warning);
 }
 
+// 将局部布局和日期字符串传给 setter，随后改写并销毁它们，再执行日志输出。
+// 输出应保留 setter 接收时的文本，验证运行期配置同样由 sink 持有，不借用调用方字符串。
 TEST_F(NamicaRuntimeTest, ConsoleSinkOwnsRuntimeFormatStrings)
 {
     auto sink{namica::ConsoleSink::create(makeConsoleConfig())};
@@ -313,6 +298,8 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkOwnsRuntimeFormatStrings)
     EXPECT_EQ(capture.text(), "owned:" + record.timePoint.getStr(NAMICA_TIME_YMD) + "|payload\n");
 }
 
+// 同时捕获 stdout/stderr，分别通过两个目标不同的 sink 写入不同标记。
+// 每个捕获结果只能包含对应标记和追加换行，防止目标选择失效或一次写入重复派发到两端。
 TEST_F(NamicaRuntimeTest, ConsoleSinkTargetsSelectedStandardStream)
 {
     auto outputConfig{makeConsoleConfig()};
@@ -333,7 +320,9 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkTargetsSelectedStandardStream)
     EXPECT_EQ(errors.text(), "stderr\n");
 }
 
-// 布局独立于正文：正文中的中文、花括号和内部换行不得再次作为格式串解析。
+// 通过 Logger 分别提交空正文和包含中文、参数、转义花括号、内部换行的正文。
+// 前端完成参数格式化后，sink 只组合等级与正文；正文中的花括号不能被再次解析，
+// 内部换行按原样保留，空正文也应获得 ConsoleSink 追加的行结束符。
 TEST_F(NamicaRuntimeTest, ConsoleSinkPreservesMessageAndAppendsNewline)
 {
     auto config{makeConsoleConfig()};
@@ -349,6 +338,8 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkPreservesMessageAndAppendsNewline)
     EXPECT_EQ(capture.text(), "Info|\nWarning|资源：贪吃蛇 {ready}\nnext\n");
 }
 
+// 两个 sink 借用同一 stdout，但使用不同的布局和等级；交错写入后先销毁其中一个。
+// 预期每个端独立过滤和格式化，剩余端仍能继续输出，验证销毁借用者不会关闭共享标准流。
 TEST_F(NamicaRuntimeTest, ConsoleSinkKeepsInstancesIndependent)
 {
     auto secondConfig{makeConsoleConfig()};
@@ -374,6 +365,8 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkKeepsInstancesIndependent)
     EXPECT_EQ(capture.text(), "second:debug\nfirst:error\nsecond:still-alive\n");
 }
 
+// 用可计数缓冲区观察 write 后的刷新，再直接调用 flush，确认两条公开路径都会同步。
+// 只要求同步次数增加，不固定标准流可能附带的刷新次数；刷新后文本内容仍应保留且不重复。
 TEST_F(NamicaRuntimeTest, ConsoleSinkFlushesWritesAndSupportsExplicitFlush)
 {
     auto sink{namica::ConsoleSink::create(makeConsoleConfig())};
@@ -391,7 +384,8 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkFlushesWritesAndSupportsExplicitFlush)
     EXPECT_EQ(buffer.str(), "payload\n");
 }
 
-// 用短写模拟 I/O 失败，不需要关闭真实标准句柄或依赖磁盘、终端环境。
+// 将 stdout 临时接到拒绝写入的缓冲区，检查 ConsoleSink::write 能以 False 反馈流失败。
+// 先退出重定向作用域、恢复 stdout，再断言结果，避免失败状态影响 GoogleTest 后续输出。
 TEST_F(NamicaRuntimeTest, ConsoleSinkReturnsFalseOnWriteFailure)
 {
     auto sink{namica::ConsoleSink::create(makeConsoleConfig())};
@@ -407,6 +401,8 @@ TEST_F(NamicaRuntimeTest, ConsoleSinkReturnsFalseOnWriteFailure)
     EXPECT_FALSE(succeeded);
 }
 
+// 缓冲区可正常接收字符但拒绝同步，分别检查显式 flush 和 write 内部刷新均返回 False。
+// 两次操作之间清除流状态，确保第二次不是仅沿用上次的失败标记，而是实际再次执行刷新。
 TEST_F(NamicaRuntimeTest, ConsoleSinkReturnsFalseOnFlushFailure)
 {
     auto sink{namica::ConsoleSink::create(makeConsoleConfig())};

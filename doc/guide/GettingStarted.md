@@ -26,11 +26,11 @@ ctest --test-dir build/x64-debug --output-on-failure
 | `NAMICA_BUILD_TESTS=ON` | 构建 runtime 测试；当前默认开启 |
 | `BUILD_PLAYGROUND=ON` | 构建交互实验；需要同时开启 `NAMICA_BUILD_TESTS` |
 
-日志测试位于 `tests/runtime/log/`，目标为 `test_log`，覆盖 Logger、ConsoleSink 和 Log 的正常生命周期。可单独构建并运行：
+日志测试位于 `tests/runtime/log/`，目标为 `test_log`，覆盖 Logger、ConsoleSink、FileSink 和 Log 的正常生命周期。可单独构建并运行：
 
 ```shell
 cmake --build build/x64-debug --target test_log
-ctest --test-dir build/x64-debug -R "NamicaRuntimeTest\.(Log|ConsoleSink)" --output-on-failure
+ctest --test-dir build/x64-debug -R "NamicaRuntimeTest\.(Log|ConsoleSink|FileSink)" --output-on-failure
 ```
 
 图形和游戏实验需单独启动，见[应用入口与示例](Examples.md)。

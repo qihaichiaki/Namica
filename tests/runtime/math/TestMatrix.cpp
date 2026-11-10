@@ -1,6 +1,9 @@
 #include <numbers>
 
 #include "runtime/utils/TestUtils.h"
+#include "runtime/math/utils/MathTestUtils.h"
+
+#include <namica/core/Types.h>
 
 using namespace namica;
 
@@ -11,8 +14,12 @@ namespace
 
 template <typename V>
 concept Normalizable = requires(V& _value, V const& _constValue) {
-    { _value.normalize() } -> std::same_as<V&>;
-    { _constValue.normalized() } -> std::same_as<V>;
+    {
+        _value.normalize()
+    } -> std::same_as<V&>;
+    {
+        _constValue.normalized()
+    } -> std::same_as<V>;
 };
 
 static_assert(Normalizable<Vec2>);
@@ -24,6 +31,8 @@ static_assert(!Normalizable<Veci2>);
 
 }  // namespace
 
+// 用单位矩阵左乘包含不同分量的列向量，验证单位变换逐分量保持原值。
+// 同时检查近似比较与 isEqual，避免矩阵乘向量的索引或维度处理发生偏移。
 TEST_F(NamicaRuntimeTest, IdentityMatrixLeftMultiplyVector)
 {
     // I * v = v
@@ -278,7 +287,8 @@ TEST_F(NamicaRuntimeTest, GeneralMatrixLeftMultiplyVector)
 //     EXPECT_FALSE(leftResult.isEqual(rightResult));
 // }
 
-// 验证 Vec4::data()
+// 验证 data() 借用向量实际存储：地址应等于首元素，连续四个值按分量顺序排列。
+// 通过返回指针修改 z 后，索引、命名访问器和 const data() 都应看到同一个值。
 TEST_F(NamicaRuntimeTest, Vec4DataReflectsElements)
 {
     Vec4 vector{1.0f, 2.0f, 3.0f, 4.0f};
@@ -305,7 +315,8 @@ TEST_F(NamicaRuntimeTest, Vec4DataReflectsElements)
     EXPECT_FLOAT_EQ(constData[2], 10.0f);
 }
 
-// 验证 Mat4::data() 列主序
+// 以行视图给出 1 到 16 的矩阵，检查 data() 暴露的连续内存按列主序排列。
+// 同时核对每列向量与首地址，防止构造参数顺序与底层存储顺序被误当作相同。
 TEST_F(NamicaRuntimeTest, Mat4DataUsesColumnMajorOrder)
 {
     Mat4 matrix{1.0f,
@@ -358,7 +369,8 @@ TEST_F(NamicaRuntimeTest, Mat4DataUsesColumnMajorOrder)
     ExpectVectorNear(matrix[3], Vec4{4.0f, 8.0f, 12.0f, 16.0f});
 }
 
-// 验证通过 data() 修改矩阵
+// 通过 column * 4 + row 的偏移修改零矩阵中的一个非对角元素。
+// 矩阵调用、列索引与 const data() 应读到同一修改，验证指针没有指向副本。
 TEST_F(NamicaRuntimeTest, Mat4DataMutationUpdatesColumnMajorElement)
 {
     Mat4 matrix{0.0f};
@@ -380,6 +392,8 @@ TEST_F(NamicaRuntimeTest, Mat4DataMutationUpdatesColumnMajorElement)
     EXPECT_FLOAT_EQ(constData[dataIndex], 42.0f);
 }
 
+// 从单位矩阵产生含正数、负数和小数位移的平移矩阵。
+// 期望仅最后一列携带位移且齐次分量为 1，用显式矩阵核对平移位置。
 TEST_F(NamicaRuntimeTest, TranslateIdentityMatrixCreatesExpectedTranslation)
 {
     Mat4 const identity{1.0f};
@@ -411,6 +425,8 @@ TEST_F(NamicaRuntimeTest, TranslateIdentityMatrixCreatesExpectedTranslation)
     ExpectVectorNear(actual[3], Vec4{2.0f, -3.0f, 4.5f, 1.0f});
 }
 
+// 对元素各不相同的一般矩阵施加零位移，期望所有元素保持不变。
+// 使用非单位矩阵，避免只能在初始化状态下满足恒等操作。
 TEST_F(NamicaRuntimeTest, TranslateWithZeroOffsetPreservesMatrix)
 {
     // clang-format off
@@ -427,6 +443,8 @@ TEST_F(NamicaRuntimeTest, TranslateWithZeroOffsetPreservesMatrix)
     ExpectMat4Near(actual, matrix);
 }
 
+// 对一般矩阵施加混合符号位移，验证结果遵循 matrix * translation 的后乘约定。
+// 期望前 3 列不变，最后一列按局部基向量线性组合；下方显式列出计算结果。
 TEST_F(NamicaRuntimeTest, TranslatePostMultipliesGeneralMatrix)
 {
     // clang-format off
@@ -465,7 +483,8 @@ TEST_F(NamicaRuntimeTest, TranslatePostMultipliesGeneralMatrix)
     ExpectVectorNear(actual[3], Vec4{5.5f, 15.5f, 25.5f, 35.5f});
 }
 
-// 验证 _offset 是沿输入矩阵局部坐标轴进行平移的。如果矩阵带有缩放，平移量也会受到基向量影响。
+// 给带非均匀缩放和已有平移的矩阵追加局部位移 (1, 2, 3)。
+// 新平移应为 (12, 26, 42)，而非简单逐分量相加；再用原点变换核对该位置。
 TEST_F(NamicaRuntimeTest, TranslateAppliesOffsetInMatrixLocalBasis)
 {
     // clang-format off
@@ -496,7 +515,8 @@ TEST_F(NamicaRuntimeTest, TranslateAppliesOffsetInMatrixLocalBasis)
     ExpectVectorNear(transformedOrigin, Vec4{12.0f, 26.0f, 42.0f, 1.0f});
 }
 
-// 验证齐次坐标语义：平移影响 w == 1 的点，不影响 w == 0 的方向。
+// 对 xyz 相同但 w 分别为 1 和 0 的两个向量施加相同平移。
+// 点应加上位移，方向应保持不变，以区分齐次坐标的点与方向语义。
 TEST_F(NamicaRuntimeTest, TranslateAffectsPointButNotDirection)
 {
     Mat4 const translated{Mat4{1.0f}.translate(Vec3{3.0f, -2.0f, 5.0f})};
@@ -511,6 +531,8 @@ TEST_F(NamicaRuntimeTest, TranslateAffectsPointButNotDirection)
     ExpectVectorNear(transformedDirection, Vec4{1.0f, 2.0f, 3.0f, 0.0f});
 }
 
+// 在单位基下连续施加两个含正负分量的平移，验证位移按分量累加。
+// 结果应为 (-3, 3, 3.5)，其余单位矩阵元素保持不变。
 TEST_F(NamicaRuntimeTest, TranslateCompositionAccumulatesOffsets)
 {
     Mat4 const first{Mat4{1.0f}.translate(Vec3{1.0f, -2.0f, 3.0f})};
@@ -528,7 +550,8 @@ TEST_F(NamicaRuntimeTest, TranslateCompositionAccumulatesOffsets)
     ExpectMat4Near(second, expected);
 }
 
-// 输入矩阵不被修改
+// 在带缩放和平移的矩阵上调用返回副本的 translated()。
+// 源矩阵应保持完整原值，结果副本的平移列应反映新增局部位移。
 TEST_F(NamicaRuntimeTest, TranslateDoesNotModifySourceMatrix)
 {
     // clang-format off
@@ -549,7 +572,8 @@ TEST_F(NamicaRuntimeTest, TranslateDoesNotModifySourceMatrix)
 
 // 验证vec normalize
 
-// 验证原地修改和返回引用
+// 用长度为 5 的 (3, 0, 4) 验证 normalize() 原地除以长度。
+// 期望分量变为 (0.6, 0, 0.8)、平方长度为 1，并返回原对象引用供链式调用。
 TEST_F(NamicaRuntimeTest, NormalizeMutatesVectorAndReturnsSelf)
 {
     Vec3 vector{3.0f, 0.0f, 4.0f};
@@ -563,7 +587,8 @@ TEST_F(NamicaRuntimeTest, NormalizeMutatesVectorAndReturnsSelf)
     EXPECT_NEAR(vector.dot(vector), 1.0f, kEpsilon);
 }
 
-// 验证 normalized() 返回副本且不修改源向量
+// 对含负分量且长度为 5 的向量调用 normalized()，检查得到单位长度副本。
+// 源向量必须保持 (0, -3, 4)，不能因生成副本而被原地修改。
 TEST_F(NamicaRuntimeTest, NormalizedReturnsUnitCopyAndPreservesSource)
 {
     Vec3 const source{0.0f, -3.0f, 4.0f};
@@ -577,7 +602,8 @@ TEST_F(NamicaRuntimeTest, NormalizedReturnsUnitCopyAndPreservesSource)
     EXPECT_NEAR(result.dot(result), 1.0f, kEpsilon);
 }
 
-// 验证零向量保持不变
+// 分别对零向量使用原地与副本归一化接口，验证零长度边界保持零值。
+// 检查返回引用和平方长度，防止除零使结果变为 NaN 或无穷值。
 TEST_F(NamicaRuntimeTest, NormalizeZeroVectorLeavesItUnchanged)
 {
     Vec3 vector{};
@@ -594,7 +620,8 @@ TEST_F(NamicaRuntimeTest, NormalizeZeroVectorLeavesItUnchanged)
     EXPECT_FLOAT_EQ(copied.dot(copied), 0.0f);
 }
 
-// 覆盖 Vec2 和 Vec4
+// 用已知长度为 5 和 3 的 Vec2、Vec4 检查归一化模板覆盖不同维数。
+// 显式核对各分量与单位长度，确保四维版本没有遗漏末尾分量或错误使用三维公式。
 TEST_F(NamicaRuntimeTest, NormalizeSupportsVec2AndVec4)
 {
     Vec2 const normalized2{Vec2{3.0f, 4.0f}.normalized()};
@@ -610,7 +637,8 @@ TEST_F(NamicaRuntimeTest, NormalizeSupportsVec2AndVec4)
     EXPECT_NEAR(normalized4.dot(normalized4), 1.0f, kEpsilon);
 }
 
-// TODO: normalize 实现 max-abs 预缩放后移除 DISABLED_。
+// 待实现稳定归一化：输入最大有限浮点值构成的向量，方向应仍为 (1, -1, 1)。
+// 期望单位向量分量为正负 1/sqrt(3)；当前平方求和可能溢出，因此保持 DISABLED_。
 TEST_F(NamicaRuntimeTest, DISABLED_NormalizedMaximumMagnitudeVectorAvoidsOverflow)
 {
     constexpr Float maximum{std::numeric_limits<Float>::max()};
@@ -624,7 +652,8 @@ TEST_F(NamicaRuntimeTest, DISABLED_NormalizedMaximumMagnitudeVectorAvoidsOverflo
     EXPECT_NEAR(result.dot(result), 1.0f, 1e-5f);
 }
 
-// TODO: normalize 实现稳定归一化后移除 DISABLED_。下溢测试
+// 待实现稳定归一化：输入最小正正规浮点值沿 X 轴的非零向量。
+// 结果应为单位 X 方向；当前长度平方可能下溢到零，因此保持 DISABLED_。
 TEST_F(NamicaRuntimeTest, DISABLED_NormalizedSmallestNonZeroVectorAvoidsUnderflow)
 {
     constexpr Float minimum{std::numeric_limits<Float>::min()};
@@ -638,7 +667,8 @@ TEST_F(NamicaRuntimeTest, DISABLED_NormalizedSmallestNonZeroVectorAvoidsUnderflo
 
 // 验证mat rotate
 
-// 验证右手系旋转方向
+// 分别绕 X、Y、Z 正轴旋转 90 度，检查对应基向量按右手定则转向。
+// 三个轴都用已知结果验证，避免转置或正负号错误只在单个轴下被掩盖。
 TEST_F(NamicaRuntimeTest, RotatePositiveQuarterTurnsFollowRightHandRule)
 {
     constexpr Float angle{std::numbers::pi_v<Float> * 0.5f};  // 旋转角度: 90
@@ -661,7 +691,8 @@ TEST_F(NamicaRuntimeTest, RotatePositiveQuarterTurnsFollowRightHandRule)
     ExpectVectorNear(rotationZ * Vec4{1.0f, 0.0f, 0.0f, 0.0f}, Vec4{0.0f, 1.0f, 0.0f, 0.0f});
 }
 
-// 验证 rotate() 原地修改，而 rotated() 返回副本
+// 分别调用 rotate() 与 rotated()，比较同一旋转下原地结果和副本结果。
+// 原地接口应返回自身引用，副本接口应保留源矩阵，二者计算出的矩阵应一致。
 TEST_F(NamicaRuntimeTest, RotateMutatesWhileRotatedReturnsCopy)
 {
     constexpr Float angle{std::numbers::pi_v<Float> * 0.5f};
@@ -690,7 +721,8 @@ TEST_F(NamicaRuntimeTest, RotateMutatesWhileRotatedReturnsCopy)
     ExpectMat4Near(mutableMatrix, copied);
 }
 
-// 验证零旋转轴
+// 对元素不同的一般矩阵传入零旋转轴，检查该无方向输入的既有行为。
+// 原地与副本接口都应保持原矩阵；原地接口仍返回自身引用。
 TEST_F(NamicaRuntimeTest, RotateWithZeroAxisLeavesMatrixUnchanged)
 {
     // clang-format off
@@ -713,7 +745,8 @@ TEST_F(NamicaRuntimeTest, RotateWithZeroAxisLeavesMatrixUnchanged)
     ExpectMat4Near(copied, before);
 }
 
-// 验证旋转轴自动归一化
+// 用同方向且相差 7 倍长度的两个轴施加同一个旋转角。
+// 两份结果矩阵应近似一致，验证旋转由轴方向决定而非轴长度决定。
 TEST_F(NamicaRuntimeTest, RotateNormalizesNonUnitAxis)
 {
     constexpr Float angle{0.73f};
@@ -730,7 +763,8 @@ TEST_F(NamicaRuntimeTest, RotateNormalizesNonUnitAxis)
     ExpectMat4Near(withScaledAxis, withAxis, 1e-5f);
 }
 
-// 验证当前为后乘、局部坐标轴旋转
+// 在含非均匀缩放和平移的矩阵上追加 Z 轴 90 度旋转。
+// 显式期望 matrix * rotation 的结果且平移列不变，以区分局部后乘与世界前乘。
 TEST_F(NamicaRuntimeTest, RotatePostMultipliesInLocalCoordinateSystem)
 {
     constexpr Float angle{std::numbers::pi_v<Float> * 0.5f};
@@ -760,7 +794,8 @@ TEST_F(NamicaRuntimeTest, RotatePostMultipliesInLocalCoordinateSystem)
     ExpectVectorNear(actual[3], Vec4{10.0f, 20.0f, 30.0f, 1.0f});
 }
 
-// 验证旋转与逆旋转
+// 以同一非单位轴构造正角和负角旋转，分别检查两个相乘顺序。
+// 两种乘积均应回到单位矩阵，验证轴归一化后旋转与逆旋转正确抵消。
 TEST_F(NamicaRuntimeTest, RotateFollowedByInverseReturnsIdentity)
 {
     constexpr Float angle{0.83f};
@@ -777,7 +812,8 @@ TEST_F(NamicaRuntimeTest, RotateFollowedByInverseReturnsIdentity)
     ExpectMat4Near(inverse * rotation, identity, 1e-5f);
 }
 
-// TODO: normalize 实现稳定归一化后移除 DISABLED_。
+// 待实现稳定轴归一化：最大有限分量的 (1, 1, 1) 方向应与普通尺度同方向等价。
+// 当前巨大轴的长度计算可能溢出，因此此回归保持 DISABLED_，不宣称行为已实现。
 TEST_F(NamicaRuntimeTest, DISABLED_RotateMaximumMagnitudeAxisMatchesEquivalentAxis)
 {
     constexpr Float maximum{std::numeric_limits<Float>::max()};
@@ -795,7 +831,8 @@ TEST_F(NamicaRuntimeTest, DISABLED_RotateMaximumMagnitudeAxisMatchesEquivalentAx
 
 // 验证mat scale
 
-// 单位矩阵缩放
+// 对单位矩阵施加正数、负数和小数缩放，核对显式对角矩阵。
+// 前三个对角元应等于缩放因子，齐次分量保持 1，其他元素保持 0。
 TEST_F(NamicaRuntimeTest, ScaleIdentityMatrixCreatesExpectedScaleMatrix)
 {
     Mat4 const actual{Mat4{1.0f}.scaled(Vec3{2.0f, -3.0f, 0.5f})};
@@ -812,7 +849,8 @@ TEST_F(NamicaRuntimeTest, ScaleIdentityMatrixCreatesExpectedScaleMatrix)
     ExpectMat4Near(actual, expected);
 }
 
-// 单位缩放保持矩阵不变
+// 对一般矩阵施加 (1, 1, 1) 缩放，期望全部元素保持原值。
+// 非单位输入可检出缩放实现错误重建矩阵或丢失已有变换。
 TEST_F(NamicaRuntimeTest, ScaleWithUnitFactorsPreservesMatrix)
 {
     // clang-format off
@@ -829,7 +867,8 @@ TEST_F(NamicaRuntimeTest, ScaleWithUnitFactorsPreservesMatrix)
     ExpectMat4Near(actual, matrix);
 }
 
-// 验证后乘与列缩放
+// 对元素各异的一般矩阵施加混合符号缩放，检查后乘缩放逐列作用。
+// 前三列分别乘对应因子，最后一列不变，并与显式期望矩阵交叉核对。
 TEST_F(NamicaRuntimeTest, ScalePostMultipliesGeneralMatrix)
 {
     // clang-format off
@@ -864,7 +903,8 @@ TEST_F(NamicaRuntimeTest, ScalePostMultipliesGeneralMatrix)
     ExpectVectorNear(actual[3], matrix[3]);
 }
 
-// 验证原地和副本接口
+// 对已有缩放和平移的矩阵施加含零因子的缩放，比较原地和副本接口。
+// scaled() 应保留源对象，scale() 应返回自身引用；两种结果一致且平移列不变。
 TEST_F(NamicaRuntimeTest, ScaleMutatesWhileScaledReturnsCopy)
 {
     // clang-format off
@@ -896,7 +936,8 @@ TEST_F(NamicaRuntimeTest, ScaleMutatesWhileScaledReturnsCopy)
     ExpectVectorNear(copied[3], source[3]);
 }
 
-// 零、负数和小数缩放
+// 以 (0, -2, 0.5) 同时覆盖压扁轴、反向和缩小三类缩放。
+// 同 xyz 的点和方向应得到相同缩放后的 xyz，各自的齐次 w 保持原值。
 TEST_F(NamicaRuntimeTest, ScaleSupportsZeroNegativeAndFractionalFactors)
 {
     Mat4 const scaling{Mat4{1.0f}.scaled(Vec3{0.0f, -2.0f, 0.5f})};
@@ -910,7 +951,8 @@ TEST_F(NamicaRuntimeTest, ScaleSupportsZeroNegativeAndFractionalFactors)
     ExpectVectorNear(scaling * direction, Vec4{0.0f, -8.0f, -3.0f, 0.0f});
 }
 
-// 连续缩放组合
+// 连续施加两组非均匀缩放，验证各轴因子相乘而不是相加。
+// 期望合成为 (8, 6, 4)，并检查链式调用返回最初矩阵的引用。
 TEST_F(NamicaRuntimeTest, ScaleCompositionMultipliesFactors)
 {
     Mat4 matrix{1.0f};
@@ -933,6 +975,8 @@ TEST_F(NamicaRuntimeTest, ScaleCompositionMultipliesFactors)
 
 // 矩阵 平移、旋转、缩放组合测试
 
+// 按 translate、rotate、scale 的调用顺序构造 T * Rz(90°) * S。
+// 用显式矩阵及点、方向和原点的已知结果检查组合顺序，副本链应与原地链一致。
 TEST_F(NamicaRuntimeTest, AffineTranslateRotateScaleComposesAsTrs)
 {
     constexpr Float angle{std::numbers::pi_v<Float> * 0.5f};
@@ -1000,7 +1044,8 @@ TEST_F(NamicaRuntimeTest, AffineTranslateRotateScaleComposesAsTrs)
 
 // 矩阵求逆测试
 
-// determinant：零矩阵、单位矩阵、对角矩阵、一般矩阵以及交换两行
+// 分别以零矩阵、单位矩阵、对角矩阵和一般矩阵验证行列式的基础数值。
+// 再交换一般矩阵的两行，结果应只改变符号，以检查排列符号处理。
 TEST_F(NamicaRuntimeTest, DeterminantHandlesBasicAndRowSwapCases)
 {
     Mat4 const zero{};
@@ -1037,7 +1082,8 @@ TEST_F(NamicaRuntimeTest, DeterminantHandlesBasicAndRowSwapCases)
     EXPECT_FLOAT_EQ(firstTwoRowsSwapped.determinant(), -1.0f);
 }
 
-// 对角矩阵的逆矩阵，应为各对角元素的倒数。
+// 对含正数、负数和小数对角元的可逆矩阵求逆，期望各对角元取倒数。
+// 同时检查左右乘积为单位矩阵，逆矩阵的行列式为原行列式倒数。
 TEST_F(NamicaRuntimeTest, InverseDiagonalMatrixUsesReciprocalDiagonal)
 {
     // clang-format off
@@ -1065,7 +1111,8 @@ TEST_F(NamicaRuntimeTest, InverseDiagonalMatrixUsesReciprocalDiagonal)
     EXPECT_NEAR(actual.determinant(), 1.0f / matrix.determinant(), kEpsilon);
 }
 
-// 使用显式逆矩阵验证符号和伴随矩阵转置，避免只测试 A * A^-1 而掩盖共同索引错误。
+// 用显式已知逆矩阵检查一般矩阵求逆，避免仅验证互乘而掩盖共同索引错误。
+// 同时核对左右逆、inversed() 不修改源对象，以及 inverse() 原地更新并返回自身。
 TEST_F(NamicaRuntimeTest, InverseGeneralMatrixProducesExpectedResult)
 {
     // clang-format off
@@ -1103,7 +1150,8 @@ TEST_F(NamicaRuntimeTest, InverseGeneralMatrixProducesExpectedResult)
     ExpectMat4Near(source, expected, 1e-5f);
 }
 
-// TRS 组合：验证 determinant、显式逆矩阵、左右单位积、点和方向往返。
+// 对平移、Z 轴旋转和非均匀缩放组成的仿射矩阵求逆。
+// 显式检查逆矩阵与行列式，并让点和方向往返变换，验证平移及齐次分量处理。
 TEST_F(NamicaRuntimeTest, InverseAffineTrsMatrixRestoresPointAndDirection)
 {
     constexpr Float angle{std::numbers::pi_v<Float> * 0.5f};
@@ -1147,7 +1195,8 @@ TEST_F(NamicaRuntimeTest, InverseAffineTrsMatrixRestoresPointAndDirection)
     ExpectVectorNear(inverse * worldDirection, localDirection, 1e-4f);
 }
 
-// 锁定当前契约：奇异矩阵求逆时保持原矩阵不变。
+// 构造两行相同的奇异矩阵，先确认行列式为零，再调用两个求逆接口。
+// 按当前契约结果保留原矩阵，原地接口返回自身；此测试不定义其他错误报告策略。
 TEST_F(NamicaRuntimeTest, InverseSingularMatrixFollowsCurrentNoOpContract)
 {
     // 前两行相同，因此不可逆。
@@ -1175,7 +1224,8 @@ TEST_F(NamicaRuntimeTest, InverseSingularMatrixFollowsCurrentNoOpContract)
     ExpectMat4Near(singular, before);
 }
 
-// 奇异矩阵判断
+// 使用 0.01 倍单位矩阵，行列式虽仅为 1e-8，但条件数为 1，仍完全可逆。
+// 期望逆为 100 倍单位矩阵，防止用固定行列式阈值误拒绝良态的小尺度矩阵。
 TEST_F(NamicaRuntimeTest, InverseSmallWellConditionedMatrixIsNotRejected)
 {
     // 4D 均匀缩放，condition number == 1，是完全可逆的矩阵。
@@ -1193,6 +1243,8 @@ TEST_F(NamicaRuntimeTest, InverseSmallWellConditionedMatrixIsNotRejected)
 
 // perspective 相关测试
 
+// 以垂直视场 90°、宽高比 2、近平面 1 和远平面 9 构造透视矩阵。
+// 逐元素核对右手 OpenGL 约定下的显式矩阵，固定投影符号与深度映射。
 TEST_F(NamicaRuntimeTest, PerspectiveCreatesExpectedRightHandedOpenGlMatrix)
 {
     constexpr Float fov{std::numbers::pi_v<Float> / 2.0f};
@@ -1215,6 +1267,8 @@ TEST_F(NamicaRuntimeTest, PerspectiveCreatesExpectedRightHandedOpenGlMatrix)
     ExpectMat4Near(actual, expected, 1e-5f);
 }
 
+// 将视线负 Z 轴上的近、远平面中心投影到裁剪空间，再做透视除法。
+// NDC 深度应分别为 -1 和 1，clip.w 等于 -view.z；相机后方点的 w 应为负。
 TEST_F(NamicaRuntimeTest, PerspectiveMapsNearAndFarPlanesToOpenGlNdcDepth)
 {
     constexpr Float fov{std::numbers::pi_v<Float> / 2.0f};
@@ -1248,6 +1302,8 @@ TEST_F(NamicaRuntimeTest, PerspectiveMapsNearAndFarPlanesToOpenGlNdcDepth)
     EXPECT_LT(behindClip.w(), 0.0f);
 }
 
+// 选择近裁剪面两个对角点和远裁剪面角点，按已知视场计算其视空间坐标。
+// 透视除法后角点应落到 NDC 立方体对应的正负 1 边界，验证视锥缩放关系。
 TEST_F(NamicaRuntimeTest, PerspectiveMapsFrustumBoundariesToNdcCube)
 {
     constexpr Float fov{std::numbers::pi_v<Float> / 2.0f};
@@ -1280,6 +1336,8 @@ TEST_F(NamicaRuntimeTest, PerspectiveMapsFrustumBoundariesToNdcCube)
     ExpectVectorNear(toNdc(farUpperRight), Vec3{1.0f, 1.0f, 1.0f}, 1e-5f);
 }
 
+// 比较宽高比变化及垂直视场从 90° 缩小为 60° 的投影矩阵。
+// 宽高比只改变水平方向缩放；视场缩小增大两方向缩放，深度项应保持不变。
 TEST_F(NamicaRuntimeTest, PerspectiveUsesVerticalFovAndWidthToHeightAspect)
 {
     constexpr Float fov90{std::numbers::pi_v<Float> / 2.0f};
@@ -1314,6 +1372,8 @@ TEST_F(NamicaRuntimeTest, PerspectiveUsesVerticalFovAndWidthToHeightAspect)
     EXPECT_NEAR(wide(2, 3), narrowFov(2, 3), kEpsilon);
 }
 
+// 投影不在坐标轴上的已知点 (0.75, -0.5, -4, 1)。
+// 分别核对裁剪坐标与除以 w 后的 NDC，避免只测试平面中心而漏掉 x/y 项。
 TEST_F(NamicaRuntimeTest, PerspectiveProducesExpectedClipAndNdcCoordinates)
 {
     constexpr Float fov{std::numbers::pi_v<Float> / 2.0f};
