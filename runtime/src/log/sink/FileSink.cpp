@@ -1,7 +1,6 @@
 #include "namica/log/sink/FileSink.h"
 #include "namica/log/sink/FileSinkConfig.h"
-
-#include <stdexcept>
+#include "namica/core/Exception.h"
 
 namespace namica
 {
@@ -17,7 +16,7 @@ FileSink::FileSink(FileSinkConfig const& _config)
     // 输入日志文件路径不为空
     if (_config.filePath.empty())
     {
-        throw std::invalid_argument{"Log file path must not be empty."};
+        throw Exception{"输入的文件日志路径为空"};
     }
 
     auto openMode{std::ios::out | std::ios::binary};
@@ -32,7 +31,7 @@ FileSink::FileSink(FileSinkConfig const& _config)
             break;
 
         default:
-            throw std::invalid_argument{"Invalid log file open mode."};
+            throw Exception{"未知的日志文件打开方式"};
     }
 
     // 查看是否需要创建目录
@@ -46,9 +45,7 @@ FileSink::FileSink(FileSinkConfig const& _config)
     if (!this->m_ofs.is_open() || this->m_ofs.fail())
     {
         // 异常状态
-        throw std::filesystem::filesystem_error{"Failed to open log file",
-                                                _config.filePath,
-                                                std::make_error_code(std::io_errc::stream)};
+        throw Exception{"文件流异常"};
     }
 }
 

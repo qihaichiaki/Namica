@@ -1,8 +1,7 @@
 #include "namica/app/Application.h"
 #include "namica/app/ApplicationConfig.h"
 #include "namica/log/Log.h"
-
-#include <stdexcept>
+#include "namica/core/Exception.h"
 
 namespace namica
 {
@@ -13,7 +12,7 @@ Application::Application(ApplicationConfig const& _config)
 {
     if (s_instance)
     {
-        throw std::logic_error{"Only one Application may exist at a time."};
+        throw Exception{"当前进程已有Application实例对象"};
     }
 
     // 进程Application唯一使用log尝试初始化
@@ -26,9 +25,10 @@ Application::Application(ApplicationConfig const& _config)
 Application::~Application()
 {
     NAMICA_CORE_DEBUG("再见啦~");
-    s_instance = nullptr;
 
     Log::shutdown();
+
+    s_instance = nullptr;
 }
 
 Application* Application::get() noexcept

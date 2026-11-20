@@ -1,6 +1,7 @@
 #include "runtime/utils/TestUtils.h"
 #include "runtime/log/utils/FileTestUtils.h"
 
+#include <namica/core/Exception.h>
 #include <namica/core/Types.h>
 #include <namica/log/Logger.h>
 #include <namica/log/LogRecord.h>
@@ -9,7 +10,6 @@
 
 #include <filesystem>
 #include <format>
-#include <stdexcept>
 #include <type_traits>
 
 namespace
@@ -103,12 +103,12 @@ TEST_F(NamicaRuntimeTest, FileSinkTruncatesOnCreationButKeepsSubsequentWrites)
 }
 
 // 默认 FileSinkConfig 没有输出路径，不能据此创建可用文件端。
-// 预期构造立即抛 std::invalid_argument，明确区分缺少必填参数与后续文件系统错误。
+// 预期 FileSink 在访问文件系统前检查出路径为空，并抛出 namica::Exception。
 TEST_F(NamicaRuntimeTest, FileSinkRejectsEmptyPath)
 {
     namica::FileSinkConfig config{};
 
-    EXPECT_THROW(namica::FileSink::create(config), std::invalid_argument);
+    EXPECT_THROW(namica::FileSink::create(config), namica::Exception);
 }
 
 // 让普通文件占据输出路径中的父目录位置，稳定构造无法创建目录的场景。
@@ -125,18 +125,18 @@ TEST_F(NamicaRuntimeTest, FileSinkRejectsFileAsParentDirectory)
 }
 
 // 将已存在的目录本身作为日志文件路径，覆盖父目录合法但最终文件无法打开的情况。
-// 预期抛 filesystem_error，原目录仍存在，不把目录当作可写文件或替换掉它。
+// 预期 FileSink 在文件流打开失败时抛出 namica::Exception，原目录仍然存在。
 TEST_F(NamicaRuntimeTest, FileSinkRejectsDirectoryAsOutputFile)
 {
     TemporaryDirectory directory{};
     auto const config{makeFileConfig(directory.path())};
 
-    EXPECT_THROW(namica::FileSink::create(config), std::filesystem::filesystem_error);
+    EXPECT_THROW(namica::FileSink::create(config), namica::Exception);
     EXPECT_TRUE(std::filesystem::is_directory(directory.path()));
 }
 
 // 无效打开模式必须在任何文件副作用之前被拒绝，不能兜底解释为 Truncate 等合法模式。
-// 分别使用已有文件和不存在的父目录，预期均抛 invalid_argument，旧字节不变且不创建目录。
+// 分别使用已有文件和不存在的父目录，预期均抛出 namica::Exception，旧字节不变且不创建目录。
 TEST_F(NamicaRuntimeTest, FileSinkRejectsInvalidModeBeforeChangingFiles)
 {
     TemporaryDirectory directory{};
@@ -146,11 +146,11 @@ TEST_F(NamicaRuntimeTest, FileSinkRejectsInvalidModeBeforeChangingFiles)
     // 显式构造枚举范围外的值，模拟调用端传入未经校验的启动配置。
     config.openMode = static_cast<namica::FileOpenMode>(-1);
 
-    EXPECT_THROW(namica::FileSink::create(config), std::invalid_argument);
+    EXPECT_THROW(namica::FileSink::create(config), namica::Exception);
     EXPECT_EQ(readBinaryFile(path), "keep me\n");
 
     config.filePath = directory.path() / "uncreated" / "output.log";
-    EXPECT_THROW(namica::FileSink::create(config), std::invalid_argument);
+    EXPECT_THROW(namica::FileSink::create(config), namica::Exception);
     EXPECT_FALSE(std::filesystem::exists(config.filePath.parent_path()));
 }
 
