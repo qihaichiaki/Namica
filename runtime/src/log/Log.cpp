@@ -40,7 +40,7 @@ void Log::init(LogConfig const& _config)
     s_appLogger = appLogger;
 }
 
-void Log::clear()
+void Log::shutdown()
 {
     if (!s_coreLogger)
     {

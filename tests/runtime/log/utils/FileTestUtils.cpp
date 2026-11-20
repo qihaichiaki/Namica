@@ -44,11 +44,13 @@ void reportCleanupFailure(std::filesystem::path const& _path,
 namespace namica::test::log
 {
 
-// 先解析系统临时根目录，后续创建和清理始终使用同一个绝对根路径。
+// 所有启动方式共用 CMake 指定的项目内测试根目录，根目录不可用时直接报告错误。
 // 随机名称用于降低碰撞概率，真正的唯一性和所有权由 create_directory 的成功结果决定。
-TemporaryDirectory::TemporaryDirectory()
-    : m_root{std::filesystem::canonical(std::filesystem::temp_directory_path())}, m_path{}
+TemporaryDirectory::TemporaryDirectory() : m_root{NAMICA_LOG_TEST_ROOT}, m_path{}
 {
+    std::filesystem::create_directories(this->m_root);
+    this->m_root = std::filesystem::canonical(this->m_root);
+
     std::random_device random{};
     for (namica::Int attempt{0}; attempt < 128; ++attempt)
     {

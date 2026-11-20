@@ -24,14 +24,13 @@ public:
      */
     NAMICA_API static Logger& getAppLogger();
 
-private:
     /**
      * @brief log系统初始化
      * @throw invalid_argument 部分参数初始化失败
      */
-    static void init(LogConfig const& _config);
+    NAMICA_API static void init(LogConfig const& _config);
 
-    static void clear();
+    NAMICA_API static void shutdown();
 
 private:
     static SharedPtr<Logger> s_coreLogger;  // namica app内部使用logger

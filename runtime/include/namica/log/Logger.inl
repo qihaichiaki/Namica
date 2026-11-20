@@ -34,6 +34,7 @@ void Logger::log(LogLevel _logLevel, String const& _msgFmt, Args&&... _args)
                 isInit = False;
             }
 
+            // TODO: false处理
             sink->write(logRecord);
         }
     }

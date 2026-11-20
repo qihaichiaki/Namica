@@ -16,13 +16,14 @@
 | 文本输出 | [TextSink.h](../runtime/include/namica/log/sink/TextSink.h)、[TextSink.cpp](../runtime/src/log/sink/TextSink.cpp)：保存 logFmt/dateFmt，setLogFmt/setDateFmt 校验并返回 Bool，formatRecord(record) 为 const，返回格式化文本，不额外添加颜色或行结束符；构造校验失败向外传播异常，构造函数与析构已导出 |
 | 控制台 | [ConsoleSink.h](../runtime/include/namica/log/sink/ConsoleSink.h) 继承 TextSink，实现标准流选择、整条等级配色、自动换行与每条刷新；Auto 已接入 Windows 终端/VT 检测 |
 | 文件日志 | [FileSink.h](../runtime/include/namica/log/sink/FileSink.h)、[FileSinkConfig.h](../runtime/include/namica/log/sink/FileSinkConfig.h)、[实现](../runtime/src/log/sink/FileSink.cpp)：继承 TextSink，创建父目录、二进制追加/覆盖、自动追加 LF、可配置逐条刷新及显式刷新 |
-| Log | [Log.h](../runtime/include/namica/log/Log.h)、[Log.cpp](../runtime/src/log/Log.cpp) 保留 Core/App 的持有、借用入口和宏；私有 init 按 [LogConfig](../runtime/include/namica/log/LogConfig.h) 创建共享的 ConsoleSink 与可选 FileSink；clear 刷新并释放持有者 |
-| 应用 | [Application.h](../runtime/include/namica/app/Application.h)、[实现](../runtime/src/app/Application.cpp) 提供骨架与静态 get；构造拒绝已有实例，在 Log 初始化和启动诊断完成后登记 this，析构记录日志、清空实例指针并调用 Log::clear；[ApplicationConfig](../runtime/include/namica/app/ApplicationConfig.h) 包含 name 与 logConfig，当前只消费日志参数，不保存完整 Config，name 暂未使用；[编辑器入口](../editor/src/Main.cpp) 创建 Application 并调用 run，尚无主循环与窗口 |
+| Log | [Log.h](../runtime/include/namica/log/Log.h)、[Log.cpp](../runtime/src/log/Log.cpp) 保留 Core/App 的持有、借用入口和宏；公开导出的 `Log::init` 按 [LogConfig](../runtime/include/namica/log/LogConfig.h) 创建共享的 ConsoleSink 与可选 FileSink；公开导出的 `Log::shutdown` 刷新并释放持有者 |
+| 应用 | [Application.h](../runtime/include/namica/app/Application.h)、[实现](../runtime/src/app/Application.cpp) 提供骨架与静态 get；构造拒绝已有实例，在 Log 初始化和启动诊断完成后登记 this，析构记录日志、清空实例指针并调用 Log::shutdown；[ApplicationConfig](../runtime/include/namica/app/ApplicationConfig.h) 包含 name 与 logConfig，当前只消费日志参数，不保存完整 Config，name 暂未使用；[编辑器入口](../editor/src/Main.cpp) 创建 Application 并调用 run，尚无主循环与窗口 |
+| 窗口 | [WindowSystem.h](../runtime/include/namica/window/WindowSystem.h) 声明窗口系统工厂与析构函数。[源文件](../runtime/src/window/WindowSystem.cpp) 目前只有骨架，窗口创建和事件处理仍待实现 |
 | 文件图片 | [FileSystem.h](../runtime/include/namica/io/FileSystem.h)、[实现](../runtime/src/io/FileSystem.cpp) 提供路径查询、文件与图片读取 |
 | 数学 | [math](../runtime/include/namica/math/) 提供 Vector、Mat4、Quat、常量及角度转换，主要采用 .h + .inl |
 | 实验 | [窗口渲染](../tests/playground/window_render/)与[贪吃蛇](../tests/playground/snake_game/TestSnakeGame.cpp) 尚非完整正式运行模块或游戏工程 |
 | 测试 | [runtime 测试](../tests/runtime/) 包含 log/math；[TestLog.cpp](../tests/runtime/log/TestLog.cpp) 有 22 项 Logger/Log 测试，[TestConsoleSink.cpp](../tests/runtime/log/TestConsoleSink.cpp) 有 14 项控制台测试，[TestFileSink.cpp](../tests/runtime/log/TestFileSink.cpp) 有 17 项文件测试，共 53 项，归入 test_log |
-| 日志测试工具 | [FileTestUtils](../tests/runtime/log/utils/FileTestUtils.h) 提供独占临时目录及严格二进制读写；[StreamTestUtils](../tests/runtime/log/utils/StreamTestUtils.h) 提供流重定向与日志捕获。声明/实现分离，位于 namica::test::log，仅在 log 模块复用；现有构建递归收集该模块源码，只将这些工具编入 test_log |
+| 日志测试工具 | [FileTestUtils](../tests/runtime/log/utils/FileTestUtils.h) 在仓库的 `build/test_tmp/log/` 下为每个文件用例创建独占目录，析构时清理，并提供严格二进制读写。[StreamTestUtils](../tests/runtime/log/utils/StreamTestUtils.h) 提供流重定向与日志捕获。两者只编入 test_log |
 | 公共与数学测试工具 | [TestUtils](../tests/runtime/utils/TestUtils.h) 仅保留跨模块共用的 NamicaRuntimeTest 夹具；[MathTestUtils](../tests/runtime/math/utils/MathTestUtils.h) 保存数学容差和向量/矩阵比较，仅编入 test_math，日志测试不再通过夹具依赖数学头 |
 
 顶层 tooling 尚未实现。对外用法见 [用户指南](../doc/guide/README.md)；项目蓝图中出现的模块不等于已创建或必须立即实现。
@@ -33,8 +34,8 @@
 - LogSinkConfig 现在只含 minLevel，已导出的 protected 基类构造初始化最低等级。TextSinkConfig 增加 logFmt/dateFmt 和便利构造函数；ConsoleSinkConfig 继承它，包含 target、ConsoleColorTheme 与 Auto/Always/Never，logFmt/dateFmt 不再重复声明。
 - TextSink 构造时校验日期/布局并抛 std::format_error；ConsoleSink 构造选择 cout/cerr 并应用颜色。ConsoleSink::write 调用 formatRecord 后整条着色、追加换行并每条 flush；直接调用 write 不自行过滤。
 - setLogFmt/setDateFmt 由 TextSink 提供，校验成功才替换成员，无效返回 False 保留旧值；formatRecord 使用记录原时间、当前来源和正文。日期校验也依赖系统时区，当前 helper 捕获全部 std::exception 并返回 False。ConsoleSink::write 返回自身 flush 的结果；flush 调用 ostream::flush 后返回 !fail()，可反映写入或刷新留下的失败状态，但未保证格式化或流异常不逃逸。颜色枚举现已使用与 36m 对应的 Cyan。
-- LogConfig 通过 haveConsoleSink（默认 True）及 haveFileSink（默认 False）启停对应默认端，由 consoleSinkConfig/fileSinkConfig 配置，Core/App 共享同一个控制台对象及同一个文件对象，各端阈值与设置独立。文件默认路径为可执行目录下 Namica.log，使用完整日期时间、Append 和逐条刷新；独立 FileSinkConfig 的路径为空、日期仍继承 TextSinkConfig 的 HMS。coreLoggerSource/appLoggerSource 默认 Core/App，布局为 `[{0}][{1}]{2}: {3}`。init 成功创建并注册所有端后才发布两个静态 Logger，因此文件可接收启动诊断；clear 刷新两个 Logger 后清空持有者，共享端可能收到两次 flush。Application 正常析构已调用 clear。
-- Log getter 返回借用 Logger&，有效期受 Application 初始化与清理限制；不支持初始化前或销毁后访问。失败路径仍需明确：初始化发布后的启动诊断若抛异常，不会进入 Application 析构；清理时任一 flush 抛异常会中断后续清理。
+- LogConfig 通过 haveConsoleSink（默认 True）及 haveFileSink（默认 False）启停对应默认端，由 consoleSinkConfig/fileSinkConfig 配置，Core/App 共享同一个控制台对象及同一个文件对象，各端阈值与设置独立。文件默认路径为可执行目录下 Namica.log，使用完整日期时间、Append 和逐条刷新；独立 FileSinkConfig 的路径为空、日期仍继承 TextSinkConfig 的 HMS。coreLoggerSource/appLoggerSource 默认 Core/App，布局为 `[{0}][{1}]{2}: {3}`。init 成功创建并注册所有端后才发布两个静态 Logger，因此文件可接收启动诊断；shutdown 刷新两个 Logger 后清空持有者，共享端可能收到两次 flush。Application 正常析构已调用 shutdown。
+- Log getter 返回借用 Logger&，有效期从 Log 初始化成功到关闭；不支持初始化前或销毁后访问。失败路径仍需明确：初始化发布后的启动诊断若抛异常，不会进入 Application 析构；清理时任一 flush 抛异常会中断后续清理。
 - FileSink 已 public 继承 TextSink；先校验文本格式和非空路径，再准备父目录并打开文件，打开失败抛 filesystem_error。write 检查流状态、格式化并追加 LF，再按 flushOnWrite 返回刷新结果；False 时仅提交给流。显式 flush 不受开关影响；setFlushOnWrite 只修改后续策略。文件由 ofstream 析构关闭；没有 reopen、轮转、周期刷新、编辑器接收或线程安全支持。Windows 控制台仍为窄字符流，未适配 UTF-16 原生写入。
 - 未定义 NAMICA_LOG_DEBUG 时，四个 Trace/Debug 宏展开为 (void)0，日志参数不进入 C++ 表达式检查，也不被求值。直接调用 Logger::log 不受该开关影响。当前用 #ifdef，定义成 0 仍会启用。
 - Assert 由 NAMICA_ENABLE_ASSERTS 控制；启用分支使用不带末尾分号的 do/while，失败会记录 Error 并在 Windows 调用 __debugbreak；关闭时展开为 (void)0，不求值条件。不能当作始终生效的唯一实例或输入校验机制。
@@ -48,7 +49,7 @@
 以下按 2026-11-10 当前源码及已完成的测试核对：
 
 - **错误收集（已明确后续实现）**：Sink 已返回 Bool，Logger 尚未消费；正文格式失败也仍静默丢弃。当前没有统计、限频后备诊断或完整逐端异常隔离，不将这些未来工作列为本轮必须补齐的功能。
-- **生命周期边界**：来源赋值、sink 内日期/布局格式化和输出仍可抛异常，Application 析构中的日志和 clear 可能因此终止进程。初始化发布后的失败回滚、析构不抛和尽力清理所有端仍待完善，Bool 返回值本身不解决这些问题。
+- **生命周期边界**：来源赋值、sink 内日期/布局格式化和输出仍可抛异常，Application 析构中的日志和 shutdown 可能因此终止进程。初始化发布后的失败回滚、析构不抛和尽力清理所有端仍待完善，Bool 返回值本身不解决这些问题。
 - **来源布局（已落地）**：TextSink 统一四参数 `{0}` 时间、`{1}` 等级、`{2}` 来源、`{3}` 正文；ConsoleSink/FileSink 均已接入，Core/App 通过 LogRecord.source 表达。
 - **输出端约束（已落地）**：FileSink/ConsoleSink 使用 CLASS_DISABLE_COPY_MOVE 禁止对象复制与移动，SharedPtr 自身仍可复制/移动。FileSink 构造使用 switch 识别 Append/Truncate，其他值在创建目录和打开文件前抛 invalid_argument，避免无效模式触发截断。
 - **默认文件路径与覆盖范围**：可执行目录下 Namica.log 是当前默认用法，不保证发布后的安装目录可写；宿主应显式配置合适路径。FileSink 基础与集成回归已补，文件运行期 I/O 失败尚无稳定公开注入方式，不通过真实磁盘写满、权限变化或访问私有流补覆盖。
@@ -66,6 +67,8 @@
 构建、接入和实验运行命令维护在 [GettingStarted](../doc/guide/GettingStarted.md) 与 [Examples](../doc/guide/Examples.md)，不在本页重复。
 
 ## 最近实际验证
+
+2026-11-20，使用 MSVC / Ninja 的 Debug 配置重新构建 `test_log`。直接运行与 CTest 八路并行均通过 53/53 项。直接运行时将进程的 `TEMP` 和 `TMP` 指向不存在的路径，从另一个工作目录启动，观察到 19 个用例目录全部在 `build/test_tmp/log/` 下创建并删除，两轮验证结束后该目录为空。
 
 **2026-11-10：完成单测注释审核及模块工具归位后，Debug / MSVC / Ninja 构建 test_log、test_math 成功；直接运行日志测试 53/53、数学测试 61/61 通过，原有 3 项禁用测试保持不变。** 生成的构建依赖确认 FileTestUtils/StreamTestUtils 仅进入 test_log，MathTestUtils 仅进入 test_math，公用夹具不再依赖数学头。仅新增/整理测试工具、用例及文档，未修改运行时代码或 CMake。
 

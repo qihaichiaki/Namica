@@ -1,5 +1,10 @@
 add_test_exes_from_subdirs(OFF ${NAMICA_RUNTIME})
 
+# 日志测试从 IDE、CTest 或命令行启动时，都将临时文件写入本仓库的 build 目录。
+target_compile_definitions(test_log PRIVATE
+    "NAMICA_LOG_TEST_ROOT=u8\"${PROJECT_SOURCE_DIR}/build/test_tmp/log\""
+)
+
 # 接入CTest
 include(GoogleTest)
 
